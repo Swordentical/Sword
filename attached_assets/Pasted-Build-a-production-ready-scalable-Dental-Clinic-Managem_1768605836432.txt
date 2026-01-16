@@ -1,0 +1,441 @@
+Build a production-ready, scalable Dental Clinic Management System for a single clinic (multi-location not required now), with clean architecture, role-based access, strong UX, and future mobile readiness.
+
+The app must be professional, reliable, and easy to extend.
+
+🧱 Tech Stack (MANDATORY)
+
+Use exactly the following stack:
+
+Frontend
+
+React 18
+
+TypeScript
+
+Vite
+
+Tailwind CSS
+
+shadcn/ui components
+
+React Router
+
+React Query
+
+date-fns
+
+Recharts
+
+Lucide React icons
+
+Backend
+
+Supabase
+
+Authentication
+
+PostgreSQL database
+
+Storage (documents, images, X-rays)
+
+🔐 Authentication & Authorization
+
+Email/password login & signup
+
+Supabase Auth
+
+Protected routes
+
+User roles:
+
+admin (full access)
+
+doctor (own patients, treatments, appointments)
+
+staff (patients, appointments only – no financial analytics)
+
+Use role-based guards on routes and UI actions.
+
+📊 Dashboard
+
+Create a real clinic dashboard, not just numbers.
+
+Include:
+
+KPIs:
+
+Total patients
+
+Today’s appointments
+
+Monthly revenue
+
+Outstanding balances
+
+Today’s appointments list
+
+Quick actions:
+
+Add patient
+
+New appointment
+
+Create invoice
+
+Recent activity feed
+
+👤 Patients Management
+Patient List
+
+Search (name, phone, ID)
+
+Filters
+
+Pagination
+
+Quick actions
+
+Patient Profile (Tabbed View)
+
+Each patient must have one unified profile containing:
+
+1. Personal Info
+
+Name
+
+DOB (age auto-calculated)
+
+Gender
+
+Phone
+
+Address
+
+Emergency contact
+
+2. Medical History
+
+Allergies
+
+Chronic conditions
+
+Medications
+
+Notes
+
+Use checkboxes / MCQ-style UI for common conditions.
+
+3. Treatment Chart
+
+Tooth chart visualization
+
+Tooth-level treatments
+
+Planned vs completed treatments
+
+4. Treatment Plans
+
+Multi-visit plans
+
+Status tracking
+
+Doctor assignment
+
+5. Financials
+
+Invoices
+
+Payments
+
+Balance
+
+Discounts (value or percentage)
+
+6. Documents
+
+Upload X-rays, PDFs, images
+
+Stored in Supabase Storage
+
+7. Orthodontic Tracking
+
+Timeline-based progress notes
+
+Attach images per stage
+
+📅 Appointments & Calendar
+Views
+
+Monthly calendar (with dots)
+
+Daily view (12 PM → 12 AM, hourly slots)
+
+Features
+
+Drag & drop rescheduling
+
+Quick appointment creation
+
+Status colors:
+
+Confirmed
+
+Pending
+
+Canceled
+
+Completed
+
+Category types:
+
+New Visit
+
+Follow Up
+
+Discussion
+
+Surgery
+
+Checkup
+
+Cleaning
+
+Appointment Dialog
+
+Patient selector
+
+Date/time picker
+
+Duration
+
+Category
+
+Status
+
+Notes
+
+Doctor assignment
+
+🦷 Services / Price List
+Service Catalog
+
+Categories:
+
+Endodontics
+
+Restorative
+
+Preventative
+
+Fixed Prosthodontics
+
+Removable Prosthodontics
+
+Surgery
+
+Orthodontics
+
+Periodontics
+
+Cosmetic
+
+Diagnostics
+
+Pediatric
+
+Features
+
+Auto-generated service codes (e.g. RCT-001)
+
+Add / Edit / Delete
+
+Category filtering
+
+Print-friendly view
+
+📦 Inventory Management
+Categories
+
+Consumables
+
+Equipment
+
+Instruments
+
+Medications
+
+Office Supplies
+
+Fields
+
+Name
+
+Category
+
+Quantity
+
+Minimum quantity
+
+Unit
+
+Unit cost
+
+Supplier
+
+Location
+
+Features
+
+Low stock alerts
+
+Status:
+
+Available
+
+Low stock
+
+Out of stock
+
+Printable filtered inventory list
+
+🧪 Lab Work Management
+
+Track external lab cases
+
+Link:
+
+Patient
+
+Doctor
+
+Lab
+
+Case Details
+
+Case type
+
+Tooth chart
+
+Sent date
+
+Expected return
+
+Actual return
+
+Notes
+
+Status Flow
+
+Pending
+
+In Progress
+
+Completed
+
+Delivered
+
+Financials
+
+Track lab costs
+
+Paid vs outstanding
+
+Archive completed cases
+
+💰 Financial Management
+
+Invoice generation
+
+Invoice items linked to treatments
+
+Payments recording
+
+Balance calculation
+
+Patient-level financial summary
+
+⚙️ Settings
+
+Clinic logo upload
+
+Theme toggle (light/dark)
+
+User management
+
+Role assignment
+
+🗄️ Database Schema (Supabase)
+
+Use PostgreSQL with the following tables:
+
+patients
+
+appointments
+
+treatments
+
+patient_treatments
+
+invoices
+
+invoice_items
+
+payments
+
+inventory_items
+
+lab_cases
+
+profiles
+
+Ensure:
+
+Proper foreign keys
+
+Indexing for performance
+
+Soft deletes where appropriate
+
+🎨 UI / UX Rules
+
+Clean medical aesthetic
+
+Sidebar navigation (collapsible)
+
+Card-based layout
+
+Modals for forms
+
+Toast notifications
+
+Color-coded status badges
+
+Fully responsive
+
+Print-friendly layouts
+
+🧠 Architecture Rules
+
+Clean folder structure
+
+Reusable components
+
+Custom hooks for data logic
+
+API logic isolated
+
+Strong TypeScript typing
+
+Prepare for future mobile apps (API-first thinking)
+
+🛑 VERY IMPORTANT
+
+Do NOT rush
+
+Do NOT hardcode data
+
+Do NOT skip error handling
+
+Ask clarifying questions ONLY if absolutely necessary
+
+Build as if this will be used daily in a real clinic

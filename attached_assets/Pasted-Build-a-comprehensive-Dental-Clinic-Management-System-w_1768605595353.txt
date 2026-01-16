@@ -1,0 +1,120 @@
+Build a comprehensive Dental Clinic Management System with the following specifications:
+
+## Tech Stack
+- React 18 + TypeScript + Vite
+- Tailwind CSS with shadcn/ui components
+- Supabase for backend (authentication, database, storage)
+- React Query for data fetching
+- React Router for navigation
+- date-fns for date handling
+- Recharts for charts
+- Lucide React for icons
+
+## Core Features
+
+### 1. Authentication
+- Login/signup with email and password
+- Protected routes requiring authentication
+- User profiles with roles (admin, doctor, staff)
+
+### 2. Dashboard
+- Overview statistics (patients, appointments, revenue)
+- Today's appointments list
+- Quick action buttons
+- Recent activity feed
+
+### 3. Patients Management
+- Patient list with search and filtering
+- Add/Edit patient dialogs
+- Patient detail page with tabs:
+  - Personal info (name, DOB, gender, contact, address)
+  - Medical history (allergies, conditions, medications)
+  - Treatment chart with tooth visualization
+  - Treatment plan management
+  - Financials (invoices, payments, balance)
+  - Documents storage
+  - Orthodontic treatment tracking
+
+### 4. Appointments Calendar
+- Monthly calendar view with appointment dots
+- Day view with hourly time slots (12 PM - 12 AM)
+- Drag and drop appointment rescheduling
+- Quick appointment creation
+- Advanced appointment dialog with:
+  - Patient selection
+  - Date/time picker
+  - Duration setting
+  - Category (New Visit, Follow Up, Discussion, Surgery, Checkup, Cleaning)
+  - Status (Confirmed, Pending, Canceled, Completed)
+  - Notes
+- Appointment statistics card
+- Filter by status
+
+### 5. Services/Price List
+- Dental services catalog with categories:
+  - Endodontics, Restorative, Preventative
+  - Fixed Prosthodontics, Removable Prosthodontics
+  - Surgery, Orthodontics, Periodontics
+  - Cosmetic, Diagnostics, Pediatric
+- Auto-generated service codes (e.g., RCT-001, ORTH-002)
+- Add/Edit/Delete services
+- Print services list with category filtering
+
+### 6. Inventory Management
+- Materials/supplies tracking
+- Categories: Consumables, Equipment, Instruments, Medications, Office Supplies
+- Stock status: Available, Low Stock, Out of Stock
+- Fields: name, category, quantity, minimum quantity, unit, unit cost, supplier, location
+- Print inventory with filters (by category, by status)
+- Low stock alerts
+
+### 7. Lab Work Management
+- Lab cases tracking (sent to external labs)
+- Case details: patient, type, lab name, sent date, expected return
+- Status workflow: Pending, In Progress, Completed, Delivered
+- Tooth chart for case specifications
+- Lab financials tracking
+- Archive for completed cases
+
+### 8. Financial Management
+- Invoices creation and management
+- Payment recording
+- Patient balance tracking
+- Financial reports
+
+### 9. Settings
+- Clinic logo upload
+- Theme selection (light/dark mode)
+- User management
+
+## Database Schema (Supabase)
+
+Tables:
+- patients (id, first_name, last_name, email, phone, date_of_birth, gender, address, medical_history, dental_history, insurance_provider, insurance_policy_number, emergency_contact, notes)
+- appointments (id, patient_id, title, start_time, end_time, status, notes, doctor_id)
+- treatments (id, name, category, description, default_price, duration_minutes)
+- patient_treatments (id, patient_id, treatment_id, appointment_id, status, price, scheduled_date, completion_date, notes, doctor_id)
+- invoices (id, patient_id, amount, status, issued_date, due_date, notes)
+- invoice_items (id, invoice_id, patient_treatment_id, description, quantity, unit_price)
+- payments (id, invoice_id, amount, payment_date, payment_method, reference_number, notes)
+- inventory_items (id, name, category, current_quantity, minimum_quantity, unit, unit_cost, supplier, location, description)
+- lab_cases (id, patient_id, case_type, lab_name, sent_date, expected_return_date, actual_return_date, status, description, notes, doctor_id)
+- profiles (id, first_name, last_name, role, avatar_url, phone_text)
+
+## UI/UX Design
+- Clean, professional medical aesthetic
+- Sidebar navigation with collapsible menu
+- Card-based layouts
+- Modal dialogs for forms
+- Toast notifications for actions
+- Responsive design
+- Color-coded status badges
+- Print-friendly dialogs with proper formatting
+
+## Layout Structure
+- MainLayout with sidebar navigation
+- SidebarNav with icons for each section:
+  - Dashboard, Patients, Appointments, Services
+  - Inventory, Lab Work, Financials
+  - Reports, Prescriptions, Notifications
+  - User Management, Settings
