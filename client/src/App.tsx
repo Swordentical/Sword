@@ -3,14 +3,134 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+
 import NotFound from "@/pages/not-found";
+import AuthPage from "@/pages/auth-page";
+import Dashboard from "@/pages/dashboard";
+import PatientsList from "@/pages/patients/patients-list";
+import PatientDetail from "@/pages/patients/patient-detail";
+import AppointmentsPage from "@/pages/appointments/appointments-page";
+import ServicesPage from "@/pages/services/services-page";
+import InventoryPage from "@/pages/inventory/inventory-page";
+import LabWorkPage from "@/pages/lab-work/lab-work-page";
+import FinancialsPage from "@/pages/financials/financials-page";
+import SettingsPage from "@/pages/settings/settings-page";
+
+function MainLayout({ children }: { children: React.ReactNode }) {
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3.5rem",
+  };
+
+  return (
+    <SidebarProvider style={style as React.CSSProperties}>
+      <div className="flex h-screen w-full">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
+          <header className="flex items-center justify-between h-14 px-4 border-b bg-background shrink-0">
+            <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <ThemeToggle />
+          </header>
+          <main className="flex-1 overflow-auto bg-muted/30">
+            {children}
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function DashboardPage() {
+  return (
+    <MainLayout>
+      <Dashboard />
+    </MainLayout>
+  );
+}
+
+function PatientsListPage() {
+  return (
+    <MainLayout>
+      <PatientsList />
+    </MainLayout>
+  );
+}
+
+function PatientDetailPage() {
+  return (
+    <MainLayout>
+      <PatientDetail />
+    </MainLayout>
+  );
+}
+
+function AppointmentsPageWrapper() {
+  return (
+    <MainLayout>
+      <AppointmentsPage />
+    </MainLayout>
+  );
+}
+
+function ServicesPageWrapper() {
+  return (
+    <MainLayout>
+      <ServicesPage />
+    </MainLayout>
+  );
+}
+
+function InventoryPageWrapper() {
+  return (
+    <MainLayout>
+      <InventoryPage />
+    </MainLayout>
+  );
+}
+
+function LabWorkPageWrapper() {
+  return (
+    <MainLayout>
+      <LabWorkPage />
+    </MainLayout>
+  );
+}
+
+function FinancialsPageWrapper() {
+  return (
+    <MainLayout>
+      <FinancialsPage />
+    </MainLayout>
+  );
+}
+
+function SettingsPageWrapper() {
+  return (
+    <MainLayout>
+      <SettingsPage />
+    </MainLayout>
+  );
+}
 
 function Router() {
   return (
     <Switch>
-      {/* Add pages below */}
-      {/* <Route path="/" component={Home}/> */}
-      {/* Fallback to 404 */}
+      <ProtectedRoute path="/" component={DashboardPage} />
+      <ProtectedRoute path="/patients" component={PatientsListPage} />
+      <ProtectedRoute path="/patients/:id" component={PatientDetailPage} />
+      <ProtectedRoute path="/appointments" component={AppointmentsPageWrapper} />
+      <ProtectedRoute path="/services" component={ServicesPageWrapper} />
+      <ProtectedRoute path="/inventory" component={InventoryPageWrapper} />
+      <ProtectedRoute path="/lab-work" component={LabWorkPageWrapper} />
+      <ProtectedRoute path="/financials" component={FinancialsPageWrapper} />
+      <ProtectedRoute path="/settings" component={SettingsPageWrapper} />
+      <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -18,12 +138,16 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="light" storageKey="dental-clinic-theme">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

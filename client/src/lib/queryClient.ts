@@ -23,13 +23,83 @@ export async function apiRequest(
   return res;
 }
 
+function flattenObjectToParams(obj: Record<string, unknown>, params: URLSearchParams, prefix = ""): void {
+  for (const [key, value] of Object.entries(obj)) {
+    const paramKey = prefix ? `${prefix}[${key}]` : key;
+    
+    if (value === undefined || value === null || value === "") {
+      continue;
+    }
+    
+    if (value instanceof Date) {
+      params.append(paramKey, value.toISOString());
+    } else if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        if (typeof item === "object" && item !== null) {
+          flattenObjectToParams(item as Record<string, unknown>, params, `${paramKey}[${index}]`);
+        } else {
+          params.append(`${paramKey}[]`, String(item));
+        }
+      });
+    } else if (typeof value === "object") {
+      flattenObjectToParams(value as Record<string, unknown>, params, paramKey);
+    } else {
+      params.append(paramKey, String(value));
+    }
+  }
+}
+
+function buildUrl(queryKey: readonly unknown[]): string {
+  if (queryKey.length === 0) {
+    return "";
+  }
+
+  const [path, ...rest] = queryKey;
+
+  if (typeof path !== "string") {
+    throw new Error("First element of queryKey must be a string (the URL path)");
+  }
+
+  if (rest.length === 0) {
+    return path;
+  }
+
+  const stringSegments: string[] = [];
+  let paramsObj: Record<string, unknown> | null = null;
+
+  for (const segment of rest) {
+    if (typeof segment === "string") {
+      stringSegments.push(segment);
+    } else if (typeof segment === "number") {
+      stringSegments.push(String(segment));
+    } else if (typeof segment === "object" && segment !== null) {
+      paramsObj = segment as Record<string, unknown>;
+    }
+  }
+
+  let basePath = path;
+  if (stringSegments.length > 0) {
+    basePath = `${path}/${stringSegments.join("/")}`;
+  }
+
+  if (paramsObj) {
+    const params = new URLSearchParams();
+    flattenObjectToParams(paramsObj, params);
+    const queryString = params.toString();
+    return queryString ? `${basePath}?${queryString}` : basePath;
+  }
+
+  return basePath;
+}
+
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = buildUrl(queryKey);
+    const res = await fetch(url, {
       credentials: "include",
     });
 

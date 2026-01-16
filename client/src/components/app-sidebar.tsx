@@ -1,0 +1,228 @@
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  ClipboardList,
+  Package,
+  FlaskConical,
+  DollarSign,
+  Settings,
+  LogOut,
+  GraduationCap,
+  Stethoscope,
+} from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import type { UserRole } from "@shared/schema";
+
+type NavItem = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles: UserRole[];
+};
+
+const mainNavItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    url: "/",
+    icon: LayoutDashboard,
+    roles: ["admin", "doctor", "staff", "student"],
+  },
+  {
+    title: "Patients",
+    url: "/patients",
+    icon: Users,
+    roles: ["admin", "doctor", "staff", "student"],
+  },
+  {
+    title: "Appointments",
+    url: "/appointments",
+    icon: Calendar,
+    roles: ["admin", "doctor", "staff", "student"],
+  },
+  {
+    title: "Services",
+    url: "/services",
+    icon: ClipboardList,
+    roles: ["admin", "doctor"],
+  },
+  {
+    title: "Inventory",
+    url: "/inventory",
+    icon: Package,
+    roles: ["admin", "doctor"],
+  },
+  {
+    title: "Lab Work",
+    url: "/lab-work",
+    icon: FlaskConical,
+    roles: ["admin", "doctor"],
+  },
+  {
+    title: "Financials",
+    url: "/financials",
+    icon: DollarSign,
+    roles: ["admin", "doctor"],
+  },
+];
+
+const settingsNavItems: NavItem[] = [
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    roles: ["admin"],
+  },
+];
+
+function getRoleIcon(role: UserRole) {
+  switch (role) {
+    case "admin":
+      return <Settings className="h-3 w-3" />;
+    case "doctor":
+      return <Stethoscope className="h-3 w-3" />;
+    case "student":
+      return <GraduationCap className="h-3 w-3" />;
+    default:
+      return null;
+  }
+}
+
+function getRoleLabel(role: UserRole) {
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+export function AppSidebar() {
+  const [location] = useLocation();
+  const { user, logoutMutation } = useAuth();
+
+  const userRole = (user?.role as UserRole) || "staff";
+  
+  const filteredMainItems = mainNavItems.filter((item) =>
+    item.roles.includes(userRole)
+  );
+  
+  const filteredSettingsItems = settingsNavItems.filter((item) =>
+    item.roles.includes(userRole)
+  );
+
+  const initials = user
+    ? `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`
+    : "?";
+
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg dental-gradient">
+            <Stethoscope className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-semibold text-sidebar-foreground">
+              DentalCare
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Clinic Management
+            </span>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent className="scrollbar-thin">
+        <SidebarGroup>
+          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredMainItems.map((item) => {
+                const isActive = location === item.url || 
+                  (item.url !== "/" && location.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {filteredSettingsItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {filteredSettingsItems.map((item) => {
+                  const isActive = location === item.url;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        <Link href={item.url}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <span className="truncate text-sm font-medium text-sidebar-foreground">
+              {user?.firstName} {user?.lastName}
+            </span>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {getRoleIcon(userRole)}
+              <span>{getRoleLabel(userRole)}</span>
+            </div>
+          </div>
+          <SidebarMenuButton
+            size="sm"
+            onClick={() => logoutMutation.mutate()}
+            className="h-8 w-8 p-0"
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </SidebarMenuButton>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
