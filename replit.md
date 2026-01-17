@@ -90,3 +90,29 @@ The system supports four user roles with different permission levels:
 - **Vite**: Development server and build tool
 - **tsx**: TypeScript execution for server
 - **drizzle-kit**: Database migration tooling
+
+## Recent Changes
+
+### Dashboard Widget Customization (January 2026)
+- Implemented slot-based widget system for the dashboard
+- Widget slots: header, fullWidth, main (2/3 width), sidebar (1/3 width)
+- Users can toggle widgets on/off and reorder within each slot
+- Preferences persisted to localStorage ("dashboard-widgets-config-v2")
+- Available widgets: Clock, Statistics Cards, Today's Appointments, Quick Actions, Recent Activity, Low Stock Alerts
+
+### Patient Photo Upload (January 2026)
+- Added base64-encoded photo storage in patients.photoUrl field
+- 5MB client-side limit with JPEG/PNG/GIF/WebP support
+- Hover-to-upload interface on patient detail page
+- Role-based access: admin, doctor, and staff only (students blocked)
+
+### Patient Financial Breakdown (January 2026)
+- New Financials tab on patient detail page
+- Shows total cost, total paid, and balance summary
+- Breakdown by treatment category with progress bars
+- Invoice and payment history lists with status indicators
+
+### Doctors Management (January 2026)
+- Dedicated Doctors page with CRUD operations (admin only for create/edit/delete)
+- Specialty multi-select from predefined list
+- Grid display with doctor cards showing specialties and contact info
