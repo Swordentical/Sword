@@ -1,0 +1,45 @@
+1 - UI\UX Needs More animation and more modernize .. it is so static and old school
+2- More themes should be added and more chromas and design flexibility 
+3- there should be a backup & restore functionality
+4- color coding is mandatory for genres
+5- Drag and Drop feature are great addons 
+
+improvements : 
+- Dashboard tab  : should contain search bar to search across all the data base ( patient name , id , phone , inventory , appointments)  + modern clock and date showing ..
+
+- patients tab : 
+there should be a new method to view patient profile upon clicking on it .. instead of a new window open up .. it should be like a side window showing up a review of patient profile .. when we need to make a major edit for the patient file .. then a full window should open otherwise ... a list with side view is enough 
++ i should be able to upload patient photo
++ when adding a patient i should be able to choose the Doctor selected for this case ... as there should be Doctors List to choose from ..
++ sorting by A-Z up and down  not by gender 
++ bug fix = delete patient function is not working 
+
+- Patient Profile window : 
++ while in patient profile window i should be able to view previous ,current and future appointments 
++ i cant add or edit the Medical History data like  (Allergies, Chronic Conditions,  Current Medications ,) as there should be most common answers for selection/check or add a custom edit 
++ regarding Treatment Chart section : it contain bugs like >> upon selection the desired tooth i can not add any treatment to the plan and ( + ADD treatment ) button is not functioning
+example model = when i double click the tooth i should be able to add and select the treatment throughout this method .... and the treatment i chose should be added to the final treatment plan .. and then while in treatment plan review i should be able to choose the type of this treatment whether it is planned for later or in progress or completed .. etc.  and there should be prices included as in Services 
+
+- Financials Section in patient profile : 
+i should be able to know all financial detail regarding this patients 
+how much treatments costs what's due what he paid what remains ... previous payments ..etc. with statistics 
+
+-Documents Section in Patient profile : 
+this section is the section that care about all Documents and visual data of the patient .. including X-Rays ,Photos ,Prescriptions ,Consent Forms ,Reports and Photographs 
+so there it should be sorted by the type of document and ability to upload data of multiple types ... text, word , pdf , PNG ,jpeg etc.
+and in this section there should be folder like view to sort each type in the correct place .. x-rays in Xray folder ... reports in reports folder and so on 
+as later there should be AI integration to analyze data from x-rays and panorama and suggest me treatment plans and highlight problems for x-rays 
+and AI for image enhancement for photography which is unnecessary right now but should be future proof
+
+Appointments TAB : 
+i am unable to add an appointment it keep telling me this error:
+
+________________________________________________________________________________________
+Failed to create appointment
+
+400: {"message":"[\n {\n \"code\":
+
+\"invalid_type\",\n \"expected\": \"date\",\n \"received\": \"string\",\n \"path\": [\n \"startTime\"\n ],\n \"message\": \"Expected date, received string\"\n },\n {\n \"code\": \"invalid_type\",\n \"expected\": \"date\",\n \"received\": \"string\",\n \"path\": [\n \"endTime\"\n ],\n \"message\": \"Expected date, received string\"\n }\n]"}
+________________________________________________________________________________________
+
++ i should be able to shoose 
