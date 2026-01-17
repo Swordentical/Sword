@@ -22,6 +22,13 @@ export const serviceCategoryEnum = pgEnum("service_category", [
   "cosmetic", "diagnostics", "pediatric"
 ]);
 
+// Doctor specialties enum
+export const doctorSpecialtyEnum = pgEnum("doctor_specialty", [
+  "general_dentistry", "orthodontics", "periodontics", "endodontics", 
+  "prosthodontics", "oral_surgery", "pediatric_dentistry", "cosmetic_dentistry",
+  "implantology", "oral_pathology"
+]);
+
 // Users/Profiles table
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -33,6 +40,10 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("staff"),
   phone: text("phone"),
   avatarUrl: text("avatar_url"),
+  // Doctor-specific fields
+  specialty: doctorSpecialtyEnum("specialty"),
+  licenseNumber: text("license_number"),
+  bio: text("bio"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -49,6 +60,8 @@ export const patients = pgTable("patients", {
   address: text("address"),
   emergencyContact: text("emergency_contact"),
   emergencyPhone: text("emergency_phone"),
+  // Photo
+  photoUrl: text("photo_url"),
   // Medical history
   allergies: text("allergies").array(),
   chronicConditions: text("chronic_conditions").array(),

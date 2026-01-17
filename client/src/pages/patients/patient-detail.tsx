@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -56,6 +56,124 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value: string | 
       <div className="flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm font-medium">{value || "-"}</p>
+      </div>
+    </div>
+  );
+}
+
+function PatientPhotoSection({ patient, initials, age }: { patient: Patient; initials: string; age: number | null }) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const canUpload = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useState<HTMLInputElement | null>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: async (photoUrl: string) => {
+      const res = await apiRequest("PATCH", `/api/patients/${patient.id}`, { photoUrl });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patient.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      toast({ title: "Photo updated", description: "Patient photo has been updated successfully." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please select an image under 5MB", variant: "destructive" });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        await uploadMutation.mutateAsync(base64);
+        setIsUploading(false);
+      };
+      reader.onerror = () => {
+        toast({ title: "Error reading file", variant: "destructive" });
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setIsUploading(false);
+    }
+  };
+
+  const removePhoto = () => {
+    uploadMutation.mutate("");
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center mb-6">
+      <div className="relative group">
+        <Avatar className="h-24 w-24 mb-4">
+          <AvatarImage src={(patient as any).photoUrl || undefined} alt={`${patient.firstName} ${patient.lastName}`} />
+          <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        {canUpload && (
+          <div className="absolute inset-0 mb-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute inset-0 bg-black/50 rounded-full" />
+            <label className="relative cursor-pointer p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+              {isUploading ? (
+                <Loader2 className="h-5 w-5 text-white animate-spin" />
+              ) : (
+                <Camera className="h-5 w-5 text-white" />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+                disabled={isUploading}
+                data-testid="input-patient-photo"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+      <h2 className="text-xl font-bold">
+        {patient.firstName} {patient.lastName}
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        ID: {patient.id.slice(0, 8)}
+      </p>
+      <div className="flex items-center gap-2 mt-2">
+        {patient.gender && (
+          <Badge variant="secondary" className="capitalize">
+            {patient.gender} {age && `• ${age} years old`}
+          </Badge>
+        )}
+        {(patient as any).photoUrl && canUpload && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={removePhoto}
+            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+            disabled={uploadMutation.isPending}
+            data-testid="button-remove-photo"
+          >
+            <X className="h-3 w-3 mr-1" />
+            Remove photo
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -499,9 +617,44 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
   );
 }
 
+type PatientFinancials = {
+  summary: {
+    totalTreatmentCost: number;
+    completedCost: number;
+    pendingCost: number;
+    totalInvoiced: number;
+    totalPaid: number;
+    outstandingBalance: number;
+    treatmentCount: number;
+    completedCount: number;
+    pendingCount: number;
+    invoiceCount: number;
+    paymentCount: number;
+  };
+  treatmentsByCategory: Record<string, { count: number; total: number }>;
+  treatments: PatientTreatmentWithDetails[];
+  invoices: Invoice[];
+  payments: any[];
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  endodontics: "Endodontics",
+  restorative: "Restorative",
+  preventative: "Preventative",
+  fixed_prosthodontics: "Fixed Prosthodontics",
+  removable_prosthodontics: "Removable Prosthodontics",
+  surgery: "Surgery",
+  orthodontics: "Orthodontics",
+  periodontics: "Periodontics",
+  cosmetic: "Cosmetic",
+  diagnostics: "Diagnostics",
+  pediatric: "Pediatric",
+  other: "Other",
+};
+
 function FinancialsSection({ patientId }: { patientId: string }) {
-  const { data: invoices, isLoading } = useQuery<Invoice[]>({
-    queryKey: ["/api/patients", patientId, "invoices"],
+  const { data: financials, isLoading } = useQuery<PatientFinancials>({
+    queryKey: ["/api/patients", patientId, "financials"],
   });
 
   if (isLoading) {
@@ -512,69 +665,152 @@ function FinancialsSection({ patientId }: { patientId: string }) {
     );
   }
 
-  const totalBilled = invoices?.reduce((sum, inv) => sum + Number(inv.finalAmount || 0), 0) || 0;
-  const totalPaid = invoices?.reduce((sum, inv) => sum + Number(inv.paidAmount || 0), 0) || 0;
-  const balance = totalBilled - totalPaid;
+  if (!financials) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <DollarSign className="h-12 w-12 mb-3 opacity-50" />
+        <p>No financial data available</p>
+      </div>
+    );
+  }
+
+  const { summary, treatmentsByCategory, invoices, payments } = financials;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1">Total Billed</p>
-            <p className="text-xl font-bold">${totalBilled.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mb-1">Total Treatment Cost</p>
+            <p className="text-xl font-bold">${summary.totalTreatmentCost.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{summary.treatmentCount} treatments</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-transparent">
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1">Total Paid</p>
-            <p className="text-xl font-bold text-emerald-600">${totalPaid.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mb-1">Completed</p>
+            <p className="text-xl font-bold text-emerald-600">${summary.completedCost.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{summary.completedCount} completed</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-gradient-to-br from-amber-500/10 to-transparent">
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-            <p className={`text-xl font-bold ${balance > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-              ${balance.toFixed(2)}
+            <p className="text-xs text-muted-foreground mb-1">Pending</p>
+            <p className="text-xl font-bold text-amber-600">${summary.pendingCost.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{summary.pendingCount} pending</p>
+          </CardContent>
+        </Card>
+        <Card className={`bg-gradient-to-br ${summary.outstandingBalance > 0 ? 'from-destructive/10' : 'from-emerald-500/10'} to-transparent`}>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground mb-1">Outstanding Balance</p>
+            <p className={`text-xl font-bold ${summary.outstandingBalance > 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+              ${summary.outstandingBalance.toFixed(2)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              ${summary.totalPaid.toFixed(2)} paid of ${summary.totalInvoiced.toFixed(2)}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium">Invoice History</h3>
-        {invoices && invoices.length > 0 ? (
-          invoices.map((invoice) => (
-            <Card key={invoice.id} className="hover-elevate cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{invoice.invoiceNumber}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.issuedDate && format(new Date(invoice.issuedDate), "MMM d, yyyy")}
-                    </p>
+      {Object.keys(treatmentsByCategory).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Treatments by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {Object.entries(treatmentsByCategory).map(([category, data]) => {
+                const percentage = summary.totalTreatmentCost > 0 
+                  ? (data.total / summary.totalTreatmentCost) * 100 
+                  : 0;
+                return (
+                  <div key={category} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>{CATEGORY_LABELS[category] || category}</span>
+                      <span className="font-medium">${data.total.toFixed(2)} ({data.count})</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all duration-300"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">${invoice.finalAmount}</p>
-                    <Badge
-                      variant={
-                        invoice.status === "paid"
-                          ? "default"
-                          : invoice.status === "overdue"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {invoice.status}
-                    </Badge>
-                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Invoices ({summary.invoiceCount})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {invoices && invoices.length > 0 ? (
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-3 pr-4">
+                  {invoices.map((invoice) => (
+                    <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div>
+                        <p className="font-medium text-sm">{invoice.invoiceNumber}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {invoice.issuedDate && format(new Date(invoice.issuedDate), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm">${invoice.finalAmount}</p>
+                        <Badge
+                          variant={
+                            invoice.status === "paid" ? "default" :
+                            invoice.status === "overdue" ? "destructive" : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {invoice.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">No invoices found</p>
-        )}
+              </ScrollArea>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No invoices yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Payments ({summary.paymentCount})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payments && payments.length > 0 ? (
+              <ScrollArea className="h-[200px]">
+                <div className="space-y-3 pr-4">
+                  {payments.map((payment: any) => (
+                    <div key={payment.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div>
+                        <p className="font-medium text-sm text-emerald-600">+${payment.amount}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {payment.paymentDate && format(new Date(payment.paymentDate), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {payment.paymentMethod?.replace(/_/g, " ") || "unknown"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No payments recorded</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -1201,24 +1437,7 @@ export default function PatientDetail() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardContent className="p-6">
-            <div className="flex flex-col items-center text-center mb-6">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <h2 className="text-xl font-bold">
-                {patient.firstName} {patient.lastName}
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                ID: {patient.id.slice(0, 8)}
-              </p>
-              {patient.gender && (
-                <Badge variant="secondary" className="mt-2 capitalize">
-                  {patient.gender} {age && `• ${age} years old`}
-                </Badge>
-              )}
-            </div>
+            <PatientPhotoSection patient={patient} initials={initials} age={age} />
 
             <Separator className="my-4" />
 

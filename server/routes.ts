@@ -171,6 +171,11 @@ export async function registerRoutes(
 
   app.patch("/api/patients/:id", requireAuth, async (req, res) => {
     try {
+      const user = req.user as any;
+      if (user.role === "student") {
+        return res.status(403).json({ message: "Students cannot update patient records" });
+      }
+
       const updateSchema = insertPatientSchema.pick({
         firstName: true,
         lastName: true,
@@ -181,6 +186,7 @@ export async function registerRoutes(
         address: true,
         emergencyContact: true,
         emergencyPhone: true,
+        photoUrl: true,
         allergies: true,
         chronicConditions: true,
         currentMedications: true,
@@ -692,6 +698,178 @@ export async function registerRoutes(
       res.json(labCase);
     } catch (error) {
       res.status(500).json({ message: "Failed to update lab case" });
+    }
+  });
+
+  // Doctors management - admin only for modifications
+  app.get("/api/doctors", requireAuth, async (req, res) => {
+    try {
+      const doctors = await storage.getUsers({ role: "doctor" });
+      res.json(doctors.map(d => ({ ...d, password: undefined })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch doctors" });
+    }
+  });
+
+  app.post("/api/doctors", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertUserSchema.safeParse({
+        ...req.body,
+        role: "doctor",
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const existingUser = await storage.getUserByUsername(parsed.data.username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      const bcrypt = await import("bcrypt");
+      const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
+
+      const doctor = await storage.createUser({
+        ...parsed.data,
+        password: hashedPassword,
+      });
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "doctor",
+        entityId: doctor.id,
+        details: `Added doctor ${doctor.firstName} ${doctor.lastName}`,
+      });
+
+      res.status(201).json({ ...doctor, password: undefined });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create doctor" });
+    }
+  });
+
+  app.patch("/api/doctors/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const updateSchema = insertUserSchema.pick({
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        specialty: true,
+        licenseNumber: true,
+        bio: true,
+        isActive: true,
+      }).partial().strict();
+      
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const doctor = await storage.updateUser(req.params.id, parsed.data);
+      if (!doctor) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+      res.json({ ...doctor, password: undefined });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update doctor" });
+    }
+  });
+
+  app.delete("/api/doctors/:id", requireRole("admin"), async (req, res) => {
+    try {
+      // Check for assigned patients
+      const assignedPatients = await storage.getPatients({ assignedDoctorId: req.params.id });
+      if (assignedPatients.length > 0) {
+        return res.status(409).json({
+          message: `Cannot delete doctor. There are ${assignedPatients.length} patient(s) assigned to this doctor. Please reassign them first.`
+        });
+      }
+
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Doctor not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "deleted",
+        entityType: "doctor",
+        entityId: req.params.id,
+        details: `Deleted doctor`,
+      });
+
+      res.json({ message: "Doctor deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete doctor" });
+    }
+  });
+
+  // Patient financial summary
+  app.get("/api/patients/:id/financials", requireAuth, async (req, res) => {
+    try {
+      const patientId = req.params.id;
+      
+      // Get all treatments for this patient
+      const treatments = await storage.getPatientTreatments(patientId);
+      const treatmentsList = await storage.getTreatments();
+      const treatmentMap = new Map(treatmentsList.map(t => [t.id, t]));
+      
+      // Get all invoices for this patient
+      const invoicesList = await storage.getPatientInvoices(patientId);
+      
+      // Get all payments for patient's invoices
+      const allPayments = await storage.getPayments({});
+      const invoiceIds = new Set(invoicesList.map(inv => inv.id));
+      const patientPayments = allPayments.filter(p => invoiceIds.has(p.invoiceId));
+      
+      // Calculate totals
+      const totalTreatmentCost = treatments.reduce((sum, t) => sum + parseFloat(t.price || "0"), 0);
+      const completedTreatments = treatments.filter(t => t.status === "completed");
+      const completedCost = completedTreatments.reduce((sum, t) => sum + parseFloat(t.price || "0"), 0);
+      const pendingTreatments = treatments.filter(t => t.status === "planned" || t.status === "in_progress");
+      const pendingCost = pendingTreatments.reduce((sum, t) => sum + parseFloat(t.price || "0"), 0);
+      
+      const totalInvoiced = invoicesList.reduce((sum, inv) => sum + parseFloat(inv.finalAmount || "0"), 0);
+      const totalPaid = patientPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+      const outstandingBalance = totalInvoiced - totalPaid;
+      
+      // Group treatments by category
+      const treatmentsByCategory: Record<string, { count: number; total: number }> = {};
+      treatments.forEach(t => {
+        const treatment = treatmentMap.get(t.treatmentId);
+        const category = treatment?.category || "other";
+        if (!treatmentsByCategory[category]) {
+          treatmentsByCategory[category] = { count: 0, total: 0 };
+        }
+        treatmentsByCategory[category].count++;
+        treatmentsByCategory[category].total += parseFloat(t.price || "0");
+      });
+
+      res.json({
+        summary: {
+          totalTreatmentCost,
+          completedCost,
+          pendingCost,
+          totalInvoiced,
+          totalPaid,
+          outstandingBalance,
+          treatmentCount: treatments.length,
+          completedCount: completedTreatments.length,
+          pendingCount: pendingTreatments.length,
+          invoiceCount: invoicesList.length,
+          paymentCount: patientPayments.length,
+        },
+        treatmentsByCategory,
+        treatments: treatments.map(t => ({
+          ...t,
+          treatment: treatmentMap.get(t.treatmentId),
+        })),
+        invoices: invoicesList,
+        payments: patientPayments,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch patient financials" });
     }
   });
 

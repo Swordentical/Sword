@@ -56,6 +56,12 @@ const mainNavItems: NavItem[] = [
     roles: ["admin", "doctor", "staff", "student"],
   },
   {
+    title: "Doctors",
+    url: "/doctors",
+    icon: Stethoscope,
+    roles: ["admin", "doctor", "staff"],
+  },
+  {
     title: "Services",
     url: "/services",
     icon: ClipboardList,
