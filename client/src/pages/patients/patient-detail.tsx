@@ -17,6 +17,15 @@ import {
   Camera,
   Plus,
   Upload,
+  X,
+  Folder,
+  FolderOpen,
+  Image,
+  FileImage,
+  FileScan,
+  Pill,
+  ChevronLeft,
+  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +35,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToothChart } from "@/components/tooth-chart";
-import type { Patient, PatientTreatmentWithDetails, Invoice, Document as PatientDocument } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Patient, PatientTreatmentWithDetails, Invoice, Document as PatientDocument, AppointmentWithDetails } from "@shared/schema";
+
+const PRESET_ALLERGIES = ["Penicillin", "Latex", "Local Anesthetic", "NSAIDs", "Aspirin"];
+const PRESET_CONDITIONS = ["Diabetes", "Hypertension", "Heart Disease", "Asthma", "Epilepsy"];
 
 function InfoRow({ label, value, icon: Icon }: { label: string; value: string | null | undefined; icon?: React.ComponentType<{ className?: string }> }) {
   return (
@@ -40,15 +61,134 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value: string | 
   );
 }
 
-function MedicalHistorySection({ patient }: { patient: Patient }) {
+function MedicalHistorySection({ patient, canEdit }: { patient: Patient; canEdit: boolean }) {
+  const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [customAllergy, setCustomAllergy] = useState("");
+  const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [customCondition, setCustomCondition] = useState("");
+  const [medications, setMedications] = useState<string[]>([]);
+  const [customMedication, setCustomMedication] = useState("");
+  const [medicalNotes, setMedicalNotes] = useState("");
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: {
+      allergies: string[];
+      chronicConditions: string[];
+      currentMedications: string[];
+      medicalNotes: string;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/patients/${patient.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patient.id] });
+      setIsModalOpen(false);
+      toast({
+        title: "Medical history updated",
+        description: "Patient medical history has been saved successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openModal = () => {
+    setSelectedAllergies(patient.allergies || []);
+    setSelectedConditions(patient.chronicConditions || []);
+    setMedications(patient.currentMedications || []);
+    setMedicalNotes(patient.medicalNotes || "");
+    setCustomAllergy("");
+    setCustomCondition("");
+    setCustomMedication("");
+    setIsModalOpen(true);
+  };
+
+  const handleAllergyToggle = (allergy: string, checked: boolean) => {
+    if (checked) {
+      setSelectedAllergies((prev) => [...prev, allergy]);
+    } else {
+      setSelectedAllergies((prev) => prev.filter((a) => a !== allergy));
+    }
+  };
+
+  const handleConditionToggle = (condition: string, checked: boolean) => {
+    if (checked) {
+      setSelectedConditions((prev) => [...prev, condition]);
+    } else {
+      setSelectedConditions((prev) => prev.filter((c) => c !== condition));
+    }
+  };
+
+  const addCustomAllergy = () => {
+    if (customAllergy.trim() && !selectedAllergies.includes(customAllergy.trim())) {
+      setSelectedAllergies((prev) => [...prev, customAllergy.trim()]);
+      setCustomAllergy("");
+    }
+  };
+
+  const addCustomCondition = () => {
+    if (customCondition.trim() && !selectedConditions.includes(customCondition.trim())) {
+      setSelectedConditions((prev) => [...prev, customCondition.trim()]);
+      setCustomCondition("");
+    }
+  };
+
+  const addMedication = () => {
+    if (customMedication.trim() && !medications.includes(customMedication.trim())) {
+      setMedications((prev) => [...prev, customMedication.trim()]);
+      setCustomMedication("");
+    }
+  };
+
+  const removeMedication = (med: string) => {
+    setMedications((prev) => prev.filter((m) => m !== med));
+  };
+
+  const removeCustomAllergy = (allergy: string) => {
+    setSelectedAllergies((prev) => prev.filter((a) => a !== allergy));
+  };
+
+  const removeCustomCondition = (condition: string) => {
+    setSelectedConditions((prev) => prev.filter((c) => c !== condition));
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate({
+      allergies: selectedAllergies,
+      chronicConditions: selectedConditions,
+      currentMedications: medications,
+      medicalNotes,
+    });
+  };
+
   const allergies = patient.allergies || [];
   const conditions = patient.chronicConditions || [];
-  const medications = patient.currentMedications || [];
+  const currentMedications = patient.currentMedications || [];
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Allergies</h3>
+        {canEdit && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openModal}
+            data-testid="button-edit-medical-history"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Medical History
+          </Button>
+        )}
+      </div>
       <div>
-        <h3 className="text-sm font-medium mb-3">Allergies</h3>
         {allergies.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {allergies.map((allergy, index) => (
@@ -83,9 +223,9 @@ function MedicalHistorySection({ patient }: { patient: Patient }) {
 
       <div>
         <h3 className="text-sm font-medium mb-3">Current Medications</h3>
-        {medications.length > 0 ? (
+        {currentMedications.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            {medications.map((medication, index) => (
+            {currentMedications.map((medication, index) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {medication}
               </Badge>
@@ -104,6 +244,191 @@ function MedicalHistorySection({ patient }: { patient: Patient }) {
           {patient.medicalNotes || "No medical notes recorded"}
         </p>
       </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Medical History</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Allergies</Label>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESET_ALLERGIES.map((allergy) => (
+                    <div key={allergy} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`allergy-${allergy}`}
+                        checked={selectedAllergies.includes(allergy)}
+                        onCheckedChange={(checked) => handleAllergyToggle(allergy, !!checked)}
+                        data-testid={`checkbox-allergy-${allergy.toLowerCase().replace(/\s+/g, "-")}`}
+                      />
+                      <label htmlFor={`allergy-${allergy}`} className="text-sm cursor-pointer">
+                        {allergy}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add custom allergy..."
+                    value={customAllergy}
+                    onChange={(e) => setCustomAllergy(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomAllergy())}
+                    data-testid="input-custom-allergy"
+                  />
+                  <Button type="button" variant="outline" onClick={addCustomAllergy} data-testid="button-add-allergy">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {selectedAllergies.filter((a) => !PRESET_ALLERGIES.includes(a)).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAllergies
+                      .filter((a) => !PRESET_ALLERGIES.includes(a))
+                      .map((allergy) => (
+                        <Badge key={allergy} variant="destructive" className="text-xs">
+                          {allergy}
+                          <button
+                            type="button"
+                            className="ml-1"
+                            onClick={() => removeCustomAllergy(allergy)}
+                            data-testid={`button-remove-allergy-${allergy.toLowerCase().replace(/\s+/g, "-")}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Chronic Conditions</Label>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESET_CONDITIONS.map((condition) => (
+                    <div key={condition} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`condition-${condition}`}
+                        checked={selectedConditions.includes(condition)}
+                        onCheckedChange={(checked) => handleConditionToggle(condition, !!checked)}
+                        data-testid={`checkbox-condition-${condition.toLowerCase().replace(/\s+/g, "-")}`}
+                      />
+                      <label htmlFor={`condition-${condition}`} className="text-sm cursor-pointer">
+                        {condition}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add custom condition..."
+                    value={customCondition}
+                    onChange={(e) => setCustomCondition(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomCondition())}
+                    data-testid="input-custom-condition"
+                  />
+                  <Button type="button" variant="outline" onClick={addCustomCondition} data-testid="button-add-condition">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {selectedConditions.filter((c) => !PRESET_CONDITIONS.includes(c)).length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedConditions
+                      .filter((c) => !PRESET_CONDITIONS.includes(c))
+                      .map((condition) => (
+                        <Badge key={condition} variant="secondary" className="text-xs">
+                          {condition}
+                          <button
+                            type="button"
+                            className="ml-1"
+                            onClick={() => removeCustomCondition(condition)}
+                            data-testid={`button-remove-condition-${condition.toLowerCase().replace(/\s+/g, "-")}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Label className="text-sm font-medium mb-3 block">Current Medications</Label>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add medication..."
+                    value={customMedication}
+                    onChange={(e) => setCustomMedication(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addMedication())}
+                    data-testid="input-medication"
+                  />
+                  <Button type="button" variant="outline" onClick={addMedication} data-testid="button-add-medication">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {medications.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {medications.map((med) => (
+                      <Badge key={med} variant="outline" className="text-xs">
+                        {med}
+                        <button
+                          type="button"
+                          className="ml-1"
+                          onClick={() => removeMedication(med)}
+                          data-testid={`button-remove-medication-${med.toLowerCase().replace(/\s+/g, "-")}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Label htmlFor="medical-notes" className="text-sm font-medium mb-3 block">
+                Medical Notes
+              </Label>
+              <Textarea
+                id="medical-notes"
+                placeholder="Enter any medical notes..."
+                value={medicalNotes}
+                onChange={(e) => setMedicalNotes(e.target.value)}
+                rows={4}
+                data-testid="textarea-medical-notes"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} data-testid="button-cancel-medical-history">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={updateMutation.isPending} data-testid="button-save-medical-history">
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -255,9 +580,414 @@ function FinancialsSection({ patientId }: { patientId: string }) {
   );
 }
 
+type DocumentFolder = {
+  id: string;
+  name: string;
+  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+};
+
+const DOCUMENT_FOLDERS: DocumentFolder[] = [
+  { id: "xray", name: "X-rays", category: "xray", icon: FileScan, color: "text-blue-500" },
+  { id: "photo", name: "Photos", category: "photo", icon: Image, color: "text-green-500" },
+  { id: "lab_report", name: "Lab Reports", category: "lab_report", icon: FileText, color: "text-purple-500" },
+  { id: "prescription", name: "Prescriptions", category: "prescription", icon: Pill, color: "text-amber-500" },
+  { id: "other", name: "Other", category: "other", icon: Folder, color: "text-muted-foreground" },
+];
+
+const ACCEPTED_FILE_TYPES = {
+  images: ".jpg,.jpeg,.png,.gif",
+  documents: ".pdf",
+};
+
+function getFileIcon(fileType: string | null, category: string | null) {
+  if (fileType?.startsWith("image")) {
+    return { icon: FileImage, color: "text-green-500" };
+  }
+  if (fileType === "application/pdf") {
+    return { icon: FileText, color: "text-red-500" };
+  }
+  const folder = DOCUMENT_FOLDERS.find(f => f.category === category);
+  if (folder) {
+    return { icon: folder.icon, color: folder.color };
+  }
+  return { icon: File, color: "text-muted-foreground" };
+}
+
 function DocumentsSection({ patientId }: { patientId: string }) {
+  const { toast } = useToast();
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploadCategory, setUploadCategory] = useState<string>("other");
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+
   const { data: documents, isLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/patients", patientId, "documents"],
+  });
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const res = await fetch(`/api/patients/${patientId}/documents`, {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to upload document");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "documents"] });
+      setIsUploadDialogOpen(false);
+      setSelectedFiles(null);
+      setUploadCategory("other");
+      toast({
+        title: "Upload successful",
+        description: "Document has been uploaded successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const getDocumentCountByCategory = (category: string) => {
+    if (!documents) return 0;
+    if (category === "other") {
+      const knownCategories = DOCUMENT_FOLDERS.filter(f => f.id !== "other").map(f => f.category);
+      return documents.filter(doc => !doc.category || !knownCategories.includes(doc.category)).length;
+    }
+    return documents.filter(doc => doc.category === category).length;
+  };
+
+  const getDocumentsInFolder = (category: string) => {
+    if (!documents) return [];
+    if (category === "other") {
+      const knownCategories = DOCUMENT_FOLDERS.filter(f => f.id !== "other").map(f => f.category);
+      return documents.filter(doc => !doc.category || !knownCategories.includes(doc.category));
+    }
+    return documents.filter(doc => doc.category === category);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFiles(e.target.files);
+    }
+  };
+
+  const handleUpload = () => {
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < selectedFiles.length; i++) {
+      formData.append("files", selectedFiles[i]);
+    }
+    formData.append("category", uploadCategory);
+
+    uploadMutation.mutate(formData);
+  };
+
+  const openUploadDialog = (category?: string) => {
+    if (category) {
+      setUploadCategory(category);
+    }
+    setSelectedFiles(null);
+    setIsUploadDialogOpen(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const selectedFolderData = selectedFolder ? DOCUMENT_FOLDERS.find(f => f.id === selectedFolder) : null;
+  const folderDocuments = selectedFolder ? getDocumentsInFolder(selectedFolder) : [];
+
+  if (selectedFolder && selectedFolderData) {
+    const FolderIcon = selectedFolderData.icon;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedFolder(null)}
+              data-testid="button-back-to-folders"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <FolderIcon className={`h-5 w-5 ${selectedFolderData.color}`} />
+            <h3 className="text-sm font-medium">{selectedFolderData.name}</h3>
+            <Badge variant="secondary" className="ml-2">
+              {folderDocuments.length} {folderDocuments.length === 1 ? "file" : "files"}
+            </Badge>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => openUploadDialog(selectedFolder)} data-testid="button-upload-to-folder">
+            <Upload className="h-4 w-4 mr-2" />
+            Upload
+          </Button>
+        </div>
+
+        {folderDocuments.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {folderDocuments.map((doc) => {
+              const { icon: DocIcon, color } = getFileIcon(doc.fileType, doc.category);
+              return (
+                <Card key={doc.id} className="hover-elevate cursor-pointer" data-testid={`card-document-${doc.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex flex-col items-center text-center gap-2">
+                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-muted">
+                        <DocIcon className={`h-6 w-6 ${color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0 w-full">
+                        <p className="text-sm font-medium truncate" title={doc.fileName}>
+                          {doc.fileName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.createdAt && format(new Date(doc.createdAt), "MMM d, yyyy")}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <FolderOpen className="h-12 w-12 mb-3 opacity-50" />
+            <p>No documents in this folder</p>
+            <Button variant="ghost" className="mt-2" onClick={() => openUploadDialog(selectedFolder)} data-testid="button-upload-first-in-folder">
+              Upload document
+            </Button>
+          </div>
+        )}
+
+        <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upload Document</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label className="text-sm font-medium mb-2 block">Folder</Label>
+                <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                  <SelectTrigger data-testid="select-upload-folder">
+                    <SelectValue placeholder="Select folder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_FOLDERS.map((folder) => {
+                      const Icon = folder.icon;
+                      return (
+                        <SelectItem key={folder.id} value={folder.category} data-testid={`option-folder-${folder.id}`}>
+                          <div className="flex items-center gap-2">
+                            <Icon className={`h-4 w-4 ${folder.color}`} />
+                            {folder.name}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-medium mb-2 block">File</Label>
+                <Input
+                  type="file"
+                  accept={`${ACCEPTED_FILE_TYPES.images},${ACCEPTED_FILE_TYPES.documents}`}
+                  onChange={handleFileChange}
+                  multiple
+                  data-testid="input-file-upload"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Supported formats: JPG, PNG, GIF, PDF
+                </p>
+              </div>
+              {selectedFiles && selectedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Selected files:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(selectedFiles).map((file, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {file.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)} data-testid="button-cancel-upload">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpload}
+                disabled={uploadMutation.isPending || !selectedFiles || selectedFiles.length === 0}
+                data-testid="button-confirm-upload"
+              >
+                {uploadMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h3 className="text-sm font-medium">Patient Documents</h3>
+        <Button size="sm" variant="outline" onClick={() => openUploadDialog()} data-testid="button-upload-document">
+          <Upload className="h-4 w-4 mr-2" />
+          Upload
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {DOCUMENT_FOLDERS.map((folder) => {
+          const Icon = folder.icon;
+          const count = getDocumentCountByCategory(folder.category);
+          return (
+            <Card
+              key={folder.id}
+              className="hover-elevate cursor-pointer"
+              onClick={() => setSelectedFolder(folder.id)}
+              data-testid={`card-folder-${folder.id}`}
+            >
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center text-center gap-2">
+                  <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-muted">
+                    <Icon className={`h-6 w-6 ${folder.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{folder.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {count} {count === 1 ? "file" : "files"}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {(!documents || documents.length === 0) && (
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground border-t mt-4 pt-8">
+          <FileText className="h-12 w-12 mb-3 opacity-50" />
+          <p>No documents uploaded yet</p>
+          <Button variant="ghost" className="mt-2" onClick={() => openUploadDialog()} data-testid="button-upload-first-document">
+            Upload first document
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Folder</Label>
+              <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                <SelectTrigger data-testid="select-upload-folder">
+                  <SelectValue placeholder="Select folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_FOLDERS.map((folder) => {
+                    const Icon = folder.icon;
+                    return (
+                      <SelectItem key={folder.id} value={folder.category} data-testid={`option-folder-${folder.id}`}>
+                        <div className="flex items-center gap-2">
+                          <Icon className={`h-4 w-4 ${folder.color}`} />
+                          {folder.name}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium mb-2 block">File</Label>
+              <Input
+                type="file"
+                accept={`${ACCEPTED_FILE_TYPES.images},${ACCEPTED_FILE_TYPES.documents}`}
+                onChange={handleFileChange}
+                multiple
+                data-testid="input-file-upload"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Supported formats: JPG, PNG, GIF, PDF
+              </p>
+            </div>
+            {selectedFiles && selectedFiles.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Selected files:</Label>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(selectedFiles).map((file, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {file.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsUploadDialogOpen(false)} data-testid="button-cancel-upload">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={uploadMutation.isPending || !selectedFiles || selectedFiles.length === 0}
+              data-testid="button-confirm-upload"
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function AppointmentsSection({ patientId }: { patientId: string }) {
+  const [, setLocation] = useLocation();
+  const { data: appointments, isLoading } = useQuery<AppointmentWithDetails[]>({
+    queryKey: ["/api/appointments"],
   });
 
   if (isLoading) {
@@ -268,45 +998,142 @@ function DocumentsSection({ patientId }: { patientId: string }) {
     );
   }
 
+  const patientAppointments = appointments?.filter(
+    (apt) => apt.patientId === patientId
+  ) || [];
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  const pastAppointments = patientAppointments.filter((apt) => {
+    const aptDate = new Date(apt.startTime);
+    return aptDate < today || apt.status === "completed";
+  });
+
+  const todayAppointments = patientAppointments.filter((apt) => {
+    const aptDate = new Date(apt.startTime);
+    return aptDate >= today && aptDate < tomorrow && apt.status !== "completed";
+  });
+
+  const upcomingAppointments = patientAppointments.filter((apt) => {
+    const aptDate = new Date(apt.startTime);
+    return aptDate >= tomorrow && apt.status !== "completed";
+  });
+
+  const getStatusBadgeClass = (status: string | null) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-emerald-500 text-white";
+      case "pending":
+        return "bg-amber-500 text-white";
+      case "canceled":
+        return "bg-red-500 text-white";
+      case "completed":
+        return "bg-blue-500 text-white";
+      default:
+        return "";
+    }
+  };
+
+  const renderAppointmentCard = (apt: AppointmentWithDetails) => (
+    <Card key={apt.id} className="hover-elevate cursor-pointer" data-testid={`card-appointment-${apt.id}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-medium" data-testid={`text-appointment-title-${apt.id}`}>{apt.title}</span>
+              {apt.category && (
+                <Badge variant="outline" className="text-xs">
+                  {apt.category.replace(/_/g, " ")}
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground" data-testid={`text-appointment-datetime-${apt.id}`}>
+              {format(new Date(apt.startTime), "MMM d, yyyy 'at' h:mm a")}
+            </p>
+            {apt.doctor && (
+              <p className="text-sm text-muted-foreground mt-1" data-testid={`text-appointment-doctor-${apt.id}`}>
+                Dr. {apt.doctor.firstName} {apt.doctor.lastName}
+              </p>
+            )}
+            {apt.notes && (
+              <p className="text-sm text-muted-foreground mt-2">{apt.notes}</p>
+            )}
+          </div>
+          <Badge className={getStatusBadgeClass(apt.status)} data-testid={`badge-appointment-status-${apt.id}`}>
+            {apt.status}
+          </Badge>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Patient Documents</h3>
-        <Button size="sm" variant="outline">
-          <Upload className="h-4 w-4 mr-2" />
-          Upload
+        <h3 className="text-sm font-medium">Patient Appointments</h3>
+        <Button
+          size="sm"
+          onClick={() => setLocation(`/appointments?patientId=${patientId}`)}
+          data-testid="button-new-appointment"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Appointment
         </Button>
       </div>
 
-      {documents && documents.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {documents.map((doc) => (
-            <Card key={doc.id} className="hover-elevate cursor-pointer">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  {doc.fileType?.startsWith("image") ? (
-                    <Camera className="h-8 w-8 text-primary" />
-                  ) : (
-                    <FileText className="h-8 w-8 text-primary" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.fileName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.createdAt && format(new Date(doc.createdAt), "MMM d, yyyy")}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {patientAppointments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+          <Calendar className="h-12 w-12 mb-3 opacity-50" />
+          <p>No appointments scheduled</p>
+          <Button
+            variant="ghost"
+            className="mt-2"
+            onClick={() => setLocation(`/appointments?patientId=${patientId}`)}
+            data-testid="button-schedule-first-appointment"
+          >
+            Schedule first appointment
+          </Button>
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-          <FileText className="h-12 w-12 mb-3 opacity-50" />
-          <p>No documents uploaded</p>
-          <Button variant="link" className="mt-2">
-            Upload first document
-          </Button>
+        <div className="space-y-6">
+          {todayAppointments.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3" data-testid="text-section-today">
+                Today
+              </h4>
+              <div className="space-y-3">
+                {todayAppointments.map(renderAppointmentCard)}
+              </div>
+            </div>
+          )}
+
+          {upcomingAppointments.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3" data-testid="text-section-upcoming">
+                Upcoming
+              </h4>
+              <div className="space-y-3">
+                {upcomingAppointments
+                  .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                  .map(renderAppointmentCard)}
+              </div>
+            </div>
+          )}
+
+          {pastAppointments.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3" data-testid="text-section-past">
+                Past
+              </h4>
+              <div className="space-y-3">
+                {pastAppointments
+                  .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                  .map(renderAppointmentCard)}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -317,6 +1144,9 @@ export default function PatientDetail() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("personal");
+  const { user } = useAuth();
+
+  const canEditMedicalHistory = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
 
   const { data: patient, isLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],
@@ -459,11 +1289,18 @@ export default function PatientDetail() {
                 >
                   Documents
                 </TabsTrigger>
+                <TabsTrigger
+                  value="appointments"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                  data-testid="tab-appointments"
+                >
+                  Appointments
+                </TabsTrigger>
               </TabsList>
 
               <div className="p-6">
                 <TabsContent value="personal" className="m-0">
-                  <MedicalHistorySection patient={patient} />
+                  <MedicalHistorySection patient={patient} canEdit={canEditMedicalHistory} />
                 </TabsContent>
 
                 <TabsContent value="treatments" className="m-0">
@@ -489,6 +1326,10 @@ export default function PatientDetail() {
 
                 <TabsContent value="documents" className="m-0">
                   <DocumentsSection patientId={patient.id} />
+                </TabsContent>
+
+                <TabsContent value="appointments" className="m-0">
+                  <AppointmentsSection patientId={patient.id} />
                 </TabsContent>
               </div>
             </Tabs>

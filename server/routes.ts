@@ -209,6 +209,49 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/patients/:id", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const patient = await storage.getPatient(req.params.id);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+
+      // Check for related records that would prevent deletion
+      const treatments = await storage.getPatientTreatments(req.params.id);
+      const invoices = await storage.getPatientInvoices(req.params.id);
+      const appointments = await storage.getAppointments({});
+      const patientAppointments = appointments.filter(a => a.patientId === req.params.id);
+
+      if (treatments.length > 0 || invoices.length > 0 || patientAppointments.length > 0) {
+        const relatedItems = [];
+        if (treatments.length > 0) relatedItems.push(`${treatments.length} treatment(s)`);
+        if (invoices.length > 0) relatedItems.push(`${invoices.length} invoice(s)`);
+        if (patientAppointments.length > 0) relatedItems.push(`${patientAppointments.length} appointment(s)`);
+        
+        return res.status(409).json({ 
+          message: `Cannot delete patient. This patient has related records: ${relatedItems.join(", ")}. Please remove or archive these records first.`
+        });
+      }
+
+      const deleted = await storage.deletePatient(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete patient" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "deleted",
+        entityType: "patient",
+        entityId: req.params.id,
+        details: `Deleted patient ${patient.firstName} ${patient.lastName}`,
+      });
+
+      res.json({ message: "Patient deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete patient" });
+    }
+  });
+
   // Patient treatments
   app.get("/api/patients/:id/treatments", requireAuth, async (req, res) => {
     try {
@@ -229,11 +272,12 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/patients/:id/treatments", requireAuth, async (req, res) => {
+  app.post("/api/patients/:id/treatments", requireRole("admin", "doctor", "staff"), async (req, res) => {
     try {
       const parsed = insertPatientTreatmentSchema.safeParse({
         ...req.body,
         patientId: req.params.id,
+        doctorId: (req.user as any).role === 'doctor' ? (req.user as any).id : req.body.doctorId,
       });
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -648,6 +692,120 @@ export async function registerRoutes(
       res.json(labCase);
     } catch (error) {
       res.status(500).json({ message: "Failed to update lab case" });
+    }
+  });
+
+  // Backup - Export all data as JSON (admin only)
+  app.post("/api/backup", requireRole("admin"), async (req, res) => {
+    try {
+      const patientsList = await storage.getPatients({});
+      const appointmentsList = await storage.getAppointments({});
+      const treatmentsList = await storage.getTreatments();
+      const invoicesList = await storage.getInvoices({});
+      const paymentsList = await storage.getPayments({});
+      const inventoryList = await storage.getInventoryItems({});
+      const labCasesList = await storage.getLabCases({});
+
+      const backupData = {
+        version: "1.0",
+        exportedAt: new Date().toISOString(),
+        data: {
+          patients: patientsList,
+          appointments: appointmentsList,
+          treatments: treatmentsList,
+          invoices: invoicesList,
+          payments: paymentsList,
+          inventory: inventoryList,
+          labCases: labCasesList,
+        },
+      };
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "exported",
+        entityType: "backup",
+        entityId: null,
+        details: `Exported backup with ${patientsList.length} patients, ${appointmentsList.length} appointments, ${treatmentsList.length} services`,
+      });
+
+      res.json(backupData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  // Restore - Import data from JSON backup (admin only)
+  app.post("/api/restore", requireRole("admin"), async (req, res) => {
+    try {
+      const { data } = req.body;
+
+      if (!data) {
+        return res.status(400).json({ message: "No backup data provided" });
+      }
+
+      let counts = {
+        patients: 0,
+        appointments: 0,
+        treatments: 0,
+        invoices: 0,
+        payments: 0,
+        inventory: 0,
+        labCases: 0,
+      };
+
+      // Import treatments/services first (they don't depend on other entities)
+      if (data.treatments && Array.isArray(data.treatments)) {
+        for (const treatment of data.treatments) {
+          try {
+            const { id, createdAt, ...treatmentData } = treatment;
+            await storage.createTreatment(treatmentData);
+            counts.treatments++;
+          } catch (e) {
+            // Skip duplicates or invalid entries
+          }
+        }
+      }
+
+      // Import patients
+      if (data.patients && Array.isArray(data.patients)) {
+        for (const patient of data.patients) {
+          try {
+            const { id, createdAt, ...patientData } = patient;
+            await storage.createPatient(patientData);
+            counts.patients++;
+          } catch (e) {
+            // Skip duplicates or invalid entries
+          }
+        }
+      }
+
+      // Import inventory items
+      if (data.inventory && Array.isArray(data.inventory)) {
+        for (const item of data.inventory) {
+          try {
+            const { id, createdAt, ...itemData } = item;
+            await storage.createInventoryItem(itemData);
+            counts.inventory++;
+          } catch (e) {
+            // Skip duplicates or invalid entries
+          }
+        }
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "restored",
+        entityType: "backup",
+        entityId: null,
+        details: `Restored backup: ${counts.patients} patients, ${counts.treatments} services, ${counts.inventory} inventory items`,
+      });
+
+      res.json({
+        message: "Backup restored successfully",
+        counts,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to restore backup" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,10 @@ import {
   Stethoscope,
   GraduationCap,
   User as UserIcon,
+  Download,
+  Database,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -406,6 +410,235 @@ function AppearanceSettings() {
   );
 }
 
+function DataBackup() {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/backup");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dental-clinic-backup-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({
+        title: "Backup exported",
+        description: "Your data backup has been downloaded successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Export failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const importMutation = useMutation({
+    mutationFn: async (backupData: any) => {
+      const res = await apiRequest("POST", "/api/restore", backupData);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Backup restored",
+        description: `Successfully imported: ${data.counts.patients} patients, ${data.counts.treatments} services, ${data.counts.inventory} inventory items.`,
+      });
+      queryClient.invalidateQueries();
+      setPendingFile(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Import failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setPendingFile(file);
+      setConfirmDialogOpen(true);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingFile) return;
+    
+    try {
+      const text = await pendingFile.text();
+      const backupData = JSON.parse(text);
+      importMutation.mutate(backupData);
+    } catch (e) {
+      toast({
+        title: "Invalid file",
+        description: "The selected file is not a valid JSON backup.",
+        variant: "destructive",
+      });
+    }
+    setConfirmDialogOpen(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Export Data
+          </CardTitle>
+          <CardDescription>
+            Download a complete backup of all clinic data as a JSON file
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Full Data Backup</p>
+              <p className="text-xs text-muted-foreground">
+                Includes patients, appointments, treatments, invoices, payments, and inventory
+              </p>
+            </div>
+            <Button
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending}
+              data-testid="button-export-data"
+            >
+              {exportMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Backup
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Import Data
+          </CardTitle>
+          <CardDescription>
+            Restore data from a previously exported JSON backup file
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-dashed">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Upload Backup File</p>
+              <p className="text-xs text-muted-foreground">
+                Select a .json backup file to import data into the system
+              </p>
+            </div>
+            <div>
+              <input
+                type="file"
+                accept=".json"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                className="hidden"
+                data-testid="input-import-file"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importMutation.isPending}
+                data-testid="button-import-data"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Select File
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <div className="flex gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-800 dark:text-amber-400">Important</p>
+                <p className="text-amber-700 dark:text-amber-500">
+                  Importing data will add new records to your database. Ensure you have a current backup before proceeding.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirm Data Import
+            </DialogTitle>
+            <DialogDescription>
+              You are about to import data from: <strong>{pendingFile?.name}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              This action will add new records to your database. While it won't delete existing data, 
+              it may create duplicate entries if the same records exist in both the backup and current database.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmImport} disabled={importMutation.isPending}>
+              {importMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Confirm Import
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const { user: currentUser } = useAuth();
@@ -551,6 +784,10 @@ export default function SettingsPage() {
             <Users className="h-4 w-4 mr-2" />
             Users
           </TabsTrigger>
+          <TabsTrigger value="data" data-testid="tab-data">
+            <Database className="h-4 w-4 mr-2" />
+            Data
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="clinic">
@@ -563,6 +800,10 @@ export default function SettingsPage() {
 
         <TabsContent value="users">
           <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="data">
+          <DataBackup />
         </TabsContent>
       </Tabs>
     </div>

@@ -327,7 +327,10 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true, createdAt: true });
 export const insertTreatmentSchema = createInsertSchema(treatments).omit({ id: true, createdAt: true });
 export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments).omit({ id: true, createdAt: true });
-export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true });
+export const insertAppointmentSchema = createInsertSchema(appointments).omit({ id: true, createdAt: true }).extend({
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+});
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true });

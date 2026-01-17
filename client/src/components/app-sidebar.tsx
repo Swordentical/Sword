@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Stethoscope,
 } from "lucide-react";
+import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -198,6 +199,10 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-sidebar-border">
+          <span className="text-xs text-muted-foreground">Appearance</span>
+          <ThemeSelector />
+        </div>
         <div className="flex items-center gap-3 px-4 py-3">
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">

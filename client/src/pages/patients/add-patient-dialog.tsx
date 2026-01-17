@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { User } from "@shared/schema";
 
 const addPatientSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -44,6 +45,7 @@ const addPatientSchema = z.object({
   emergencyPhone: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
+  assignedDoctorId: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -71,8 +73,13 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
       emergencyPhone: "",
       insuranceProvider: "",
       insurancePolicyNumber: "",
+      assignedDoctorId: "",
       notes: "",
     },
+  });
+
+  const { data: doctors = [] } = useQuery<User[]>({
+    queryKey: ["/api/users", { role: "doctor" }],
   });
 
   const createPatientMutation = useMutation({
@@ -87,6 +94,7 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
         emergencyPhone: data.emergencyPhone || null,
         insuranceProvider: data.insuranceProvider || null,
         insurancePolicyNumber: data.insurancePolicyNumber || null,
+        assignedDoctorId: data.assignedDoctorId || null,
         notes: data.notes || null,
       });
       return res.json();
@@ -306,6 +314,31 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
                 />
               </div>
             </div>
+
+            <FormField
+              control={form.control}
+              name="assignedDoctorId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Assigned Doctor</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-patient-doctor">
+                        <SelectValue placeholder="Select a doctor (optional)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {doctors.map((doctor) => (
+                        <SelectItem key={doctor.id} value={doctor.id}>
+                          {doctor.firstName} {doctor.lastName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
