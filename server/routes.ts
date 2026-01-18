@@ -119,6 +119,64 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/users/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // Don't allow password updates through this endpoint
+      delete updates.password;
+      delete updates.username;
+      
+      const user = await storage.updateUser(id, updates);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "user",
+        entityId: user.id,
+        details: `Updated user ${user.firstName} ${user.lastName}`,
+      });
+
+      res.json({ ...user, password: undefined });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const currentUserId = (req.user as any).id;
+      
+      if (id === currentUserId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      await storage.deleteUser(id);
+
+      await storage.logActivity({
+        userId: currentUserId,
+        action: "deleted",
+        entityType: "user",
+        entityId: id,
+        details: `Deleted user ${user.firstName} ${user.lastName}`,
+      });
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Patients
   app.get("/api/patients", requireAuth, async (req, res) => {
     try {

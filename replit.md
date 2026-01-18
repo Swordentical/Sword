@@ -93,6 +93,20 @@ The system supports four user roles with different permission levels:
 
 ## Recent Changes
 
+### User Management Enhancements (January 2026)
+- Added edit user functionality with EditUserDialog (firstName, lastName, email, phone, role)
+- Added activate/deactivate user toggle in dropdown menu
+- Added delete user option with confirmation
+- Profile picture in sidebar footer now clickable - links to Settings > Users tab
+- API endpoints: PATCH /api/users/:id, DELETE /api/users/:id (admin only)
+- Protection against self-deletion and self-deactivation
+
+### Phase 2 Financial System (January 2026)
+- Payment refunds: RefundPaymentDialog with reason tracking, updates invoice balance
+- Payment plans: CreatePaymentPlanDialog with weekly/biweekly/monthly frequency options
+- Invoice adjustments: AdjustmentDialog for discounts, write-offs, fees, corrections
+- Enhanced InvoiceDetailsDialog shows refunded payments with badges and refund buttons
+
 ### Dashboard Widget Customization (January 2026)
 - Implemented slot-based widget system for the dashboard
 - Widget slots: header, fullWidth, main (2/3 width), sidebar (1/3 width)

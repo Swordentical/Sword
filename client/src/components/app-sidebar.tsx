@@ -210,15 +210,19 @@ export function AppSidebar() {
           <ThemeSelector />
         </div>
         <div className="flex items-center gap-3 px-4 py-3">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
+          <Link href="/settings?tab=users" className="shrink-0" data-testid="link-profile-settings">
+            <Avatar className="h-9 w-9 cursor-pointer hover-elevate transition-all">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div className="flex flex-1 flex-col overflow-hidden">
-            <span className="truncate text-sm font-medium text-sidebar-foreground">
-              {user?.firstName} {user?.lastName}
-            </span>
+            <Link href="/settings?tab=users" className="hover:underline">
+              <span className="truncate text-sm font-medium text-sidebar-foreground">
+                {user?.firstName} {user?.lastName}
+              </span>
+            </Link>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getRoleIcon(userRole)}
               <span>{getRoleLabel(userRole)}</span>
