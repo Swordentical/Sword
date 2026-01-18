@@ -16,6 +16,10 @@ export const inventoryStatusEnum = pgEnum("inventory_status", ["available", "low
 export const inventoryCategoryEnum = pgEnum("inventory_category", ["consumables", "equipment", "instruments", "medications", "office_supplies"]);
 export const labCaseStatusEnum = pgEnum("lab_case_status", ["pending", "in_progress", "completed", "delivered"]);
 export const treatmentStatusEnum = pgEnum("treatment_status", ["planned", "in_progress", "completed", "canceled"]);
+export const expenseCategoryEnum = pgEnum("expense_category", [
+  "supplies", "equipment", "lab_fees", "utilities", "rent", "salaries", 
+  "marketing", "insurance", "maintenance", "software", "training", "other"
+]);
 
 // Service categories
 export const serviceCategoryEnum = pgEnum("service_category", [
@@ -217,6 +221,23 @@ export const invoiceAdjustments = pgTable("invoice_adjustments", {
   createdById: varchar("created_by_id", { length: 36 }),
 });
 
+// Expenses for clinic operations
+export const expenses = pgTable("expenses", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  description: text("description").notNull(),
+  category: expenseCategoryEnum("category").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  expenseDate: date("expense_date").notNull(),
+  vendor: text("vendor"),
+  referenceNumber: text("reference_number"),
+  notes: text("notes"),
+  receiptUrl: text("receipt_url"),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringFrequency: text("recurring_frequency"),
+  createdById: varchar("created_by_id", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Inventory items
 export const inventoryItems = pgTable("inventory_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -389,6 +410,13 @@ export const invoiceAdjustmentsRelations = relations(invoiceAdjustments, ({ one 
   }),
 }));
 
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  createdBy: one(users, {
+    fields: [expenses.createdById],
+    references: [users.id],
+  }),
+}));
+
 export const labCasesRelations = relations(labCases, ({ one }) => ({
   patient: one(patients, {
     fields: [labCases.patientId],
@@ -429,6 +457,7 @@ export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true,
 export const insertPaymentPlanSchema = createInsertSchema(paymentPlans).omit({ id: true, createdAt: true });
 export const insertPaymentPlanInstallmentSchema = createInsertSchema(paymentPlanInstallments).omit({ id: true });
 export const insertInvoiceAdjustmentSchema = createInsertSchema(invoiceAdjustments).omit({ id: true, createdAt: true });
+export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true });
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true, createdAt: true });
 export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
@@ -468,6 +497,9 @@ export type PaymentPlanInstallment = typeof paymentPlanInstallments.$inferSelect
 
 export type InsertInvoiceAdjustment = z.infer<typeof insertInvoiceAdjustmentSchema>;
 export type InvoiceAdjustment = typeof invoiceAdjustments.$inferSelect;
+
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
 
 export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;

@@ -14,6 +14,7 @@ import {
   insertPaymentPlanSchema,
   insertPaymentPlanInstallmentSchema,
   insertInvoiceAdjustmentSchema,
+  insertExpenseSchema,
   insertInventoryItemSchema,
   insertLabCaseSchema,
   insertDocumentSchema,
@@ -1126,6 +1127,150 @@ export async function registerRoutes(
       res.json(adjustment);
     } catch (error) {
       res.status(500).json({ message: "Failed to write off invoice" });
+    }
+  });
+
+  // Expenses - restricted to admin only
+  app.get("/api/expenses", requireRole("admin"), async (req, res) => {
+    try {
+      const { category, startDate, endDate } = req.query;
+      const expensesList = await storage.getExpenses({
+        category: category as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+      });
+      res.json(expensesList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  app.get("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const expense = await storage.getExpense(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch expense" });
+    }
+  });
+
+  app.post("/api/expenses", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertExpenseSchema.safeParse({
+        ...req.body,
+        createdById: (req.user as any).id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const expense = await storage.createExpense(parsed.data);
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "expense",
+        entityId: expense.id,
+        details: `Created expense: ${expense.description} ($${expense.amount})`,
+      });
+
+      res.status(201).json(expense);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create expense" });
+    }
+  });
+
+  app.patch("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const expense = await storage.updateExpense(req.params.id, req.body);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "expense",
+        entityId: expense.id,
+        details: `Updated expense: ${expense.description}`,
+      });
+
+      res.json(expense);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update expense" });
+    }
+  });
+
+  app.delete("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const success = await storage.deleteExpense(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "deleted",
+        entityType: "expense",
+        entityId: req.params.id,
+        details: "Deleted expense record",
+      });
+
+      res.json({ message: "Expense deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete expense" });
+    }
+  });
+
+  // Financial Reports - restricted to admin only
+  app.get("/api/reports/revenue", requireRole("admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      const report = await storage.getRevenueReport(startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate revenue report" });
+    }
+  });
+
+  app.get("/api/reports/ar-aging", requireRole("admin"), async (req, res) => {
+    try {
+      const report = await storage.getARAgingReport();
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate AR aging report" });
+    }
+  });
+
+  app.get("/api/reports/production-by-doctor", requireRole("admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      const report = await storage.getProductionByDoctorReport(startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate production report" });
+    }
+  });
+
+  app.get("/api/reports/expenses", requireRole("admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      const report = await storage.getExpenseReport(startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate expense report" });
     }
   });
 

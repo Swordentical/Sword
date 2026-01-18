@@ -12,6 +12,8 @@ import {
   Stethoscope,
   Edit,
   ExternalLink,
+  BarChart3,
+  Receipt,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -89,6 +91,18 @@ const mainNavItems: NavItem[] = [
     url: "/financials",
     icon: DollarSign,
     roles: ["admin", "doctor"],
+  },
+  {
+    title: "Reports",
+    url: "/reports",
+    icon: BarChart3,
+    roles: ["admin"],
+  },
+  {
+    title: "Expenses",
+    url: "/expenses",
+    icon: Receipt,
+    roles: ["admin"],
   },
 ];
 

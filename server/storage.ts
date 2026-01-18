@@ -3,7 +3,7 @@ import { db } from "./db";
 import {
   users, patients, treatments, patientTreatments, appointments,
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
-  invoiceAdjustments, inventoryItems, labCases,
+  invoiceAdjustments, expenses, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog,
   type User, type InsertUser,
   type Patient, type InsertPatient,
@@ -16,6 +16,7 @@ import {
   type PaymentPlan, type InsertPaymentPlan,
   type PaymentPlanInstallment, type InsertPaymentPlanInstallment,
   type InvoiceAdjustment, type InsertInvoiceAdjustment,
+  type Expense, type InsertExpense,
   type InventoryItem, type InsertInventoryItem,
   type LabCase, type InsertLabCase,
   type Document, type InsertDocument,
@@ -91,6 +92,40 @@ export interface IStorage {
   // Invoice Adjustments
   getInvoiceAdjustments(invoiceId: string): Promise<InvoiceAdjustment[]>;
   createInvoiceAdjustment(adjustment: InsertInvoiceAdjustment): Promise<InvoiceAdjustment>;
+
+  // Expenses
+  getExpense(id: string): Promise<Expense | undefined>;
+  getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }): Promise<Expense[]>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined>;
+  deleteExpense(id: string): Promise<boolean>;
+
+  // Financial Reports
+  getRevenueReport(startDate: string, endDate: string): Promise<{
+    totalRevenue: number;
+    totalCollections: number;
+    totalAdjustments: number;
+    byMonth: { month: string; revenue: number; collections: number }[];
+  }>;
+  getARAgingReport(): Promise<{
+    current: number;
+    thirtyDays: number;
+    sixtyDays: number;
+    ninetyDays: number;
+    overNinety: number;
+    total: number;
+  }>;
+  getProductionByDoctorReport(startDate: string, endDate: string): Promise<{
+    doctorId: string;
+    doctorName: string;
+    totalProduction: number;
+    treatmentCount: number;
+  }[]>;
+  getExpenseReport(startDate: string, endDate: string): Promise<{
+    total: number;
+    byCategory: { category: string; amount: number }[];
+    byMonth: { month: string; amount: number }[];
+  }>;
 
   // Inventory
   getInventoryItem(id: string): Promise<InventoryItem | undefined>;
@@ -540,6 +575,261 @@ export class DatabaseStorage implements IStorage {
     }
 
     return result[0];
+  }
+
+  // Expenses
+  async getExpense(id: string): Promise<Expense | undefined> {
+    const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }): Promise<Expense[]> {
+    let conditions = [];
+
+    if (filters?.category) {
+      conditions.push(eq(expenses.category, filters.category as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(expenses.expenseDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(expenses.expenseDate, filters.endDate));
+    }
+
+    if (conditions.length > 0) {
+      return db.select().from(expenses).where(and(...conditions)).orderBy(desc(expenses.expenseDate));
+    }
+
+    return db.select().from(expenses).orderBy(desc(expenses.expenseDate));
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const result = await db.insert(expenses).values(expense).returning();
+    return result[0];
+  }
+
+  async updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined> {
+    const result = await db.update(expenses).set(data).where(eq(expenses.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteExpense(id: string): Promise<boolean> {
+    const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Financial Reports
+  async getRevenueReport(startDate: string, endDate: string): Promise<{
+    totalRevenue: number;
+    totalCollections: number;
+    totalAdjustments: number;
+    byMonth: { month: string; revenue: number; collections: number }[];
+  }> {
+    // Total revenue (sum of all invoice final amounts in date range)
+    const revenueResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
+    }).from(invoices)
+      .where(and(
+        gte(invoices.issuedDate, startDate),
+        lte(invoices.issuedDate, endDate)
+      ));
+
+    // Total collections (sum of payments in date range, excluding refunded)
+    const collectionsResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(payments)
+      .where(and(
+        gte(payments.paymentDate, startDate),
+        lte(payments.paymentDate, endDate),
+        eq(payments.isRefunded, false)
+      ));
+
+    // Total adjustments
+    const adjustmentsResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(invoiceAdjustments)
+      .where(and(
+        gte(invoiceAdjustments.appliedDate, startDate),
+        lte(invoiceAdjustments.appliedDate, endDate)
+      ));
+
+    // Monthly breakdown
+    const monthlyRevenue = await db.select({
+      month: sql<string>`TO_CHAR(issued_date, 'YYYY-MM')`,
+      revenue: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
+    }).from(invoices)
+      .where(and(
+        gte(invoices.issuedDate, startDate),
+        lte(invoices.issuedDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(issued_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(issued_date, 'YYYY-MM')`);
+
+    const monthlyCollections = await db.select({
+      month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
+      collections: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(payments)
+      .where(and(
+        gte(payments.paymentDate, startDate),
+        lte(payments.paymentDate, endDate),
+        eq(payments.isRefunded, false)
+      ))
+      .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
+
+    // Merge monthly data
+    const monthMap = new Map<string, { month: string; revenue: number; collections: number }>();
+    
+    for (const row of monthlyRevenue) {
+      monthMap.set(row.month, { month: row.month, revenue: Number(row.revenue), collections: 0 });
+    }
+    
+    for (const row of monthlyCollections) {
+      const existing = monthMap.get(row.month);
+      if (existing) {
+        existing.collections = Number(row.collections);
+      } else {
+        monthMap.set(row.month, { month: row.month, revenue: 0, collections: Number(row.collections) });
+      }
+    }
+
+    return {
+      totalRevenue: Number(revenueResult[0]?.total || 0),
+      totalCollections: Number(collectionsResult[0]?.total || 0),
+      totalAdjustments: Number(adjustmentsResult[0]?.total || 0),
+      byMonth: Array.from(monthMap.values()).sort((a, b) => a.month.localeCompare(b.month)),
+    };
+  }
+
+  async getARAgingReport(): Promise<{
+    current: number;
+    thirtyDays: number;
+    sixtyDays: number;
+    ninetyDays: number;
+    overNinety: number;
+    total: number;
+  }> {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    // Get all unpaid/partial invoices
+    const unpaidInvoices = await db.select().from(invoices)
+      .where(or(eq(invoices.status, 'sent'), eq(invoices.status, 'partial'), eq(invoices.status, 'overdue')));
+
+    let current = 0, thirtyDays = 0, sixtyDays = 0, ninetyDays = 0, overNinety = 0;
+
+    for (const inv of unpaidInvoices) {
+      const balance = Number(inv.finalAmount) - Number(inv.paidAmount || 0);
+      const dueDate = inv.dueDate ? new Date(inv.dueDate) : new Date(inv.issuedDate);
+
+      if (dueDate >= thirtyDaysAgo) {
+        current += balance;
+      } else if (dueDate >= sixtyDaysAgo) {
+        thirtyDays += balance;
+      } else if (dueDate >= ninetyDaysAgo) {
+        sixtyDays += balance;
+      } else {
+        const daysDiff = Math.floor((today.getTime() - dueDate.getTime()) / (24 * 60 * 60 * 1000));
+        if (daysDiff <= 90) {
+          ninetyDays += balance;
+        } else {
+          overNinety += balance;
+        }
+      }
+    }
+
+    return {
+      current,
+      thirtyDays,
+      sixtyDays,
+      ninetyDays,
+      overNinety,
+      total: current + thirtyDays + sixtyDays + ninetyDays + overNinety,
+    };
+  }
+
+  async getProductionByDoctorReport(startDate: string, endDate: string): Promise<{
+    doctorId: string;
+    doctorName: string;
+    totalProduction: number;
+    treatmentCount: number;
+  }[]> {
+    // Get completed treatments with their doctor info
+    const result = await db.select({
+      doctorId: patientTreatments.doctorId,
+      totalProduction: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`,
+      treatmentCount: sql<number>`COUNT(*)`
+    })
+      .from(patientTreatments)
+      .where(and(
+        eq(patientTreatments.status, 'completed'),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ))
+      .groupBy(patientTreatments.doctorId);
+
+    // Fetch doctor names
+    const doctorProductions = [];
+    for (const row of result) {
+      if (row.doctorId) {
+        const doctor = await this.getUser(row.doctorId);
+        doctorProductions.push({
+          doctorId: row.doctorId,
+          doctorName: doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown',
+          totalProduction: Number(row.totalProduction),
+          treatmentCount: Number(row.treatmentCount),
+        });
+      }
+    }
+
+    return doctorProductions.sort((a, b) => b.totalProduction - a.totalProduction);
+  }
+
+  async getExpenseReport(startDate: string, endDate: string): Promise<{
+    total: number;
+    byCategory: { category: string; amount: number }[];
+    byMonth: { month: string; amount: number }[];
+  }> {
+    // Total expenses
+    const totalResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(expenses)
+      .where(and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ));
+
+    // By category
+    const byCategory = await db.select({
+      category: expenses.category,
+      amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(expenses)
+      .where(and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ))
+      .groupBy(expenses.category)
+      .orderBy(sql`SUM(CAST(amount AS DECIMAL)) DESC`);
+
+    // By month
+    const byMonth = await db.select({
+      month: sql<string>`TO_CHAR(expense_date, 'YYYY-MM')`,
+      amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(expenses)
+      .where(and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
+
+    return {
+      total: Number(totalResult[0]?.total || 0),
+      byCategory: byCategory.map(c => ({ category: c.category, amount: Number(c.amount) })),
+      byMonth: byMonth.map(m => ({ month: m.month, amount: Number(m.amount) })),
+    };
   }
 
   // Inventory

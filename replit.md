@@ -130,3 +130,21 @@ The system supports four user roles with different permission levels:
 - Dedicated Doctors page with CRUD operations (admin only for create/edit/delete)
 - Specialty multi-select from predefined list
 - Grid display with doctor cards showing specialties and contact info
+
+### Phase 3 Financial System - Reports & Expenses (January 2026)
+- **Financial Reports Page** (`/reports`) - admin only
+  - Revenue report with monthly breakdown and line charts
+  - AR Aging report showing outstanding balances by age bucket (Current, 1-30, 31-60, 61-90, 90+ days)
+  - Production by doctor report with pie charts
+  - Expense report with category breakdown
+  - Period selector (This Month, Last Month, Last 3 Months, This Year, Last 12 Months)
+- **Expense Tracking Page** (`/expenses`) - admin only
+  - Full CRUD for clinic expenses
+  - 12 expense categories: supplies, equipment, lab_fees, utilities, rent, salaries, marketing, insurance, maintenance, software, training, other
+  - Category filtering and recurring expense support
+  - API endpoints: GET/POST/PATCH/DELETE /api/expenses
+- **Report API Endpoints** (admin only):
+  - GET /api/reports/revenue?startDate=&endDate=
+  - GET /api/reports/ar-aging
+  - GET /api/reports/production-by-doctor?startDate=&endDate=
+  - GET /api/reports/expenses?startDate=&endDate=
