@@ -24,7 +24,21 @@ import {
   Clock,
   Loader2,
   Filter,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  useDraggable,
+  useDroppable,
+  PointerSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +52,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AddAppointmentDialog } from "./add-appointment-dialog";
 import type { AppointmentWithPatient } from "@shared/schema";
 
@@ -50,7 +66,142 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "bg-primary",
 };
 
-const HOURS = Array.from({ length: 12 }, (_, i) => i + 12);
+const HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
+
+function DraggableAppointment({
+  appointment,
+  isDragging,
+}: {
+  appointment: AppointmentWithPatient;
+  isDragging?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging: isCurrentlyDragging } = useDraggable({
+    id: appointment.id,
+    data: { appointment },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: 50,
+      }
+    : undefined;
+
+  const initials = `${appointment.patient.firstName.charAt(0)}${appointment.patient.lastName.charAt(0)}`;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-2 p-2 mb-1 rounded-lg border bg-card hover-elevate cursor-grab active:cursor-grabbing touch-none",
+        (isCurrentlyDragging || isDragging) && "opacity-50 shadow-lg"
+      )}
+      data-testid={`appointment-${appointment.id}`}
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div
+        className={cn(
+          "w-1 h-10 rounded-full shrink-0",
+          STATUS_COLORS[appointment.status || "pending"]
+        )}
+      />
+      <Avatar className="h-8 w-8 shrink-0">
+        <AvatarFallback className="bg-primary/10 text-primary text-xs">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">
+          {appointment.patient.firstName} {appointment.patient.lastName}
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {appointment.title} - {format(new Date(appointment.startTime), "h:mm a")}
+        </p>
+      </div>
+      <Badge
+        variant={
+          appointment.status === "confirmed"
+            ? "default"
+            : appointment.status === "canceled"
+            ? "destructive"
+            : "secondary"
+        }
+        className="shrink-0"
+      >
+        {appointment.status}
+      </Badge>
+    </div>
+  );
+}
+
+function DroppableTimeSlot({
+  hour,
+  selectedDate,
+  appointments,
+}: {
+  hour: number;
+  selectedDate: Date;
+  appointments: AppointmentWithPatient[];
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `hour-${hour}`,
+    data: { hour, selectedDate },
+  });
+
+  const hourStart = setMinutes(setHours(selectedDate, hour), 0);
+
+  return (
+    <div className="contents">
+      <div className="text-right pr-3 py-3 text-sm text-muted-foreground">
+        {format(hourStart, "h a")}
+      </div>
+      <div
+        ref={setNodeRef}
+        className={cn(
+          "border-t py-2 min-h-[60px] transition-colors rounded-r",
+          isOver && "bg-primary/10 border-primary border-2 border-dashed"
+        )}
+        data-testid={`timeslot-${hour}`}
+      >
+        {appointments.map((apt) => (
+          <DraggableAppointment key={apt.id} appointment={apt} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatusDropZone({
+  status,
+  label,
+  color,
+}: {
+  status: string;
+  label: string;
+  color: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `status-${status}`,
+    data: { status },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        "p-3 rounded-lg border-2 border-dashed transition-all text-center",
+        isOver ? "border-primary bg-primary/10 scale-105" : "border-muted-foreground/30"
+      )}
+      data-testid={`status-drop-${status}`}
+    >
+      <div className={cn("w-3 h-3 rounded-full mx-auto mb-1", color)} />
+      <span className="text-xs font-medium">{label}</span>
+    </div>
+  );
+}
 
 function MonthView({
   currentDate,
@@ -145,9 +296,11 @@ function MonthView({
 function DayView({
   selectedDate,
   appointments,
+  activeId,
 }: {
   selectedDate: Date;
   appointments: AppointmentWithPatient[];
+  activeId: string | null;
 }) {
   const dayAppointments = appointments.filter((apt) =>
     isSameDay(new Date(apt.startTime), selectedDate)
@@ -155,64 +308,23 @@ function DayView({
 
   return (
     <div className="flex flex-col">
-      <div className="grid grid-cols-[80px_1fr] gap-2">
+      <div className="mb-3 p-2 bg-muted/50 rounded-lg text-center">
+        <p className="text-xs text-muted-foreground">Drag appointments to reschedule or change status</p>
+      </div>
+      <div className="grid grid-cols-[60px_1fr] sm:grid-cols-[80px_1fr] gap-2">
         {HOURS.map((hour) => {
-          const hourStart = setMinutes(setHours(selectedDate, hour), 0);
           const hourAppointments = dayAppointments.filter((apt) => {
             const aptHour = new Date(apt.startTime).getHours();
             return aptHour === hour;
           });
 
           return (
-            <div key={hour} className="contents">
-              <div className="text-right pr-3 py-3 text-sm text-muted-foreground">
-                {format(hourStart, "h a")}
-              </div>
-              <div className="border-t py-2 min-h-[60px]">
-                {hourAppointments.map((apt) => {
-                  const initials = `${apt.patient.firstName.charAt(0)}${apt.patient.lastName.charAt(0)}`;
-                  return (
-                    <div
-                      key={apt.id}
-                      className="flex items-center gap-3 p-2 mb-1 rounded-lg border bg-card hover-elevate"
-                      data-testid={`appointment-${apt.id}`}
-                    >
-                      <div
-                        className={cn(
-                          "w-1 h-10 rounded-full",
-                          STATUS_COLORS[apt.status || "pending"]
-                        )}
-                      />
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {apt.patient.firstName} {apt.patient.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {apt.title} • {format(new Date(apt.startTime), "h:mm a")}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          apt.status === "confirmed"
-                            ? "default"
-                            : apt.status === "canceled"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                        className="shrink-0"
-                      >
-                        {apt.status}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <DroppableTimeSlot
+              key={hour}
+              hour={hour}
+              selectedDate={selectedDate}
+              appointments={hourAppointments}
+            />
           );
         })}
       </div>
@@ -257,12 +369,33 @@ export default function AppointmentsPage() {
   const searchParams = useSearch();
   const urlParams = new URLSearchParams(searchParams);
   const showNewDialog = urlParams.get("action") === "new";
+  const { toast } = useToast();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(showNewDialog);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5,
+      },
+    }),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   const { data: appointments = [], isLoading } = useQuery<AppointmentWithPatient[]>({
     queryKey: [
@@ -273,6 +406,29 @@ export default function AppointmentsPage() {
         status: statusFilter !== "all" ? statusFilter : undefined,
       },
     ],
+  });
+
+  const updateAppointmentMutation = useMutation({
+    mutationFn: async ({ id, data, actionType }: { id: string; data: { startTime?: string; status?: string }; actionType: "reschedule" | "status" }) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${id}`, data);
+      return { result: await res.json(), actionType };
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: response.actionType === "reschedule" ? "Appointment rescheduled" : "Status updated",
+        description: response.actionType === "reschedule" 
+          ? "The appointment time has been updated." 
+          : "The appointment status has been changed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   const filteredAppointments =
@@ -292,123 +448,189 @@ export default function AppointmentsPage() {
     }
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = event.active.id as string;
+    setActiveId(id);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const appointmentId = active.id as string;
+    const overId = over.id as string;
+
+    if (overId.startsWith("hour-")) {
+      const hour = parseInt(overId.replace("hour-", ""), 10);
+      const appointment = appointments.find((a) => a.id === appointmentId);
+      if (appointment) {
+        const currentTime = new Date(appointment.startTime);
+        const newTime = setMinutes(setHours(selectedDate, hour), currentTime.getMinutes());
+        
+        if (newTime.getTime() !== currentTime.getTime()) {
+          updateAppointmentMutation.mutate({
+            id: appointmentId,
+            data: { startTime: newTime.toISOString() },
+            actionType: "reschedule",
+          });
+        }
+      }
+    } else if (overId.startsWith("status-")) {
+      const newStatus = overId.replace("status-", "");
+      const appointment = appointments.find((a) => a.id === appointmentId);
+      if (appointment && appointment.status !== newStatus) {
+        updateAppointmentMutation.mutate({
+          id: appointmentId,
+          data: { status: newStatus },
+          actionType: "status",
+        });
+      }
+    }
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Appointments</h1>
-          <p className="text-muted-foreground">
-            Manage your clinic's appointment schedule
-          </p>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Appointments</h1>
+            <p className="text-muted-foreground">
+              Manage your clinic's appointment schedule
+            </p>
+          </div>
+          <Button onClick={() => setDialogOpen(true)} data-testid="button-new-appointment">
+            <Plus className="h-4 w-4 mr-2" />
+            New Appointment
+          </Button>
         </div>
-        <Button onClick={() => setDialogOpen(true)} data-testid="button-new-appointment">
-          <Plus className="h-4 w-4 mr-2" />
-          New Appointment
-        </Button>
-      </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3 space-y-4 order-2 lg:order-1">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 justify-center sm:justify-start">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setCurrentDate((prev) =>
-                        viewMode === "month" ? subMonths(prev, 1) : subMonths(prev, 0)
-                      )
-                    }
-                    data-testid="button-prev-month"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <h2 className="text-sm sm:text-lg font-semibold min-w-[100px] sm:min-w-[140px] text-center">
-                    {viewMode === "month"
-                      ? format(currentDate, "MMM yyyy")
-                      : format(selectedDate, "EEE, MMM d")}
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setCurrentDate((prev) =>
-                        viewMode === "month" ? addMonths(prev, 1) : addMonths(prev, 0)
-                      )
-                    }
-                    data-testid="button-next-month"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[110px] sm:w-[140px]">
-                      <Filter className="h-4 w-4 mr-1 sm:mr-2" />
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="confirmed">Confirmed</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="canceled">Canceled</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="flex border rounded-lg overflow-hidden">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-4">
+          <div className="lg:col-span-3 space-y-4 order-2 lg:order-1">
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2 justify-center sm:justify-start">
                     <Button
-                      variant={viewMode === "month" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("month")}
-                      className="rounded-none px-2 sm:px-3"
-                      data-testid="button-month-view"
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        setCurrentDate((prev) =>
+                          viewMode === "month" ? subMonths(prev, 1) : subMonths(prev, 0)
+                        )
+                      }
+                      data-testid="button-prev-month"
                     >
-                      <CalendarIcon className="h-4 w-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Month</span>
+                      <ChevronLeft className="h-4 w-4" />
                     </Button>
+                    <h2 className="text-sm sm:text-lg font-semibold min-w-[100px] sm:min-w-[140px] text-center">
+                      {viewMode === "month"
+                        ? format(currentDate, "MMM yyyy")
+                        : format(selectedDate, "EEE, MMM d")}
+                    </h2>
                     <Button
-                      variant={viewMode === "day" ? "secondary" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("day")}
-                      className="rounded-none px-2 sm:px-3"
-                      data-testid="button-day-view"
+                      variant="outline"
+                      size="icon"
+                      onClick={() =>
+                        setCurrentDate((prev) =>
+                          viewMode === "month" ? addMonths(prev, 1) : addMonths(prev, 0)
+                        )
+                      }
+                      data-testid="button-next-month"
                     >
-                      <Clock className="h-4 w-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Day</span>
+                      <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : viewMode === "month" ? (
-                <MonthView
-                  currentDate={currentDate}
-                  appointments={filteredAppointments}
-                  onDayClick={handleDayClick}
-                />
-              ) : (
-                <ScrollArea className="h-[600px]">
-                  <DayView
-                    selectedDate={selectedDate}
-                    appointments={filteredAppointments}
-                  />
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-        </div>
 
-        <div className="space-y-4 order-1 lg:order-2">
-          <AppointmentStats appointments={appointments} />
+                  <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[110px] sm:w-[140px]">
+                        <Filter className="h-4 w-4 mr-1 sm:mr-2" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="confirmed">Confirmed</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="canceled">Canceled</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <div className="flex border rounded-lg overflow-hidden">
+                      <Button
+                        variant={viewMode === "month" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("month")}
+                        className="rounded-none px-2 sm:px-3"
+                        data-testid="button-month-view"
+                      >
+                        <CalendarIcon className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Month</span>
+                      </Button>
+                      <Button
+                        variant={viewMode === "day" ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => setViewMode("day")}
+                        className="rounded-none px-2 sm:px-3"
+                        data-testid="button-day-view"
+                      >
+                        <Clock className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Day</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : viewMode === "month" ? (
+                  <MonthView
+                    currentDate={currentDate}
+                    appointments={filteredAppointments}
+                    onDayClick={handleDayClick}
+                  />
+                ) : (
+                  <ScrollArea className="h-[600px]">
+                    <DayView
+                      selectedDate={selectedDate}
+                      appointments={filteredAppointments}
+                      activeId={activeId}
+                    />
+                  </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-4 order-1 lg:order-2">
+            <AppointmentStats appointments={appointments} />
+
+            {viewMode === "day" && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Quick Status Change</CardTitle>
+                  <p className="text-xs text-muted-foreground">Drag appointments here</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2">
+                    <StatusDropZone status="confirmed" label="Confirm" color="bg-emerald-500" />
+                    <StatusDropZone status="pending" label="Pending" color="bg-amber-500" />
+                    <StatusDropZone status="completed" label="Complete" color="bg-primary" />
+                    <StatusDropZone status="canceled" label="Cancel" color="bg-destructive" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           <Card>
             <CardHeader>
@@ -474,5 +696,6 @@ export default function AppointmentsPage() {
 
       <AddAppointmentDialog open={dialogOpen} onOpenChange={handleCloseDialog} />
     </div>
+    </DndContext>
   );
 }
