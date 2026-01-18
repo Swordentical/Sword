@@ -64,6 +64,7 @@ export interface IStorage {
   // Invoice Items
   getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
   createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
+  deleteInvoiceItem(id: string): Promise<void>;
 
   // Payments
   getPayments(filters?: { invoiceId?: string }): Promise<Payment[]>;
@@ -320,6 +321,10 @@ export class DatabaseStorage implements IStorage {
   async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
     const result = await db.insert(invoiceItems).values(item).returning();
     return result[0];
+  }
+
+  async deleteInvoiceItem(id: string): Promise<void> {
+    await db.delete(invoiceItems).where(eq(invoiceItems.id, id));
   }
 
   // Payments

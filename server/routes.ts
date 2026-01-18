@@ -505,9 +505,10 @@ export async function registerRoutes(
     try {
       // Generate unique invoice number
       const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+      const { items, ...invoiceData } = req.body;
 
       const parsed = insertInvoiceSchema.safeParse({
-        ...req.body,
+        ...invoiceData,
         invoiceNumber,
         createdById: (req.user as any).id,
       });
@@ -516,9 +517,218 @@ export async function registerRoutes(
       }
 
       const invoice = await storage.createInvoice(parsed.data);
+
+      // Create invoice items if provided
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          const itemParsed = insertInvoiceItemSchema.safeParse({
+            ...item,
+            invoiceId: invoice.id,
+          });
+          if (itemParsed.success) {
+            await storage.createInvoiceItem(itemParsed.data);
+          }
+        }
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "invoice",
+        entityId: invoice.id,
+        details: `Created invoice ${invoice.invoiceNumber} for $${invoice.finalAmount}`,
+      });
+
       res.status(201).json(invoice);
     } catch (error) {
       res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  // Get single invoice with items
+  app.get("/api/invoices/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      const items = await storage.getInvoiceItems(invoice.id);
+      const payments = await storage.getPayments({ invoiceId: invoice.id });
+      const patientsList = await storage.getPatients({});
+      const patient = patientsList.find(p => p.id === invoice.patientId);
+
+      res.json({ ...invoice, items, payments, patient });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  // Update invoice (status changes, send/void, etc.)
+  app.patch("/api/invoices/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const updateSchema = insertInvoiceSchema.pick({
+        status: true,
+        notes: true,
+        dueDate: true,
+        discountType: true,
+        discountValue: true,
+        totalAmount: true,
+        finalAmount: true,
+      }).partial().strict();
+
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const invoice = await storage.updateInvoice(req.params.id, parsed.data);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "invoice",
+        entityId: invoice.id,
+        details: `Updated invoice ${invoice.invoiceNumber}`,
+      });
+
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  // Send invoice (change status from draft to sent)
+  app.post("/api/invoices/:id/send", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      if (invoice.status !== "draft") {
+        return res.status(400).json({ message: "Only draft invoices can be sent" });
+      }
+
+      const updated = await storage.updateInvoice(req.params.id, { status: "sent" });
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "sent",
+        entityType: "invoice",
+        entityId: invoice.id,
+        details: `Sent invoice ${invoice.invoiceNumber} to patient`,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to send invoice" });
+    }
+  });
+
+  // Void/cancel invoice
+  app.post("/api/invoices/:id/void", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      if (invoice.status === "paid") {
+        return res.status(400).json({ message: "Cannot void a paid invoice" });
+      }
+
+      const updated = await storage.updateInvoice(req.params.id, { status: "canceled" });
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "voided",
+        entityType: "invoice",
+        entityId: invoice.id,
+        details: `Voided invoice ${invoice.invoiceNumber}`,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to void invoice" });
+    }
+  });
+
+  // Invoice items management
+  app.post("/api/invoices/:id/items", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      if (invoice.status !== "draft") {
+        return res.status(400).json({ message: "Can only add items to draft invoices" });
+      }
+
+      const parsed = insertInvoiceItemSchema.safeParse({
+        ...req.body,
+        invoiceId: req.params.id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const item = await storage.createInvoiceItem(parsed.data);
+
+      // Recalculate invoice totals
+      const items = await storage.getInvoiceItems(invoice.id);
+      const totalAmount = items.reduce((sum, i) => sum + Number(i.totalPrice), 0);
+      let finalAmount = totalAmount;
+      if (invoice.discountType && invoice.discountValue) {
+        if (invoice.discountType === "percentage") {
+          finalAmount = totalAmount * (1 - Number(invoice.discountValue) / 100);
+        } else {
+          finalAmount = totalAmount - Number(invoice.discountValue);
+        }
+      }
+      await storage.updateInvoice(invoice.id, { 
+        totalAmount: totalAmount.toFixed(2),
+        finalAmount: finalAmount.toFixed(2)
+      });
+
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add invoice item" });
+    }
+  });
+
+  app.delete("/api/invoices/:invoiceId/items/:itemId", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      if (invoice.status !== "draft") {
+        return res.status(400).json({ message: "Can only remove items from draft invoices" });
+      }
+
+      await storage.deleteInvoiceItem(req.params.itemId);
+
+      // Recalculate invoice totals
+      const items = await storage.getInvoiceItems(invoice.id);
+      const totalAmount = items.reduce((sum, i) => sum + Number(i.totalPrice), 0);
+      let finalAmount = totalAmount;
+      if (invoice.discountType && invoice.discountValue) {
+        if (invoice.discountType === "percentage") {
+          finalAmount = totalAmount * (1 - Number(invoice.discountValue) / 100);
+        } else {
+          finalAmount = totalAmount - Number(invoice.discountValue);
+        }
+      }
+      await storage.updateInvoice(invoice.id, { 
+        totalAmount: totalAmount.toFixed(2),
+        finalAmount: finalAmount.toFixed(2)
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove invoice item" });
     }
   });
 
@@ -594,15 +804,14 @@ export async function registerRoutes(
       const updateSchema = insertInventoryItemSchema.pick({
         name: true,
         category: true,
-        quantity: true,
+        currentQuantity: true,
+        minimumQuantity: true,
         unit: true,
-        minQuantity: true,
-        maxQuantity: true,
         unitCost: true,
         supplier: true,
-        expiryDate: true,
         location: true,
-        notes: true,
+        description: true,
+        lastRestocked: true,
       }).partial().strict();
       
       const parsed = updateSchema.safeParse(req.body);
