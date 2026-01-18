@@ -23,6 +23,7 @@ import LabWorkPage from "@/pages/lab-work/lab-work-page";
 import FinancialsPage from "@/pages/financials/financials-page";
 import ReportsPage from "@/pages/financials/reports-page";
 import ExpensesPage from "@/pages/financials/expenses-page";
+import InsuranceClaimsPage from "@/pages/financials/insurance-claims-page";
 import SettingsPage from "@/pages/settings/settings-page";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
@@ -129,6 +130,14 @@ function ExpensesPageWrapper() {
   );
 }
 
+function InsuranceClaimsPageWrapper() {
+  return (
+    <MainLayout>
+      <InsuranceClaimsPage />
+    </MainLayout>
+  );
+}
+
 function SettingsPageWrapper() {
   return (
     <MainLayout>
@@ -159,6 +168,7 @@ function Router() {
       <ProtectedRoute path="/financials" component={FinancialsPageWrapper} />
       <ProtectedRoute path="/reports" component={ReportsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
+      <ProtectedRoute path="/insurance-claims" component={InsuranceClaimsPageWrapper} />
       <ProtectedRoute path="/settings" component={SettingsPageWrapper} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />

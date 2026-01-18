@@ -3,7 +3,7 @@ import { db } from "./db";
 import {
   users, patients, treatments, patientTreatments, appointments,
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
-  invoiceAdjustments, expenses, inventoryItems, labCases,
+  invoiceAdjustments, expenses, insuranceClaims, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog,
   type User, type InsertUser,
   type Patient, type InsertPatient,
@@ -17,6 +17,7 @@ import {
   type PaymentPlanInstallment, type InsertPaymentPlanInstallment,
   type InvoiceAdjustment, type InsertInvoiceAdjustment,
   type Expense, type InsertExpense,
+  type InsuranceClaim, type InsertInsuranceClaim,
   type InventoryItem, type InsertInventoryItem,
   type LabCase, type InsertLabCase,
   type Document, type InsertDocument,
@@ -99,6 +100,14 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined>;
   deleteExpense(id: string): Promise<boolean>;
+
+  // Insurance Claims
+  getInsuranceClaim(id: string): Promise<InsuranceClaim | undefined>;
+  getInsuranceClaims(filters?: { status?: string; patientId?: string }): Promise<InsuranceClaim[]>;
+  createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim>;
+  updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>): Promise<InsuranceClaim | undefined>;
+  deleteInsuranceClaim(id: string): Promise<boolean>;
+  generateClaimNumber(): Promise<string>;
 
   // Financial Reports
   getRevenueReport(startDate: string, endDate: string): Promise<{
@@ -616,6 +625,51 @@ export class DatabaseStorage implements IStorage {
   async deleteExpense(id: string): Promise<boolean> {
     const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
     return result.length > 0;
+  }
+
+  // Insurance Claims
+  async getInsuranceClaim(id: string): Promise<InsuranceClaim | undefined> {
+    const result = await db.select().from(insuranceClaims).where(eq(insuranceClaims.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getInsuranceClaims(filters?: { status?: string; patientId?: string }): Promise<InsuranceClaim[]> {
+    let conditions = [];
+
+    if (filters?.status) {
+      conditions.push(eq(insuranceClaims.status, filters.status as any));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(insuranceClaims.patientId, filters.patientId));
+    }
+
+    if (conditions.length > 0) {
+      return db.select().from(insuranceClaims).where(and(...conditions)).orderBy(desc(insuranceClaims.createdAt));
+    }
+
+    return db.select().from(insuranceClaims).orderBy(desc(insuranceClaims.createdAt));
+  }
+
+  async createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim> {
+    const result = await db.insert(insuranceClaims).values(claim).returning();
+    return result[0];
+  }
+
+  async updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>): Promise<InsuranceClaim | undefined> {
+    const result = await db.update(insuranceClaims).set(data).where(eq(insuranceClaims.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteInsuranceClaim(id: string): Promise<boolean> {
+    const result = await db.delete(insuranceClaims).where(eq(insuranceClaims.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async generateClaimNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const result = await db.select({ count: sql<number>`COUNT(*)` }).from(insuranceClaims);
+    const count = Number(result[0].count) + 1;
+    return `CLM-${year}-${String(count).padStart(5, '0')}`;
   }
 
   // Financial Reports

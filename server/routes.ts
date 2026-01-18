@@ -15,6 +15,7 @@ import {
   insertPaymentPlanInstallmentSchema,
   insertInvoiceAdjustmentSchema,
   insertExpenseSchema,
+  insertInsuranceClaimSchema,
   insertInventoryItemSchema,
   insertLabCaseSchema,
   insertDocumentSchema,
@@ -1271,6 +1272,104 @@ export async function registerRoutes(
       res.json(report);
     } catch (error) {
       res.status(500).json({ message: "Failed to generate expense report" });
+    }
+  });
+
+  // Insurance Claims - restricted to admin and staff
+  app.get("/api/insurance-claims", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const { status, patientId } = req.query;
+      const claims = await storage.getInsuranceClaims({
+        status: status as string,
+        patientId: patientId as string,
+      });
+      res.json(claims);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch insurance claims" });
+    }
+  });
+
+  app.get("/api/insurance-claims/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const claim = await storage.getInsuranceClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ message: "Insurance claim not found" });
+      }
+      res.json(claim);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch insurance claim" });
+    }
+  });
+
+  app.post("/api/insurance-claims", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const claimNumber = await storage.generateClaimNumber();
+      const parsed = insertInsuranceClaimSchema.safeParse({
+        ...req.body,
+        claimNumber,
+        createdById: (req.user as any).id,
+      });
+      if (!parsed.success) {
+        console.error("Insurance claim validation error:", parsed.error.message);
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const claim = await storage.createInsuranceClaim(parsed.data);
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "insurance_claim",
+        entityId: claim.id,
+        details: `Created insurance claim ${claim.claimNumber} for $${claim.claimAmount}`,
+      });
+
+      res.status(201).json(claim);
+    } catch (error) {
+      console.error("Error creating insurance claim:", error);
+      res.status(500).json({ message: "Failed to create insurance claim" });
+    }
+  });
+
+  app.patch("/api/insurance-claims/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const claim = await storage.updateInsuranceClaim(req.params.id, req.body);
+      if (!claim) {
+        return res.status(404).json({ message: "Insurance claim not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "insurance_claim",
+        entityId: claim.id,
+        details: `Updated insurance claim ${claim.claimNumber} - status: ${claim.status}`,
+      });
+
+      res.json(claim);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update insurance claim" });
+    }
+  });
+
+  app.delete("/api/insurance-claims/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const success = await storage.deleteInsuranceClaim(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Insurance claim not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "deleted",
+        entityType: "insurance_claim",
+        entityId: req.params.id,
+        details: "Deleted insurance claim record",
+      });
+
+      res.json({ message: "Insurance claim deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete insurance claim" });
     }
   });
 

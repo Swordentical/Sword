@@ -21,6 +21,10 @@ export const expenseCategoryEnum = pgEnum("expense_category", [
   "marketing", "insurance", "maintenance", "software", "training", "other"
 ]);
 
+export const insuranceClaimStatusEnum = pgEnum("insurance_claim_status", [
+  "draft", "submitted", "pending", "approved", "denied", "paid", "appealed"
+]);
+
 // Service categories
 export const serviceCategoryEnum = pgEnum("service_category", [
   "endodontics", "restorative", "preventative", "fixed_prosthodontics", 
@@ -238,6 +242,29 @@ export const expenses = pgTable("expenses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Insurance claims
+export const insuranceClaims = pgTable("insurance_claims", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  claimNumber: text("claim_number").notNull().unique(),
+  patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
+  invoiceId: varchar("invoice_id", { length: 36 }).references(() => invoices.id),
+  insuranceProvider: text("insurance_provider").notNull(),
+  policyNumber: text("policy_number").notNull(),
+  subscriberName: text("subscriber_name"),
+  subscriberDob: date("subscriber_dob"),
+  subscriberRelation: text("subscriber_relation"),
+  status: insuranceClaimStatusEnum("status").notNull().default("draft"),
+  claimAmount: decimal("claim_amount", { precision: 10, scale: 2 }).notNull(),
+  approvedAmount: decimal("approved_amount", { precision: 10, scale: 2 }),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }),
+  denialReason: text("denial_reason"),
+  submittedDate: date("submitted_date"),
+  processedDate: date("processed_date"),
+  notes: text("notes"),
+  createdById: varchar("created_by_id", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Inventory items
 export const inventoryItems = pgTable("inventory_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -417,6 +444,21 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   }),
 }));
 
+export const insuranceClaimsRelations = relations(insuranceClaims, ({ one }) => ({
+  patient: one(patients, {
+    fields: [insuranceClaims.patientId],
+    references: [patients.id],
+  }),
+  invoice: one(invoices, {
+    fields: [insuranceClaims.invoiceId],
+    references: [invoices.id],
+  }),
+  createdBy: one(users, {
+    fields: [insuranceClaims.createdById],
+    references: [users.id],
+  }),
+}));
+
 export const labCasesRelations = relations(labCases, ({ one }) => ({
   patient: one(patients, {
     fields: [labCases.patientId],
@@ -458,6 +500,7 @@ export const insertPaymentPlanSchema = createInsertSchema(paymentPlans).omit({ i
 export const insertPaymentPlanInstallmentSchema = createInsertSchema(paymentPlanInstallments).omit({ id: true });
 export const insertInvoiceAdjustmentSchema = createInsertSchema(invoiceAdjustments).omit({ id: true, createdAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true });
+export const insertInsuranceClaimSchema = createInsertSchema(insuranceClaims).omit({ id: true, createdAt: true });
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true, createdAt: true });
 export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
@@ -500,6 +543,9 @@ export type InvoiceAdjustment = typeof invoiceAdjustments.$inferSelect;
 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+export type InsertInsuranceClaim = z.infer<typeof insertInsuranceClaimSchema>;
+export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
 
 export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;

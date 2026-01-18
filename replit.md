@@ -148,3 +148,20 @@ The system supports four user roles with different permission levels:
   - GET /api/reports/ar-aging
   - GET /api/reports/production-by-doctor?startDate=&endDate=
   - GET /api/reports/expenses?startDate=&endDate=
+
+### Phase 4 Financial System - Insurance Claims (January 2026)
+- **Insurance Claims Page** (`/insurance-claims`) - admin, doctor, staff access
+  - Full CRUD for insurance claim submissions
+  - Auto-generated claim numbers (CLM-YYYY-#####)
+  - 7 claim statuses: draft, submitted, pending, approved, denied, paid, appealed
+  - Link claims to patients and invoices
+  - Subscriber information support (for when patient is not the policyholder)
+  - Status workflow: draft → submitted → pending → approved/denied → paid
+  - Update status with approved/paid amounts and denial reasons
+  - Summary statistics: total claims, pending, approved, pending amount
+- **API Endpoints** (admin/doctor/staff):
+  - GET /api/insurance-claims - list claims with status/patientId filters
+  - GET /api/insurance-claims/:id - get single claim
+  - POST /api/insurance-claims - create claim (auto-generates claim number)
+  - PATCH /api/insurance-claims/:id - update claim
+  - DELETE /api/insurance-claims/:id - delete claim (admin only)

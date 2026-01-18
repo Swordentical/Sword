@@ -14,6 +14,7 @@ import {
   ExternalLink,
   BarChart3,
   Receipt,
+  Shield,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -103,6 +104,12 @@ const mainNavItems: NavItem[] = [
     url: "/expenses",
     icon: Receipt,
     roles: ["admin"],
+  },
+  {
+    title: "Insurance Claims",
+    url: "/insurance-claims",
+    icon: Shield,
+    roles: ["admin", "doctor", "staff"],
   },
 ];
 
