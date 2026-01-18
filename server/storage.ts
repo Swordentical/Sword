@@ -2,7 +2,8 @@ import { eq, and, gte, lte, desc, sql, or, ilike } from "drizzle-orm";
 import { db } from "./db";
 import {
   users, patients, treatments, patientTreatments, appointments,
-  invoices, invoiceItems, payments, inventoryItems, labCases,
+  invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
+  invoiceAdjustments, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog,
   type User, type InsertUser,
   type Patient, type InsertPatient,
@@ -12,6 +13,9 @@ import {
   type Invoice, type InsertInvoice,
   type InvoiceItem, type InsertInvoiceItem,
   type Payment, type InsertPayment,
+  type PaymentPlan, type InsertPaymentPlan,
+  type PaymentPlanInstallment, type InsertPaymentPlanInstallment,
+  type InvoiceAdjustment, type InsertInvoiceAdjustment,
   type InventoryItem, type InsertInventoryItem,
   type LabCase, type InsertLabCase,
   type Document, type InsertDocument,
@@ -67,8 +71,26 @@ export interface IStorage {
   deleteInvoiceItem(id: string): Promise<void>;
 
   // Payments
+  getPayment(id: string): Promise<Payment | undefined>;
   getPayments(filters?: { invoiceId?: string }): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
+  refundPayment(id: string, reason: string): Promise<Payment | undefined>;
+
+  // Payment Plans
+  getPaymentPlan(id: string): Promise<PaymentPlan | undefined>;
+  getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }): Promise<PaymentPlan[]>;
+  createPaymentPlan(plan: InsertPaymentPlan): Promise<PaymentPlan>;
+  updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>): Promise<PaymentPlan | undefined>;
+
+  // Payment Plan Installments
+  getPaymentPlanInstallments(paymentPlanId: string): Promise<PaymentPlanInstallment[]>;
+  createPaymentPlanInstallment(installment: InsertPaymentPlanInstallment): Promise<PaymentPlanInstallment>;
+  updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>): Promise<PaymentPlanInstallment | undefined>;
+
+  // Invoice Adjustments
+  getInvoiceAdjustments(invoiceId: string): Promise<InvoiceAdjustment[]>;
+  createInvoiceAdjustment(adjustment: InsertInvoiceAdjustment): Promise<InvoiceAdjustment>;
 
   // Inventory
   getInventoryItem(id: string): Promise<InventoryItem | undefined>;
@@ -328,6 +350,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Payments
+  async getPayment(id: string): Promise<Payment | undefined> {
+    const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+    return result[0];
+  }
+
   async getPayments(filters?: { invoiceId?: string }): Promise<Payment[]> {
     if (filters?.invoiceId) {
       return db.select().from(payments).where(eq(payments.invoiceId, filters.invoiceId)).orderBy(desc(payments.paymentDate));
@@ -354,6 +381,160 @@ export class DatabaseStorage implements IStorage {
 
       await this.updateInvoice(payment.invoiceId, {
         paidAmount: String(newPaid),
+        status,
+      });
+    }
+
+    // Update installment if linked
+    if (payment.paymentPlanInstallmentId) {
+      const installment = await db.select().from(paymentPlanInstallments)
+        .where(eq(paymentPlanInstallments.id, payment.paymentPlanInstallmentId)).limit(1);
+      if (installment[0]) {
+        const newPaidAmount = Number(installment[0].paidAmount || 0) + Number(payment.amount);
+        const isPaid = newPaidAmount >= Number(installment[0].amount);
+        await this.updatePaymentPlanInstallment(payment.paymentPlanInstallmentId, {
+          paidAmount: String(newPaidAmount),
+          isPaid,
+          paidDate: isPaid ? payment.paymentDate : undefined,
+        });
+      }
+    }
+
+    return result[0];
+  }
+
+  async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const result = await db.update(payments).set(data).where(eq(payments.id, id)).returning();
+    return result[0];
+  }
+
+  async refundPayment(id: string, reason: string): Promise<Payment | undefined> {
+    const payment = await this.getPayment(id);
+    if (!payment || payment.isRefunded) return undefined;
+
+    // Mark payment as refunded
+    const result = await db.update(payments).set({
+      isRefunded: true,
+      refundedAt: new Date(),
+      refundReason: reason,
+    }).where(eq(payments.id, id)).returning();
+
+    // Reduce invoice paid amount
+    const invoice = await this.getInvoice(payment.invoiceId);
+    if (invoice) {
+      const currentPaid = Number(invoice.paidAmount || 0);
+      const newPaid = Math.max(0, currentPaid - Number(payment.amount));
+      const finalAmount = Number(invoice.finalAmount);
+
+      let status: "draft" | "sent" | "paid" | "partial" | "overdue" | "canceled" = invoice.status as any;
+      if (newPaid >= finalAmount) {
+        status = "paid";
+      } else if (newPaid > 0) {
+        status = "partial";
+      } else {
+        status = "sent";
+      }
+
+      await this.updateInvoice(payment.invoiceId, {
+        paidAmount: String(newPaid),
+        status,
+      });
+    }
+
+    return result[0];
+  }
+
+  // Payment Plans
+  async getPaymentPlan(id: string): Promise<PaymentPlan | undefined> {
+    const result = await db.select().from(paymentPlans).where(eq(paymentPlans.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }): Promise<PaymentPlan[]> {
+    let conditions = [];
+
+    if (filters?.invoiceId) {
+      conditions.push(eq(paymentPlans.invoiceId, filters.invoiceId));
+    }
+    if (filters?.patientId) {
+      conditions.push(eq(paymentPlans.patientId, filters.patientId));
+    }
+    if (filters?.status) {
+      conditions.push(eq(paymentPlans.status, filters.status as any));
+    }
+
+    if (conditions.length > 0) {
+      return db.select().from(paymentPlans).where(and(...conditions)).orderBy(desc(paymentPlans.createdAt));
+    }
+
+    return db.select().from(paymentPlans).orderBy(desc(paymentPlans.createdAt));
+  }
+
+  async createPaymentPlan(plan: InsertPaymentPlan): Promise<PaymentPlan> {
+    const result = await db.insert(paymentPlans).values(plan).returning();
+    return result[0];
+  }
+
+  async updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>): Promise<PaymentPlan | undefined> {
+    const result = await db.update(paymentPlans).set(data).where(eq(paymentPlans.id, id)).returning();
+    return result[0];
+  }
+
+  // Payment Plan Installments
+  async getPaymentPlanInstallments(paymentPlanId: string): Promise<PaymentPlanInstallment[]> {
+    return db.select().from(paymentPlanInstallments)
+      .where(eq(paymentPlanInstallments.paymentPlanId, paymentPlanId))
+      .orderBy(paymentPlanInstallments.installmentNumber);
+  }
+
+  async createPaymentPlanInstallment(installment: InsertPaymentPlanInstallment): Promise<PaymentPlanInstallment> {
+    const result = await db.insert(paymentPlanInstallments).values(installment).returning();
+    return result[0];
+  }
+
+  async updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>): Promise<PaymentPlanInstallment | undefined> {
+    const result = await db.update(paymentPlanInstallments).set(data).where(eq(paymentPlanInstallments.id, id)).returning();
+    return result[0];
+  }
+
+  // Invoice Adjustments
+  async getInvoiceAdjustments(invoiceId: string): Promise<InvoiceAdjustment[]> {
+    return db.select().from(invoiceAdjustments)
+      .where(eq(invoiceAdjustments.invoiceId, invoiceId))
+      .orderBy(desc(invoiceAdjustments.appliedDate));
+  }
+
+  async createInvoiceAdjustment(adjustment: InsertInvoiceAdjustment): Promise<InvoiceAdjustment> {
+    const result = await db.insert(invoiceAdjustments).values(adjustment).returning();
+
+    // Update invoice final amount based on adjustment type
+    const invoice = await this.getInvoice(adjustment.invoiceId);
+    if (invoice) {
+      const currentFinal = Number(invoice.finalAmount);
+      let newFinal = currentFinal;
+
+      // Adjustments that reduce the amount owed
+      if (adjustment.type === 'discount' || adjustment.type === 'write_off' || adjustment.type === 'refund') {
+        newFinal = Math.max(0, currentFinal - Number(adjustment.amount));
+      }
+      // Adjustments that increase the amount owed
+      else if (adjustment.type === 'fee') {
+        newFinal = currentFinal + Number(adjustment.amount);
+      }
+      // Corrections can go either way based on sign of amount
+      else if (adjustment.type === 'correction') {
+        newFinal = currentFinal + Number(adjustment.amount);
+      }
+
+      // Update invoice status if write-off brings balance to zero
+      const paidAmount = Number(invoice.paidAmount || 0);
+      let status = invoice.status;
+      if (paidAmount >= newFinal) {
+        status = 'paid';
+      }
+
+      await this.updateInvoice(adjustment.invoiceId, {
+        finalAmount: String(newFinal),
         status,
       });
     }

@@ -10,6 +10,8 @@ export const appointmentStatusEnum = pgEnum("appointment_status", ["confirmed", 
 export const appointmentCategoryEnum = pgEnum("appointment_category", ["new_visit", "follow_up", "discussion", "surgery", "checkup", "cleaning"]);
 export const invoiceStatusEnum = pgEnum("invoice_status", ["draft", "sent", "paid", "partial", "overdue", "canceled"]);
 export const paymentMethodEnum = pgEnum("payment_method", ["cash", "card", "bank_transfer", "insurance", "other"]);
+export const adjustmentTypeEnum = pgEnum("adjustment_type", ["discount", "write_off", "refund", "fee", "correction"]);
+export const paymentPlanStatusEnum = pgEnum("payment_plan_status", ["active", "completed", "canceled", "defaulted"]);
 export const inventoryStatusEnum = pgEnum("inventory_status", ["available", "low_stock", "out_of_stock"]);
 export const inventoryCategoryEnum = pgEnum("inventory_category", ["consumables", "equipment", "instruments", "medications", "office_supplies"]);
 export const labCaseStatusEnum = pgEnum("lab_case_status", ["pending", "in_progress", "completed", "delivered"]);
@@ -160,11 +162,57 @@ export const invoiceItems = pgTable("invoice_items", {
 export const payments = pgTable("payments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
+  paymentPlanInstallmentId: varchar("payment_plan_installment_id", { length: 36 }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentDate: date("payment_date").notNull(),
   paymentMethod: paymentMethodEnum("payment_method").notNull(),
   referenceNumber: text("reference_number"),
   notes: text("notes"),
+  isRefunded: boolean("is_refunded").default(false),
+  refundedAt: timestamp("refunded_at"),
+  refundReason: text("refund_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdById: varchar("created_by_id", { length: 36 }),
+});
+
+// Payment Plans
+export const paymentPlans = pgTable("payment_plans", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
+  patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  downPayment: decimal("down_payment", { precision: 10, scale: 2 }).default("0"),
+  numberOfInstallments: integer("number_of_installments").notNull(),
+  installmentAmount: decimal("installment_amount", { precision: 10, scale: 2 }).notNull(),
+  frequency: text("frequency").notNull(), // 'weekly', 'biweekly', 'monthly'
+  startDate: date("start_date").notNull(),
+  status: paymentPlanStatusEnum("status").default("active"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  createdById: varchar("created_by_id", { length: 36 }),
+});
+
+// Payment Plan Installments
+export const paymentPlanInstallments = pgTable("payment_plan_installments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  paymentPlanId: varchar("payment_plan_id", { length: 36 }).notNull().references(() => paymentPlans.id),
+  installmentNumber: integer("installment_number").notNull(),
+  dueDate: date("due_date").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
+  isPaid: boolean("is_paid").default(false),
+  paidDate: date("paid_date"),
+  notes: text("notes"),
+});
+
+// Invoice Adjustments (discounts, write-offs, corrections, fees)
+export const invoiceAdjustments = pgTable("invoice_adjustments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
+  type: adjustmentTypeEnum("type").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  appliedDate: date("applied_date").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   createdById: varchar("created_by_id", { length: 36 }),
 });
@@ -308,6 +356,37 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
     fields: [payments.invoiceId],
     references: [invoices.id],
   }),
+  installment: one(paymentPlanInstallments, {
+    fields: [payments.paymentPlanInstallmentId],
+    references: [paymentPlanInstallments.id],
+  }),
+}));
+
+export const paymentPlansRelations = relations(paymentPlans, ({ one, many }) => ({
+  invoice: one(invoices, {
+    fields: [paymentPlans.invoiceId],
+    references: [invoices.id],
+  }),
+  patient: one(patients, {
+    fields: [paymentPlans.patientId],
+    references: [patients.id],
+  }),
+  installments: many(paymentPlanInstallments),
+}));
+
+export const paymentPlanInstallmentsRelations = relations(paymentPlanInstallments, ({ one, many }) => ({
+  paymentPlan: one(paymentPlans, {
+    fields: [paymentPlanInstallments.paymentPlanId],
+    references: [paymentPlans.id],
+  }),
+  payments: many(payments),
+}));
+
+export const invoiceAdjustmentsRelations = relations(invoiceAdjustments, ({ one }) => ({
+  invoice: one(invoices, {
+    fields: [invoiceAdjustments.invoiceId],
+    references: [invoices.id],
+  }),
 }));
 
 export const labCasesRelations = relations(labCases, ({ one }) => ({
@@ -347,6 +426,9 @@ export const insertAppointmentSchema = createInsertSchema(appointments).omit({ i
 export const insertInvoiceSchema = createInsertSchema(invoices).omit({ id: true, createdAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, createdAt: true });
+export const insertPaymentPlanSchema = createInsertSchema(paymentPlans).omit({ id: true, createdAt: true });
+export const insertPaymentPlanInstallmentSchema = createInsertSchema(paymentPlanInstallments).omit({ id: true });
+export const insertInvoiceAdjustmentSchema = createInsertSchema(invoiceAdjustments).omit({ id: true, createdAt: true });
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true, createdAt: true });
 export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
@@ -378,6 +460,15 @@ export type InvoiceItem = typeof invoiceItems.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 
+export type InsertPaymentPlan = z.infer<typeof insertPaymentPlanSchema>;
+export type PaymentPlan = typeof paymentPlans.$inferSelect;
+
+export type InsertPaymentPlanInstallment = z.infer<typeof insertPaymentPlanInstallmentSchema>;
+export type PaymentPlanInstallment = typeof paymentPlanInstallments.$inferSelect;
+
+export type InsertInvoiceAdjustment = z.infer<typeof insertInvoiceAdjustmentSchema>;
+export type InvoiceAdjustment = typeof invoiceAdjustments.$inferSelect;
+
 export type InsertInventoryItem = z.infer<typeof insertInventoryItemSchema>;
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 
@@ -402,3 +493,8 @@ export type AppointmentWithDetails = Appointment & { patient: Patient; doctor?: 
 export type PatientTreatmentWithDetails = PatientTreatment & { treatment: Treatment; doctor?: User };
 export type InvoiceWithPatient = Invoice & { patient: Patient };
 export type LabCaseWithPatient = LabCase & { patient: Patient };
+export type PaymentPlanWithDetails = PaymentPlan & { 
+  patient: Patient; 
+  invoice: Invoice;
+  installments: PaymentPlanInstallment[];
+};

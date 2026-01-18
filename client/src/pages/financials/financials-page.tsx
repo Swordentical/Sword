@@ -21,6 +21,10 @@ import {
   Ban,
   Trash2,
   X,
+  Undo2,
+  ClipboardList,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,13 +90,21 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import type { Invoice, InvoiceItem, Payment, Patient } from "@shared/schema";
+import type { Invoice, InvoiceItem, Payment, Patient, PaymentPlan, PaymentPlanInstallment, InvoiceAdjustment } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 type InvoiceWithPatient = Invoice & { patient?: Patient };
 type InvoiceDetails = Invoice & { 
   patient?: Patient; 
   items: InvoiceItem[]; 
   payments: Payment[];
+  adjustments?: InvoiceAdjustment[];
+};
+type PaymentPlanWithDetails = PaymentPlan & {
+  patient?: Patient;
+  invoice?: Invoice;
+  installments: PaymentPlanInstallment[];
 };
 
 const invoiceSchema = z.object({
@@ -120,6 +132,34 @@ const paymentSchema = z.object({
 });
 
 type PaymentFormValues = z.infer<typeof paymentSchema>;
+
+const paymentPlanSchema = z.object({
+  invoiceId: z.string().min(1, "Invoice is required"),
+  patientId: z.string().min(1, "Patient is required"),
+  totalAmount: z.string().min(1, "Amount is required"),
+  downPayment: z.string().optional(),
+  numberOfInstallments: z.number().min(2, "At least 2 installments"),
+  frequency: z.enum(["weekly", "biweekly", "monthly"]),
+  startDate: z.date({ required_error: "Start date is required" }),
+  notes: z.string().optional(),
+});
+
+type PaymentPlanFormValues = z.infer<typeof paymentPlanSchema>;
+
+const adjustmentSchema = z.object({
+  type: z.enum(["discount", "write_off", "fee", "correction"]),
+  amount: z.string().min(1, "Amount is required"),
+  reason: z.string().min(1, "Reason is required"),
+});
+
+type AdjustmentFormValues = z.infer<typeof adjustmentSchema>;
+
+const PLAN_STATUS_BADGES: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+  active: { variant: "default", label: "Active" },
+  completed: { variant: "secondary", label: "Completed" },
+  canceled: { variant: "outline", label: "Canceled" },
+  defaulted: { variant: "destructive", label: "Defaulted" },
+};
 
 const STATUS_BADGES: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
   draft: { variant: "outline", label: "Draft" },
@@ -490,10 +530,14 @@ function InvoiceDetailsDialog({
   open,
   onOpenChange,
   invoiceId,
+  onRefundPayment,
+  onAddAdjustment,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoiceId: string | null;
+  onRefundPayment?: (payment: Payment) => void;
+  onAddAdjustment?: (invoiceId: string, balance: number) => void;
 }) {
   const { toast } = useToast();
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
@@ -667,14 +711,34 @@ function InvoiceDetailsDialog({
                     {invoice.payments.map((payment) => (
                       <div key={payment.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                         <div>
-                          <p className="font-medium">${payment.amount}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium">${payment.amount}</p>
+                            {payment.isRefunded && (
+                              <Badge variant="destructive" className="text-xs">Refunded</Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground">
                             {payment.paymentDate && format(new Date(payment.paymentDate), "PPP")} • {payment.paymentMethod}
                           </p>
+                          {payment.refundReason && (
+                            <p className="text-xs text-muted-foreground italic mt-1">Refund: {payment.refundReason}</p>
+                          )}
                         </div>
-                        {payment.referenceNumber && (
-                          <p className="text-sm text-muted-foreground">Ref: {payment.referenceNumber}</p>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {payment.referenceNumber && (
+                            <p className="text-sm text-muted-foreground hidden sm:block">Ref: {payment.referenceNumber}</p>
+                          )}
+                          {!payment.isRefunded && onRefundPayment && (
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => onRefundPayment(payment)}
+                              data-testid={`button-refund-${payment.id}`}
+                            >
+                              <Undo2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -715,15 +779,27 @@ function InvoiceDetailsDialog({
                   </>
                 )}
                 {(invoice.status === "sent" || invoice.status === "partial") && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setVoidDialogOpen(true)}
-                    disabled={voidInvoiceMutation.isPending}
-                    data-testid="button-void-invoice"
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    Void Invoice
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setVoidDialogOpen(true)}
+                      disabled={voidInvoiceMutation.isPending}
+                      data-testid="button-void-invoice"
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Void Invoice
+                    </Button>
+                    {onAddAdjustment && balance > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={() => onAddAdjustment(invoice.id, balance)}
+                        data-testid="button-add-adjustment"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Adjust
+                      </Button>
+                    )}
+                  </>
                 )}
                 <Button variant="outline" onClick={() => onOpenChange(false)}>
                   Close
@@ -1000,13 +1076,539 @@ function RecordPaymentDialog({
   );
 }
 
+function RefundPaymentDialog({
+  open,
+  onOpenChange,
+  payment,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  payment: Payment | null;
+}) {
+  const { toast } = useToast();
+  const [reason, setReason] = useState("");
+
+  const refundMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/payments/${payment?.id}/refund`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Payment refunded",
+        description: "The payment has been refunded and invoice balance updated.",
+      });
+      setReason("");
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to refund",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (!payment) return null;
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Refund Payment</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will refund ${payment.amount} and update the invoice balance. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Reason for refund *</label>
+          <Textarea
+            placeholder="Enter reason for refund..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            data-testid="input-refund-reason"
+          />
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => refundMutation.mutate()}
+            disabled={!reason.trim() || refundMutation.isPending}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="button-confirm-refund"
+          >
+            {refundMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Refund Payment"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function CreatePaymentPlanDialog({
+  open,
+  onOpenChange,
+  invoices,
+  patients,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  invoices: InvoiceWithPatient[];
+  patients: Patient[];
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<PaymentPlanFormValues>({
+    resolver: zodResolver(paymentPlanSchema),
+    defaultValues: {
+      invoiceId: "",
+      patientId: "",
+      totalAmount: "",
+      downPayment: "0",
+      numberOfInstallments: 3,
+      frequency: "monthly",
+      startDate: new Date(),
+      notes: "",
+    },
+  });
+
+  const selectedInvoiceId = form.watch("invoiceId");
+  const selectedInvoice = invoices.find((inv) => inv.id === selectedInvoiceId);
+  const unpaidInvoices = invoices.filter((inv) => 
+    inv.status !== "paid" && inv.status !== "canceled" && inv.status !== "draft"
+  );
+
+  const totalAmount = form.watch("totalAmount");
+  const downPayment = form.watch("downPayment");
+  const numberOfInstallments = form.watch("numberOfInstallments");
+  const installmentAmount = totalAmount && numberOfInstallments 
+    ? ((Number(totalAmount) - Number(downPayment || 0)) / numberOfInstallments).toFixed(2)
+    : "0.00";
+
+  const createPlanMutation = useMutation({
+    mutationFn: async (data: PaymentPlanFormValues) => {
+      const res = await apiRequest("POST", "/api/payment-plans", {
+        ...data,
+        installmentAmount,
+        startDate: data.startDate.toISOString().split("T")[0],
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-plans"] });
+      toast({
+        title: "Payment plan created",
+        description: "The payment plan has been set up successfully.",
+      });
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to create payment plan",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleInvoiceChange = (invoiceId: string) => {
+    form.setValue("invoiceId", invoiceId);
+    const invoice = invoices.find((inv) => inv.id === invoiceId);
+    if (invoice) {
+      form.setValue("patientId", invoice.patientId);
+      const balance = Number(invoice.finalAmount || 0) - Number(invoice.paidAmount || 0);
+      form.setValue("totalAmount", balance.toFixed(2));
+    }
+  };
+
+  const onSubmit = (data: PaymentPlanFormValues) => {
+    createPlanMutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Payment Plan</DialogTitle>
+          <DialogDescription>
+            Set up installment payments for an invoice
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="invoiceId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Invoice *</FormLabel>
+                  <Select 
+                    value={field.value} 
+                    onValueChange={handleInvoiceChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger data-testid="select-plan-invoice">
+                        <SelectValue placeholder="Select invoice" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {unpaidInvoices.map((invoice) => {
+                        const balance = Number(invoice.finalAmount || 0) - Number(invoice.paidAmount || 0);
+                        return (
+                          <SelectItem key={invoice.id} value={invoice.id}>
+                            {invoice.invoiceNumber} - {invoice.patient?.firstName} {invoice.patient?.lastName} (${balance.toFixed(2)} due)
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="totalAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Total Amount</FormLabel>
+                    <FormControl>
+                      <Input {...field} readOnly className="bg-muted" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="downPayment"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Down Payment</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="number" 
+                        step="0.01" 
+                        min="0" 
+                        data-testid="input-down-payment"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="numberOfInstallments"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Installments *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="2" 
+                        max="24"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 2)}
+                        data-testid="input-installments"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="frequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frequency *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-frequency">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="startDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Start Date *</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          data-testid="button-start-date"
+                        >
+                          {field.value ? format(field.value, "PPP") : "Pick date"}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedInvoice && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Amount to finance:</span>
+                  <span className="font-medium">${(Number(totalAmount) - Number(downPayment || 0)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>{numberOfInstallments} installments of:</span>
+                  <span className="font-bold text-primary">${installmentAmount}</span>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createPlanMutation.isPending || !selectedInvoice}
+                data-testid="button-create-plan"
+              >
+                {createPlanMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                )}
+                Create Plan
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AdjustmentDialog({
+  open,
+  onOpenChange,
+  invoiceId,
+  invoiceBalance,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  invoiceId: string | null;
+  invoiceBalance: number;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<AdjustmentFormValues>({
+    resolver: zodResolver(adjustmentSchema),
+    defaultValues: {
+      type: "discount",
+      amount: "",
+      reason: "",
+    },
+  });
+
+  const adjustmentType = form.watch("type");
+
+  const createAdjustmentMutation = useMutation({
+    mutationFn: async (data: AdjustmentFormValues) => {
+      const res = await apiRequest("POST", `/api/invoices/${invoiceId}/adjustments`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices", invoiceId] });
+      toast({
+        title: "Adjustment applied",
+        description: "The invoice has been updated.",
+      });
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to apply adjustment",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: AdjustmentFormValues) => {
+    createAdjustmentMutation.mutate(data);
+  };
+
+  const handleWriteOff = () => {
+    form.setValue("type", "write_off");
+    form.setValue("amount", invoiceBalance.toFixed(2));
+  };
+
+  if (!invoiceId) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Apply Adjustment</DialogTitle>
+          <DialogDescription>
+            Add a discount, write-off, fee, or correction to this invoice
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Adjustment Type *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-adjustment-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="discount">Discount (reduces balance)</SelectItem>
+                      <SelectItem value="write_off">Write-off (uncollectable)</SelectItem>
+                      <SelectItem value="fee">Fee (increases balance)</SelectItem>
+                      <SelectItem value="correction">Correction (+/-)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount *</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        type="number" 
+                        step="0.01" 
+                        min="0"
+                        placeholder="0.00"
+                        data-testid="input-adjustment-amount"
+                      />
+                    </FormControl>
+                    {adjustmentType === "write_off" && invoiceBalance > 0 && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleWriteOff}
+                      >
+                        Full Balance
+                      </Button>
+                    )}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reason *</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      {...field} 
+                      placeholder="Enter reason for adjustment..."
+                      data-testid="input-adjustment-reason"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createAdjustmentMutation.isPending}
+                data-testid="button-apply-adjustment"
+              >
+                {createAdjustmentMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Apply Adjustment
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function FinancialsPage() {
+  const [activeTab, setActiveTab] = useState("invoices");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [paymentPlanDialogOpen, setPaymentPlanDialogOpen] = useState(false);
+  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [adjustmentInvoiceId, setAdjustmentInvoiceId] = useState<string | null>(null);
+  const [adjustmentBalance, setAdjustmentBalance] = useState(0);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<InvoiceWithPatient[]>({
     queryKey: ["/api/invoices"],
@@ -1018,6 +1620,10 @@ export default function FinancialsPage() {
 
   const { data: payments = [] } = useQuery<Payment[]>({
     queryKey: ["/api/payments"],
+  });
+
+  const { data: paymentPlans = [], isLoading: plansLoading } = useQuery<PaymentPlanWithDetails[]>({
+    queryKey: ["/api/payment-plans"],
   });
 
   const filteredInvoices = invoices.filter((invoice) => {
@@ -1250,12 +1856,41 @@ export default function FinancialsPage() {
         open={detailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
         invoiceId={selectedInvoiceId}
+        onRefundPayment={(payment) => {
+          setSelectedPayment(payment);
+          setRefundDialogOpen(true);
+        }}
+        onAddAdjustment={(invoiceId, balance) => {
+          setAdjustmentInvoiceId(invoiceId);
+          setAdjustmentBalance(balance);
+          setAdjustmentDialogOpen(true);
+        }}
       />
 
       <RecordPaymentDialog
         open={paymentDialogOpen}
         onOpenChange={setPaymentDialogOpen}
         invoices={invoices}
+      />
+
+      <RefundPaymentDialog
+        open={refundDialogOpen}
+        onOpenChange={setRefundDialogOpen}
+        payment={selectedPayment}
+      />
+
+      <CreatePaymentPlanDialog
+        open={paymentPlanDialogOpen}
+        onOpenChange={setPaymentPlanDialogOpen}
+        invoices={invoices}
+        patients={patients}
+      />
+
+      <AdjustmentDialog
+        open={adjustmentDialogOpen}
+        onOpenChange={setAdjustmentDialogOpen}
+        invoiceId={adjustmentInvoiceId}
+        invoiceBalance={adjustmentBalance}
       />
     </div>
   );

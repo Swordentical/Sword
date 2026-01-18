@@ -11,6 +11,9 @@ import {
   insertInvoiceSchema,
   insertInvoiceItemSchema,
   insertPaymentSchema,
+  insertPaymentPlanSchema,
+  insertPaymentPlanInstallmentSchema,
+  insertInvoiceAdjustmentSchema,
   insertInventoryItemSchema,
   insertLabCaseSchema,
   insertDocumentSchema,
@@ -768,6 +771,303 @@ export async function registerRoutes(
       res.status(201).json(payment);
     } catch (error) {
       res.status(500).json({ message: "Failed to record payment" });
+    }
+  });
+
+  // Refund payment
+  app.post("/api/payments/:id/refund", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const { reason } = req.body;
+      if (!reason || typeof reason !== 'string') {
+        return res.status(400).json({ message: "Refund reason is required" });
+      }
+
+      const payment = await storage.refundPayment(req.params.id, reason);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found or already refunded" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "refunded",
+        entityType: "payment",
+        entityId: payment.id,
+        details: `Refunded payment of $${payment.amount}: ${reason}`,
+      });
+
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to refund payment" });
+    }
+  });
+
+  // Payment Plans
+  app.get("/api/payment-plans", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const { invoiceId, patientId, status } = req.query;
+      const plans = await storage.getPaymentPlans({
+        invoiceId: invoiceId as string,
+        patientId: patientId as string,
+        status: status as string,
+      });
+
+      // Enrich with patient and invoice data
+      const enrichedPlans = await Promise.all(plans.map(async (plan) => {
+        const [patient, invoice, installments] = await Promise.all([
+          storage.getPatient(plan.patientId),
+          storage.getInvoice(plan.invoiceId),
+          storage.getPaymentPlanInstallments(plan.id),
+        ]);
+        return { ...plan, patient, invoice, installments };
+      }));
+
+      res.json(enrichedPlans);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment plans" });
+    }
+  });
+
+  app.get("/api/payment-plans/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const plan = await storage.getPaymentPlan(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ message: "Payment plan not found" });
+      }
+
+      const [patient, invoice, installments] = await Promise.all([
+        storage.getPatient(plan.patientId),
+        storage.getInvoice(plan.invoiceId),
+        storage.getPaymentPlanInstallments(plan.id),
+      ]);
+
+      res.json({ ...plan, patient, invoice, installments });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment plan" });
+    }
+  });
+
+  app.post("/api/payment-plans", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const { installments: installmentDates, ...planData } = req.body;
+
+      const parsed = insertPaymentPlanSchema.safeParse({
+        ...planData,
+        createdById: (req.user as any).id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const plan = await storage.createPaymentPlan(parsed.data);
+
+      // Create installments if provided
+      if (installmentDates && Array.isArray(installmentDates)) {
+        for (let i = 0; i < installmentDates.length; i++) {
+          await storage.createPaymentPlanInstallment({
+            paymentPlanId: plan.id,
+            installmentNumber: i + 1,
+            dueDate: installmentDates[i].dueDate,
+            amount: installmentDates[i].amount || parsed.data.installmentAmount,
+          });
+        }
+      } else {
+        // Auto-generate installments based on frequency
+        const startDate = new Date(parsed.data.startDate);
+        const frequency = parsed.data.frequency;
+        const numInstallments = parsed.data.numberOfInstallments;
+        const amount = parsed.data.installmentAmount;
+
+        for (let i = 0; i < numInstallments; i++) {
+          const dueDate = new Date(startDate);
+          if (frequency === 'weekly') {
+            dueDate.setDate(dueDate.getDate() + (i * 7));
+          } else if (frequency === 'biweekly') {
+            dueDate.setDate(dueDate.getDate() + (i * 14));
+          } else if (frequency === 'monthly') {
+            dueDate.setMonth(dueDate.getMonth() + i);
+          }
+
+          await storage.createPaymentPlanInstallment({
+            paymentPlanId: plan.id,
+            installmentNumber: i + 1,
+            dueDate: dueDate.toISOString().split('T')[0],
+            amount: amount,
+          });
+        }
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "payment_plan",
+        entityId: plan.id,
+        details: `Created payment plan with ${parsed.data.numberOfInstallments} installments`,
+      });
+
+      // Return enriched plan
+      const installments = await storage.getPaymentPlanInstallments(plan.id);
+      res.status(201).json({ ...plan, installments });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create payment plan" });
+    }
+  });
+
+  app.patch("/api/payment-plans/:id", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const updateSchema = insertPaymentPlanSchema.pick({
+        status: true,
+        notes: true,
+      }).partial().strict();
+
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const plan = await storage.updatePaymentPlan(req.params.id, parsed.data);
+      if (!plan) {
+        return res.status(404).json({ message: "Payment plan not found" });
+      }
+
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update payment plan" });
+    }
+  });
+
+  // Payment plan installments - pay an installment
+  app.post("/api/payment-plans/:planId/installments/:installmentId/pay", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const { amount, paymentMethod, referenceNumber, notes } = req.body;
+      
+      const plan = await storage.getPaymentPlan(req.params.planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Payment plan not found" });
+      }
+
+      // Create payment linked to installment
+      const payment = await storage.createPayment({
+        invoiceId: plan.invoiceId,
+        paymentPlanInstallmentId: req.params.installmentId,
+        amount: amount,
+        paymentDate: new Date().toISOString().split('T')[0],
+        paymentMethod: paymentMethod || 'cash',
+        referenceNumber,
+        notes,
+        createdById: (req.user as any).id,
+      });
+
+      // Check if all installments are paid
+      const installments = await storage.getPaymentPlanInstallments(plan.id);
+      const allPaid = installments.every(inst => inst.isPaid);
+      if (allPaid) {
+        await storage.updatePaymentPlan(plan.id, { status: 'completed' });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "paid",
+        entityType: "installment",
+        entityId: req.params.installmentId,
+        details: `Paid installment of $${amount}`,
+      });
+
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to record installment payment" });
+    }
+  });
+
+  // Invoice Adjustments (write-offs, discounts, corrections, fees)
+  app.get("/api/invoices/:id/adjustments", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const adjustments = await storage.getInvoiceAdjustments(req.params.id);
+      res.json(adjustments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch adjustments" });
+    }
+  });
+
+  app.post("/api/invoices/:id/adjustments", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      // Cannot adjust paid or canceled invoices
+      if (invoice.status === 'paid' || invoice.status === 'canceled') {
+        return res.status(400).json({ message: "Cannot adjust paid or canceled invoices" });
+      }
+
+      const parsed = insertInvoiceAdjustmentSchema.safeParse({
+        ...req.body,
+        invoiceId: req.params.id,
+        appliedDate: req.body.appliedDate || new Date().toISOString().split('T')[0],
+        createdById: (req.user as any).id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const adjustment = await storage.createInvoiceAdjustment(parsed.data);
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "adjusted",
+        entityType: "invoice",
+        entityId: req.params.id,
+        details: `Applied ${adjustment.type} of $${adjustment.amount}: ${adjustment.reason}`,
+      });
+
+      res.status(201).json(adjustment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create adjustment" });
+    }
+  });
+
+  // Write-off invoice balance (shorthand for creating write-off adjustment)
+  app.post("/api/invoices/:id/write-off", requireRole("admin"), async (req, res) => {
+    try {
+      const invoice = await storage.getInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      if (invoice.status === 'paid' || invoice.status === 'canceled') {
+        return res.status(400).json({ message: "Cannot write off paid or canceled invoices" });
+      }
+
+      const balance = Number(invoice.finalAmount) - Number(invoice.paidAmount || 0);
+      if (balance <= 0) {
+        return res.status(400).json({ message: "No balance to write off" });
+      }
+
+      const { reason } = req.body;
+      if (!reason) {
+        return res.status(400).json({ message: "Write-off reason is required" });
+      }
+
+      const adjustment = await storage.createInvoiceAdjustment({
+        invoiceId: req.params.id,
+        type: 'write_off',
+        amount: balance.toFixed(2),
+        reason,
+        appliedDate: new Date().toISOString().split('T')[0],
+        createdById: (req.user as any).id,
+      });
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "wrote_off",
+        entityType: "invoice",
+        entityId: req.params.id,
+        details: `Wrote off $${balance.toFixed(2)}: ${reason}`,
+      });
+
+      res.json(adjustment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to write off invoice" });
     }
   });
 
