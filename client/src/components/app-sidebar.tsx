@@ -10,11 +10,16 @@ import {
   LogOut,
   GraduationCap,
   Stethoscope,
+  Edit,
+  ExternalLink,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   Sidebar,
   SidebarContent,
@@ -210,19 +215,70 @@ export function AppSidebar() {
           <ThemeSelector />
         </div>
         <div className="flex items-center gap-3 px-4 py-3">
-          <Link href="/settings?tab=users" className="shrink-0" data-testid="link-profile-settings">
-            <Avatar className="h-9 w-9 cursor-pointer hover-elevate transition-all">
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </Link>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="shrink-0" data-testid="button-profile-menu">
+                <Avatar className="h-9 w-9 cursor-pointer hover-elevate transition-all">
+                  {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={`${user?.firstName} ${user?.lastName}`} />}
+                  <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-64 p-0">
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={`${user?.firstName} ${user?.lastName}`} />}
+                    <AvatarFallback className="bg-primary/10 text-primary text-lg font-medium">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-sm text-muted-foreground truncate">@{user?.username}</p>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      {getRoleIcon(userRole)}
+                      <span>{getRoleLabel(userRole)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <Separator />
+              <div className="p-2 space-y-1">
+                <Link href="/settings?tab=users">
+                  <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="link-manage-profile">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
+                </Link>
+                <Link href="/settings">
+                  <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="link-settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </Link>
+              </div>
+              <Separator />
+              <div className="p-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-destructive hover:text-destructive" 
+                  onClick={() => logoutMutation.mutate()}
+                  data-testid="button-popover-logout"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Log Out
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           <div className="flex flex-1 flex-col overflow-hidden">
-            <Link href="/settings?tab=users" className="hover:underline">
-              <span className="truncate text-sm font-medium text-sidebar-foreground">
-                {user?.firstName} {user?.lastName}
-              </span>
-            </Link>
+            <span className="truncate text-sm font-medium text-sidebar-foreground">
+              {user?.firstName} {user?.lastName}
+            </span>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getRoleIcon(userRole)}
               <span>{getRoleLabel(userRole)}</span>

@@ -22,12 +22,16 @@ import {
   Database,
   AlertTriangle,
   CheckCircle2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -649,6 +653,8 @@ function EditUserDialog({
   user: User | null;
 }) {
   const { toast } = useToast();
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editUserSchema = z.object({
     firstName: z.string().min(1, "First name is required"),
@@ -681,8 +687,29 @@ function EditUserDialog({
         phone: user.phone || "",
         role: (user.role as "admin" | "doctor" | "staff" | "student") || "staff",
       });
+      setAvatarPreview(user.avatarUrl || null);
     }
   }, [user, open, form]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image under 2MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const updateUserMutation = useMutation({
     mutationFn: async (data: EditUserFormValues) => {
@@ -690,11 +717,13 @@ function EditUserDialog({
         ...data,
         email: data.email || null,
         phone: data.phone || null,
+        avatarUrl: avatarPreview,
       });
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "User updated",
         description: "The user has been updated successfully.",
@@ -716,6 +745,8 @@ function EditUserDialog({
 
   if (!user) return null;
 
+  const initials = `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -728,6 +759,33 @@ function EditUserDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="flex justify-center">
+              <div className="relative group">
+                <Avatar className="h-20 w-20">
+                  {avatarPreview && <AvatarImage src={avatarPreview} alt="Profile" />}
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  data-testid="button-upload-avatar"
+                >
+                  <Camera className="h-6 w-6 text-white" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  data-testid="input-avatar-file"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -832,16 +890,48 @@ function EditUserDialog({
   );
 }
 
+type SortField = "name" | "role" | "status";
+type SortDirection = "asc" | "desc";
+
 function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
 
   const { data: users = [], isLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
+
+  const sortedUsers = [...users].sort((a, b) => {
+    let comparison = 0;
+    switch (sortField) {
+      case "name":
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        comparison = nameA.localeCompare(nameB);
+        break;
+      case "role":
+        comparison = (a.role || "").localeCompare(b.role || "");
+        break;
+      case "status":
+        comparison = (a.isActive ? 1 : 0) - (b.isActive ? 1 : 0);
+        break;
+    }
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
   const toggleUserStatusMutation = useMutation({
     mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
@@ -928,15 +1018,60 @@ function UserManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>User</TableHead>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 -ml-2"
+                        onClick={() => handleSort("name")}
+                        data-testid="sort-name"
+                      >
+                        User
+                        {sortField === "name" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Username</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 -ml-2"
+                        onClick={() => handleSort("role")}
+                        data-testid="sort-role"
+                      >
+                        Role
+                        {sortField === "role" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-2 -ml-2"
+                        onClick={() => handleSort("status")}
+                        data-testid="sort-status"
+                      >
+                        Status
+                        {sortField === "status" ? (
+                          sortDirection === "asc" ? <ArrowUp className="ml-1 h-3 w-3" /> : <ArrowDown className="ml-1 h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => {
+                  {sortedUsers.map((user) => {
                     const roleConfig = ROLE_CONFIG[user.role as keyof typeof ROLE_CONFIG] || ROLE_CONFIG.staff;
                     const RoleIcon = roleConfig.icon;
                     const initials = `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`;
@@ -946,6 +1081,7 @@ function UserManagement() {
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
+                              {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={`${user.firstName} ${user.lastName}`} />}
                               <AvatarFallback className="bg-primary/10 text-primary text-sm">
                                 {initials}
                               </AvatarFallback>
