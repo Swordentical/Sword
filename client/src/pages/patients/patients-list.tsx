@@ -374,8 +374,8 @@ export default function PatientsList() {
         <div className={`flex flex-col min-h-0 ${isDesktop && selectedPatient ? "flex-1" : "w-full"}`}>
           <Card className="flex-1 flex flex-col min-h-0">
             <CardHeader className="pb-4 flex-shrink-0">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="relative flex-1 max-w-md">
+              <div className="flex flex-col gap-3">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search by name, phone, or email..."
@@ -385,7 +385,7 @@ export default function PatientsList() {
                     data-testid="input-patient-search"
                   />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -393,14 +393,14 @@ export default function PatientsList() {
                     data-testid="button-sort-patients"
                   >
                     {sortOrder === "asc" ? (
-                      <ArrowUpAZ className="h-4 w-4 mr-2" />
+                      <ArrowUpAZ className="h-4 w-4 sm:mr-2" />
                     ) : (
-                      <ArrowDownAZ className="h-4 w-4 mr-2" />
+                      <ArrowDownAZ className="h-4 w-4 sm:mr-2" />
                     )}
-                    A-Z
+                    <span className="hidden sm:inline">A-Z</span>
                   </Button>
                   <Select value={genderFilter} onValueChange={setGenderFilter}>
-                    <SelectTrigger className="w-[140px]" data-testid="select-gender-filter">
+                    <SelectTrigger className="w-[120px] sm:w-[140px]" data-testid="select-gender-filter">
                       <Filter className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="Gender" />
                     </SelectTrigger>
@@ -426,10 +426,10 @@ export default function PatientsList() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Patient</TableHead>
-                          <TableHead>Contact</TableHead>
-                          <TableHead>Age</TableHead>
-                          <TableHead>Gender</TableHead>
-                          <TableHead>Last Visit</TableHead>
+                          <TableHead className="hidden md:table-cell">Contact</TableHead>
+                          <TableHead className="hidden lg:table-cell">Age</TableHead>
+                          <TableHead className="hidden lg:table-cell">Gender</TableHead>
+                          <TableHead className="hidden sm:table-cell">Last Visit</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -461,7 +461,7 @@ export default function PatientsList() {
                                   </div>
                                 </div>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden md:table-cell">
                                 <div className="flex flex-col gap-1">
                                   {patient.phone && (
                                     <div className="flex items-center gap-1.5 text-sm">
@@ -477,8 +477,8 @@ export default function PatientsList() {
                                   )}
                                 </div>
                               </TableCell>
-                              <TableCell>{calculateAge(patient.dateOfBirth)}</TableCell>
-                              <TableCell>
+                              <TableCell className="hidden lg:table-cell">{calculateAge(patient.dateOfBirth)}</TableCell>
+                              <TableCell className="hidden lg:table-cell">
                                 {patient.gender ? (
                                   <Badge variant="secondary" className="capitalize">
                                     {patient.gender}
@@ -487,7 +487,7 @@ export default function PatientsList() {
                                   <span className="text-muted-foreground">-</span>
                                 )}
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden sm:table-cell">
                                 {patient.lastVisit ? (
                                   format(new Date(patient.lastVisit), "MMM d, yyyy")
                                 ) : (
@@ -542,8 +542,8 @@ export default function PatientsList() {
                   </div>
 
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between mt-4 flex-shrink-0">
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-4 flex-shrink-0">
+                      <p className="text-sm text-muted-foreground text-center sm:text-left">
                         Showing {(page - 1) * pageSize + 1} to{" "}
                         {Math.min(page * pageSize, sortedPatients?.length || 0)} of{" "}
                         {sortedPatients?.length || 0} patients
@@ -556,7 +556,7 @@ export default function PatientsList() {
                           disabled={page === 1}
                         >
                           <ChevronLeft className="h-4 w-4" />
-                          Previous
+                          <span className="hidden sm:inline">Previous</span>
                         </Button>
                         <Button
                           variant="outline"
@@ -564,7 +564,7 @@ export default function PatientsList() {
                           onClick={() => setPage(page + 1)}
                           disabled={page === totalPages}
                         >
-                          Next
+                          <span className="hidden sm:inline">Next</span>
                           <ChevronRight className="h-4 w-4" />
                         </Button>
                       </div>

@@ -72,12 +72,13 @@ function MonthView({
 
   return (
     <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+      {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
         <div
-          key={day}
-          className="bg-muted p-3 text-center text-xs font-medium text-muted-foreground"
+          key={i}
+          className="bg-muted p-1 sm:p-3 text-center text-xs font-medium text-muted-foreground"
         >
-          {day}
+          <span className="hidden sm:inline">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i]}</span>
+          <span className="sm:hidden">{day}</span>
         </div>
       ))}
       {days.map((day, idx) => {
@@ -90,7 +91,7 @@ function MonthView({
             key={idx}
             onClick={() => onDayClick(day)}
             className={cn(
-              "bg-card min-h-[100px] p-2 cursor-pointer hover-elevate transition-colors",
+              "bg-card min-h-[60px] sm:min-h-[100px] p-1 sm:p-2 cursor-pointer hover-elevate transition-colors",
               !isCurrentMonth && "bg-muted/50"
             )}
           >
@@ -228,23 +229,23 @@ function AppointmentStats({ appointments }: { appointments: AppointmentWithPatie
   const pendingCount = appointments.filter((apt) => apt.status === "pending").length;
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-2">
       <Card>
-        <CardContent className="p-4 text-center">
-          <p className="text-2xl font-bold text-primary">{todayCount}</p>
-          <p className="text-xs text-muted-foreground">Today</p>
+        <CardContent className="p-2 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-primary">{todayCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">Today</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="p-4 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{confirmedCount}</p>
-          <p className="text-xs text-muted-foreground">Confirmed</p>
+        <CardContent className="p-2 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-emerald-600">{confirmedCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">Confirmed</p>
         </CardContent>
       </Card>
       <Card>
-        <CardContent className="p-4 text-center">
-          <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
-          <p className="text-xs text-muted-foreground">Pending</p>
+        <CardContent className="p-2 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-amber-600">{pendingCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">Pending</p>
         </CardContent>
       </Card>
     </div>
@@ -306,12 +307,12 @@ export default function AppointmentsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3 space-y-4">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-4">
+        <div className="lg:col-span-3 space-y-4 order-2 lg:order-1">
           <Card>
             <CardHeader className="pb-4">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 justify-center sm:justify-start">
                   <Button
                     variant="outline"
                     size="icon"
@@ -324,10 +325,10 @@ export default function AppointmentsPage() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <h2 className="text-lg font-semibold min-w-[140px] text-center">
+                  <h2 className="text-sm sm:text-lg font-semibold min-w-[100px] sm:min-w-[140px] text-center">
                     {viewMode === "month"
-                      ? format(currentDate, "MMMM yyyy")
-                      : format(selectedDate, "EEEE, MMM d, yyyy")}
+                      ? format(currentDate, "MMM yyyy")
+                      : format(selectedDate, "EEE, MMM d")}
                   </h2>
                   <Button
                     variant="outline"
@@ -343,10 +344,10 @@ export default function AppointmentsPage() {
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[140px]">
-                      <Filter className="h-4 w-4 mr-2" />
+                    <SelectTrigger className="w-[110px] sm:w-[140px]">
+                      <Filter className="h-4 w-4 mr-1 sm:mr-2" />
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -363,21 +364,21 @@ export default function AppointmentsPage() {
                       variant={viewMode === "month" ? "secondary" : "ghost"}
                       size="sm"
                       onClick={() => setViewMode("month")}
-                      className="rounded-none"
+                      className="rounded-none px-2 sm:px-3"
                       data-testid="button-month-view"
                     >
-                      <CalendarIcon className="h-4 w-4 mr-1" />
-                      Month
+                      <CalendarIcon className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Month</span>
                     </Button>
                     <Button
                       variant={viewMode === "day" ? "secondary" : "ghost"}
                       size="sm"
                       onClick={() => setViewMode("day")}
-                      className="rounded-none"
+                      className="rounded-none px-2 sm:px-3"
                       data-testid="button-day-view"
                     >
-                      <Clock className="h-4 w-4 mr-1" />
-                      Day
+                      <Clock className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Day</span>
                     </Button>
                   </div>
                 </div>
@@ -406,7 +407,7 @@ export default function AppointmentsPage() {
           </Card>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 order-1 lg:order-2">
           <AppointmentStats appointments={appointments} />
 
           <Card>

@@ -98,7 +98,7 @@ function GlobalSearch() {
   ).slice(0, 5) || [];
 
   const filteredInventory = inventory?.filter((item) =>
-    `${item.name} ${item.category || ""} ${item.sku || ""}`
+    `${item.name} ${item.category || ""}`
       .toLowerCase()
       .includes(search.toLowerCase())
   ).slice(0, 5) || [];
@@ -211,7 +211,7 @@ function GlobalSearch() {
                         {item.name}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {item.category || "Uncategorized"} - Qty: {item.quantity}
+                        {item.category || "Uncategorized"} - Qty: {item.currentQuantity}
                       </div>
                     </div>
                   </CommandItem>
@@ -402,8 +402,8 @@ function loadWidgetConfig(): WidgetConfig[] {
   try {
     const saved = localStorage.getItem(WIDGETS_STORAGE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      const savedMap = new Map(parsed.map((w: WidgetConfig) => [w.id, w]));
+      const parsed = JSON.parse(saved) as WidgetConfig[];
+      const savedMap = new Map<string, WidgetConfig>(parsed.map((w) => [w.id, w]));
       return DEFAULT_WIDGETS.map(dw => {
         const savedWidget = savedMap.get(dw.id);
         return savedWidget ? { ...dw, enabled: savedWidget.enabled, order: savedWidget.order } : dw;
@@ -669,7 +669,7 @@ export default function Dashboard() {
             <Calendar className="h-12 w-12 mb-3 opacity-50" />
             <p>No appointments scheduled for today</p>
             <Link href="/appointments">
-              <Button variant="link" className="mt-2" data-testid="button-schedule-appointment">
+              <Button variant="ghost" className="mt-2" data-testid="button-schedule-appointment">
                 Schedule an appointment
               </Button>
             </Link>
@@ -769,7 +769,7 @@ export default function Dashboard() {
               ))}
               {lowStockItems.length > 5 && (
                 <Link href="/inventory?filter=low-stock">
-                  <Button variant="link" size="sm" className="p-0">
+                  <Button variant="ghost" size="sm" className="p-0">
                     View all {lowStockItems.length} items
                   </Button>
                 </Link>
@@ -806,7 +806,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
