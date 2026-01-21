@@ -42,6 +42,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Select,
@@ -50,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -93,6 +95,8 @@ const labCaseSchema = z.object({
   caseType: z.string().min(1, "Case type is required"),
   sentDate: z.date({ required_error: "Sent date is required" }),
   expectedReturnDate: z.date().optional(),
+  status: z.string().optional(),
+  isPaid: z.boolean().optional(),
   cost: z.string().optional(),
   description: z.string().optional(),
   notes: z.string().optional(),
@@ -150,6 +154,8 @@ function AddLabCaseDialog({
       labServiceId: "",
       caseType: "",
       sentDate: new Date(),
+      status: "pending",
+      isPaid: false,
       cost: "",
       description: "",
       notes: "",
@@ -166,6 +172,8 @@ function AddLabCaseDialog({
           caseType: editCase.caseType,
           sentDate: editCase.sentDate ? new Date(editCase.sentDate) : new Date(),
           expectedReturnDate: editCase.expectedReturnDate ? new Date(editCase.expectedReturnDate) : undefined,
+          status: editCase.status || "pending",
+          isPaid: !!editCase.isPaid,
           cost: editCase.cost || "",
           description: editCase.description || "",
           notes: editCase.notes || "",
@@ -177,6 +185,8 @@ function AddLabCaseDialog({
           labServiceId: "",
           caseType: "",
           sentDate: new Date(),
+          status: "pending",
+          isPaid: false,
           cost: "",
           description: "",
           notes: "",
@@ -216,6 +226,8 @@ function AddLabCaseDialog({
         labName: selectedLab?.name || "Unknown Lab",
         sentDate: data.sentDate.toISOString().split("T")[0],
         expectedReturnDate: data.expectedReturnDate?.toISOString().split("T")[0] || null,
+        status: data.status,
+        isPaid: data.isPaid,
         cost: data.cost || null,
         description: data.description || null,
         notes: data.notes || null,
@@ -466,6 +478,56 @@ function AddLabCaseDialog({
                       </PopoverContent>
                     </Popover>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-case-status">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {Object.entries(STATUS_CONFIG).map(([status, config]) => (
+                          <SelectItem key={status} value={status}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isPaid"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-is-paid"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>Paid</FormLabel>
+                      <FormDescription>
+                        Mark if lab fees are paid
+                      </FormDescription>
+                    </div>
                   </FormItem>
                 )}
               />
