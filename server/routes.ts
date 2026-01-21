@@ -20,11 +20,15 @@ import {
   insertLabCaseSchema,
   insertDocumentSchema,
   insertUserSchema,
+  insertExternalLabSchema,
+  insertLabServiceSchema,
   patients,
   appointments,
   invoices,
   labCases,
   users,
+  externalLabs,
+  labServices,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -2041,6 +2045,142 @@ export async function registerRoutes(
       res.json(labCase);
     } catch (error) {
       res.status(500).json({ message: "Failed to update lab case" });
+    }
+  });
+
+  // External Labs - admin only for modifications
+  app.get("/api/external-labs", requireAuth, async (req, res) => {
+    try {
+      const labs = await storage.getExternalLabs();
+      res.json(labs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch external labs" });
+    }
+  });
+
+  app.get("/api/external-labs/:id", requireAuth, async (req, res) => {
+    try {
+      const lab = await storage.getExternalLab(req.params.id);
+      if (!lab) {
+        return res.status(404).json({ message: "Lab not found" });
+      }
+      res.json(lab);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lab" });
+    }
+  });
+
+  app.get("/api/external-labs/:id/services", requireAuth, async (req, res) => {
+    try {
+      const services = await storage.getLabServices(req.params.id);
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lab services" });
+    }
+  });
+
+  app.post("/api/external-labs", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertExternalLabSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const lab = await storage.createExternalLab(parsed.data);
+      res.status(201).json(lab);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create external lab" });
+    }
+  });
+
+  app.patch("/api/external-labs/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertExternalLabSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const lab = await storage.updateExternalLab(req.params.id, parsed.data);
+      if (!lab) {
+        return res.status(404).json({ message: "Lab not found" });
+      }
+      res.json(lab);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update external lab" });
+    }
+  });
+
+  app.delete("/api/external-labs/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const deleted = await storage.deleteExternalLab(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Lab not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete external lab" });
+    }
+  });
+
+  // Lab Services - admin only for modifications
+  app.get("/api/lab-services", requireAuth, async (req, res) => {
+    try {
+      const labId = req.query.labId as string | undefined;
+      const services = await storage.getLabServices(labId);
+      res.json(services);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch lab services" });
+    }
+  });
+
+  app.get("/api/lab-services/:id", requireAuth, async (req, res) => {
+    try {
+      const service = await storage.getLabService(req.params.id);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch service" });
+    }
+  });
+
+  app.post("/api/lab-services", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertLabServiceSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const service = await storage.createLabService(parsed.data);
+      res.status(201).json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create lab service" });
+    }
+  });
+
+  app.patch("/api/lab-services/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const parsed = insertLabServiceSchema.partial().safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      const service = await storage.updateLabService(req.params.id, parsed.data);
+      if (!service) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json(service);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update lab service" });
+    }
+  });
+
+  app.delete("/api/lab-services/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const deleted = await storage.deleteLabService(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Service not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete lab service" });
     }
   });
 

@@ -5,6 +5,7 @@ import {
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
   invoiceAdjustments, expenses, insuranceClaims, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog, auditLogs, clinicSettings, clinicRooms,
+  externalLabs, labServices,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Treatment, type InsertTreatment,
@@ -26,6 +27,8 @@ import {
   type AuditLog, type InsertAuditLog,
   type ClinicSettings, type InsertClinicSettings,
   type ClinicRoom, type InsertClinicRoom,
+  type ExternalLab, type InsertExternalLab,
+  type LabService, type InsertLabService,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -192,6 +195,20 @@ export interface IStorage {
     monthlyRevenue: number;
     pendingPayments: number;
   }>;
+
+  // External Labs
+  getExternalLab(id: string): Promise<ExternalLab | undefined>;
+  getExternalLabs(): Promise<ExternalLab[]>;
+  createExternalLab(lab: InsertExternalLab): Promise<ExternalLab>;
+  updateExternalLab(id: string, data: Partial<InsertExternalLab>): Promise<ExternalLab | undefined>;
+  deleteExternalLab(id: string): Promise<boolean>;
+
+  // Lab Services
+  getLabService(id: string): Promise<LabService | undefined>;
+  getLabServices(labId?: string): Promise<LabService[]>;
+  createLabService(service: InsertLabService): Promise<LabService>;
+  updateLabService(id: string, data: Partial<InsertLabService>): Promise<LabService | undefined>;
+  deleteLabService(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1147,6 +1164,61 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClinicRoom(id: string): Promise<boolean> {
     const result = await db.update(clinicRooms).set({ isActive: false }).where(eq(clinicRooms.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // External Labs
+  async getExternalLab(id: string): Promise<ExternalLab | undefined> {
+    const result = await db.select().from(externalLabs).where(eq(externalLabs.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getExternalLabs(): Promise<ExternalLab[]> {
+    return db.select().from(externalLabs).where(eq(externalLabs.isActive, true)).orderBy(externalLabs.name);
+  }
+
+  async createExternalLab(lab: InsertExternalLab): Promise<ExternalLab> {
+    const result = await db.insert(externalLabs).values(lab).returning();
+    return result[0];
+  }
+
+  async updateExternalLab(id: string, data: Partial<InsertExternalLab>): Promise<ExternalLab | undefined> {
+    const result = await db.update(externalLabs).set(data).where(eq(externalLabs.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteExternalLab(id: string): Promise<boolean> {
+    const result = await db.update(externalLabs).set({ isActive: false }).where(eq(externalLabs.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Lab Services
+  async getLabService(id: string): Promise<LabService | undefined> {
+    const result = await db.select().from(labServices).where(eq(labServices.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getLabServices(labId?: string): Promise<LabService[]> {
+    if (labId) {
+      return db.select().from(labServices)
+        .where(and(eq(labServices.labId, labId), eq(labServices.isActive, true)))
+        .orderBy(labServices.name);
+    }
+    return db.select().from(labServices).where(eq(labServices.isActive, true)).orderBy(labServices.name);
+  }
+
+  async createLabService(service: InsertLabService): Promise<LabService> {
+    const result = await db.insert(labServices).values(service).returning();
+    return result[0];
+  }
+
+  async updateLabService(id: string, data: Partial<InsertLabService>): Promise<LabService | undefined> {
+    const result = await db.update(labServices).set(data).where(eq(labServices.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteLabService(id: string): Promise<boolean> {
+    const result = await db.update(labServices).set({ isActive: false }).where(eq(labServices.id, id)).returning();
     return result.length > 0;
   }
 }
