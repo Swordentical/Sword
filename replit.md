@@ -78,3 +78,24 @@ The repository is organized into `client/` (React frontend), `server/` (Express 
 - **Vite**: Development server and build tool.
 - **tsx**: TypeScript execution for backend.
 - **drizzle-kit**: Database migration tooling.
+
+## Recent Changes
+
+### Services Cost Tracking & Management (January 2026)
+- **Cost field**: Added `cost` column to treatments table for calculating net profit
+- **Full CRUD for services**: Edit and delete functionality with Zod validation
+- **Print functionality**: Print filtered service list with cost/price/profit breakdown
+- **Enhanced table columns**: Cost, Price, and Profit columns with color-coded profit display
+- **API Endpoints**:
+  - PATCH /api/treatments/:id (admin, doctor) - update service with Zod validation
+  - DELETE /api/treatments/:id (admin only) - remove service from catalog
+
+### Net Profit Reporting (January 2026)
+- **Comprehensive net profit calculation**: Collections - Service Costs - Operating Expenses = Net Profit
+- **Net Profit tab in Reports**: New dedicated tab with full profit breakdown
+- **Profit calculation breakdown card**: Visual breakdown showing Collections → Gross Profit → Net Profit
+- **Monthly net profit trend chart**: Bar chart showing collections, costs, expenses, and net profit by month
+- **Monthly profit details table**: Tabular view of all profit components by month
+- **Overview enhancement**: Net Profit card added to overview with profit margin percentage
+- **Cash-basis accounting**: Uses actual collections (payments received) for accurate profit calculation
+- **API Endpoint**: GET /api/reports/net-profit (admin only) with date range filtering

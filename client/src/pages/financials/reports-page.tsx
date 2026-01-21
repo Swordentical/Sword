@@ -118,6 +118,19 @@ export default function ReportsPage() {
     queryKey: ["/api/reports/expenses", queryParams],
   });
 
+  const { data: netProfitReport, isLoading: isLoadingNetProfit } = useQuery<{
+    grossRevenue: number;
+    totalCollections: number;
+    serviceCosts: number;
+    operatingExpenses: number;
+    grossProfit: number;
+    netProfit: number;
+    profitMargin: number;
+    byMonth: { month: string; collections: number; costs: number; expenses: number; netProfit: number }[];
+  }>({
+    queryKey: ["/api/reports/net-profit", queryParams],
+  });
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -159,6 +172,7 @@ export default function ReportsPage() {
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="overview" data-testid="tab-overview">Overview</TabsTrigger>
+            <TabsTrigger value="net-profit" data-testid="tab-net-profit">Net Profit</TabsTrigger>
             <TabsTrigger value="revenue" data-testid="tab-revenue">Revenue</TabsTrigger>
             <TabsTrigger value="ar-aging" data-testid="tab-ar-aging">AR Aging</TabsTrigger>
             <TabsTrigger value="production" data-testid="tab-production">Production</TabsTrigger>
@@ -166,7 +180,7 @@ export default function ReportsPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
                   <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -218,6 +232,25 @@ export default function ReportsPage() {
                   <p className="text-xs text-muted-foreground">Operating costs</p>
                 </CardContent>
               </Card>
+
+              <Card className={(netProfitReport?.netProfit || 0) >= 0 ? "border-green-500/50" : "border-red-500/50"}>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+                  {(netProfitReport?.netProfit || 0) >= 0 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-4 w-4 text-red-500" />
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${(netProfitReport?.netProfit || 0) >= 0 ? "text-green-600" : "text-red-600"}`} data-testid="text-net-profit">
+                    {isLoadingNetProfit ? "..." : formatCurrency(netProfitReport?.netProfit || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isLoadingNetProfit ? "..." : `${(netProfitReport?.profitMargin || 0).toFixed(1)}% margin`}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
 
             {revenueReport && revenueReport.byMonth.length > 0 && (
@@ -240,6 +273,150 @@ export default function ReportsPage() {
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="net-profit" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Collections (Income)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600" data-testid="text-profit-collections">
+                    {isLoadingNetProfit ? "..." : formatCurrency(netProfitReport?.totalCollections || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Payments received</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Service Costs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-amber-600" data-testid="text-service-costs">
+                    {isLoadingNetProfit ? "..." : formatCurrency(netProfitReport?.serviceCosts || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Cost of treatments delivered</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Operating Expenses</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600" data-testid="text-operating-expenses">
+                    {isLoadingNetProfit ? "..." : formatCurrency(netProfitReport?.operatingExpenses || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Rent, supplies, utilities, etc.</p>
+                </CardContent>
+              </Card>
+              <Card className={(netProfitReport?.netProfit || 0) >= 0 ? "border-green-500" : "border-red-500"}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${(netProfitReport?.netProfit || 0) >= 0 ? "text-green-600" : "text-red-600"}`} data-testid="text-profit-net">
+                    {isLoadingNetProfit ? "..." : formatCurrency(netProfitReport?.netProfit || 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isLoadingNetProfit ? "..." : `${(netProfitReport?.profitMargin || 0).toFixed(1)}% profit margin`}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Profit Calculation Breakdown</CardTitle>
+                <CardDescription>How your net profit is calculated</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span className="font-medium">Collections (Income)</span>
+                    <span className="text-green-600 font-bold">{formatCurrency(netProfitReport?.totalCollections || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span className="text-muted-foreground">Less: Service Costs</span>
+                    <span className="text-amber-600">- {formatCurrency(netProfitReport?.serviceCosts || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b bg-muted/30 px-2 rounded">
+                    <span className="font-medium">Gross Profit</span>
+                    <span className="font-bold">{formatCurrency(netProfitReport?.grossProfit || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b">
+                    <span className="text-muted-foreground">Less: Operating Expenses</span>
+                    <span className="text-red-600">- {formatCurrency(netProfitReport?.operatingExpenses || 0)}</span>
+                  </div>
+                  <div className={`flex justify-between items-center py-3 px-2 rounded ${(netProfitReport?.netProfit || 0) >= 0 ? "bg-green-100 dark:bg-green-950" : "bg-red-100 dark:bg-red-950"}`}>
+                    <span className="font-bold text-lg">Net Profit</span>
+                    <span className={`font-bold text-lg ${(netProfitReport?.netProfit || 0) >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {formatCurrency(netProfitReport?.netProfit || 0)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {netProfitReport && netProfitReport.byMonth.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Net Profit Trend</CardTitle>
+                  <CardDescription>Net profit breakdown by month</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={netProfitReport.byMonth}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis dataKey="month" className="text-xs" />
+                        <YAxis className="text-xs" tickFormatter={(v) => `$${v}`} />
+                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                        <Legend />
+                        <Bar dataKey="collections" name="Collections" fill="#22c55e" />
+                        <Bar dataKey="costs" name="Service Costs" fill="#f59e0b" />
+                        <Bar dataKey="expenses" name="Operating Expenses" fill="#ef4444" />
+                        <Bar dataKey="netProfit" name="Net Profit" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {netProfitReport && netProfitReport.byMonth.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monthly Profit Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Month</TableHead>
+                        <TableHead className="text-right">Collections</TableHead>
+                        <TableHead className="text-right">Service Costs</TableHead>
+                        <TableHead className="text-right">Expenses</TableHead>
+                        <TableHead className="text-right">Net Profit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {netProfitReport.byMonth.map((row) => (
+                        <TableRow key={row.month}>
+                          <TableCell className="font-medium">{row.month}</TableCell>
+                          <TableCell className="text-right text-green-600">{formatCurrency(row.collections)}</TableCell>
+                          <TableCell className="text-right text-amber-600">{formatCurrency(row.costs)}</TableCell>
+                          <TableCell className="text-right text-red-600">{formatCurrency(row.expenses)}</TableCell>
+                          <TableCell className={`text-right font-bold ${row.netProfit >= 0 ? "text-green-600" : "text-red-600"}`}>
+                            {formatCurrency(row.netProfit)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}

@@ -143,6 +143,16 @@ export interface IStorage {
     byCategory: { category: string; amount: number }[];
     byMonth: { month: string; amount: number }[];
   }>;
+  getNetProfitReport(startDate: string, endDate: string): Promise<{
+    grossRevenue: number;
+    totalCollections: number;
+    serviceCosts: number;
+    operatingExpenses: number;
+    grossProfit: number;
+    netProfit: number;
+    profitMargin: number;
+    byMonth: { month: string; collections: number; costs: number; expenses: number; netProfit: number }[];
+  }>;
 
   // Inventory
   getInventoryItem(id: string): Promise<InventoryItem | undefined>;
@@ -942,6 +952,135 @@ export class DatabaseStorage implements IStorage {
       total: Number(totalResult[0]?.total || 0),
       byCategory: byCategory.map(c => ({ category: c.category, amount: Number(c.amount) })),
       byMonth: byMonth.map(m => ({ month: m.month, amount: Number(m.amount) })),
+    };
+  }
+
+  async getNetProfitReport(startDate: string, endDate: string): Promise<{
+    grossRevenue: number;
+    totalCollections: number;
+    serviceCosts: number;
+    operatingExpenses: number;
+    grossProfit: number;
+    netProfit: number;
+    profitMargin: number;
+    byMonth: { month: string; collections: number; costs: number; expenses: number; netProfit: number }[];
+  }> {
+    // Total collections (payments received, excluding refunded) - this is cash-based income
+    const collectionsResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(payments)
+      .where(and(
+        gte(payments.paymentDate, startDate),
+        lte(payments.paymentDate, endDate),
+        eq(payments.isRefunded, false)
+      ));
+
+    // Gross revenue from invoices (accrual basis - for reference)
+    const revenueResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
+    }).from(invoices)
+      .where(and(
+        gte(invoices.issuedDate, startDate),
+        lte(invoices.issuedDate, endDate)
+      ));
+
+    // Service costs (from completed patient treatments - using treatment cost field)
+    const serviceCostsResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(t.cost AS DECIMAL)), 0)`
+    }).from(patientTreatments)
+      .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
+      .where(and(
+        eq(patientTreatments.status, 'completed'),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ));
+
+    // Operating expenses
+    const expensesResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(expenses)
+      .where(and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ));
+
+    const grossRevenue = Number(revenueResult[0]?.total || 0);
+    const totalCollections = Number(collectionsResult[0]?.total || 0);
+    const serviceCosts = Number(serviceCostsResult[0]?.total || 0);
+    const operatingExpenses = Number(expensesResult[0]?.total || 0);
+    const grossProfit = totalCollections - serviceCosts;
+    const netProfit = grossProfit - operatingExpenses;
+    const profitMargin = totalCollections > 0 ? (netProfit / totalCollections) * 100 : 0;
+
+    // Monthly breakdown
+    const monthlyCollections = await db.select({
+      month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
+      collections: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(payments)
+      .where(and(
+        gte(payments.paymentDate, startDate),
+        lte(payments.paymentDate, endDate),
+        eq(payments.isRefunded, false)
+      ))
+      .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
+
+    const monthlyServiceCosts = await db.select({
+      month: sql<string>`TO_CHAR(completion_date, 'YYYY-MM')`,
+      costs: sql<string>`COALESCE(SUM(CAST(t.cost AS DECIMAL)), 0)`
+    }).from(patientTreatments)
+      .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
+      .where(and(
+        eq(patientTreatments.status, 'completed'),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`);
+
+    const monthlyExpenses = await db.select({
+      month: sql<string>`TO_CHAR(expense_date, 'YYYY-MM')`,
+      expenses: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(expenses)
+      .where(and(
+        gte(expenses.expenseDate, startDate),
+        lte(expenses.expenseDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
+
+    // Merge monthly data
+    const monthsSet = new Set<string>();
+    monthlyCollections.forEach(m => monthsSet.add(m.month));
+    monthlyServiceCosts.forEach(m => monthsSet.add(m.month));
+    monthlyExpenses.forEach(m => monthsSet.add(m.month));
+
+    const collectionsMap = new Map(monthlyCollections.map(m => [m.month, Number(m.collections)]));
+    const costsMap = new Map(monthlyServiceCosts.map(m => [m.month, Number(m.costs)]));
+    const expensesMap = new Map(monthlyExpenses.map(m => [m.month, Number(m.expenses)]));
+
+    const byMonth = Array.from(monthsSet).sort().map(month => {
+      const collections = collectionsMap.get(month) || 0;
+      const costs = costsMap.get(month) || 0;
+      const exp = expensesMap.get(month) || 0;
+      return {
+        month,
+        collections,
+        costs,
+        expenses: exp,
+        netProfit: collections - costs - exp,
+      };
+    });
+
+    return {
+      grossRevenue,
+      totalCollections,
+      serviceCosts,
+      operatingExpenses,
+      grossProfit,
+      netProfit,
+      profitMargin,
+      byMonth,
     };
   }
 

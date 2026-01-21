@@ -1786,6 +1786,20 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/reports/net-profit", requireRole("admin"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      const report = await storage.getNetProfitReport(startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating net profit report:", error);
+      res.status(500).json({ message: "Failed to generate net profit report" });
+    }
+  });
+
   // Insurance Claims - restricted to admin and staff
   app.get("/api/insurance-claims", requireRole("admin", "doctor", "staff"), async (req, res) => {
     try {
