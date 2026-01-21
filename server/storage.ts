@@ -4,7 +4,7 @@ import {
   users, patients, treatments, patientTreatments, appointments,
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
   invoiceAdjustments, expenses, insuranceClaims, inventoryItems, labCases,
-  documents, orthodonticNotes, activityLog, auditLogs,
+  documents, orthodonticNotes, activityLog, auditLogs, clinicSettings, clinicRooms,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Treatment, type InsertTreatment,
@@ -24,6 +24,8 @@ import {
   type OrthodonticNote, type InsertOrthodonticNote,
   type ActivityLog, type InsertActivityLog,
   type AuditLog, type InsertAuditLog,
+  type ClinicSettings, type InsertClinicSettings,
+  type ClinicRoom, type InsertClinicRoom,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -160,24 +162,15 @@ export interface IStorage {
   logActivity(log: InsertActivityLog): Promise<ActivityLog>;
 
   // Clinic Settings
-  getClinicSettings(): Promise<any>;
-  updateClinicSettings(data: any): Promise<any>;
+  getClinicSettings(): Promise<ClinicSettings>;
+  updateClinicSettings(data: Partial<InsertClinicSettings>): Promise<ClinicSettings>;
 
-  // Clinic Settings
-  async getClinicSettings(): Promise<any> {
-    const result = await db.select().from(clinicSettings).limit(1);
-    if (result.length === 0) {
-      const initial = await db.insert(clinicSettings).values({}).returning();
-      return initial[0];
-    }
-    return result[0];
-  }
-
-  async updateClinicSettings(data: any): Promise<any> {
-    const settings = await this.getClinicSettings();
-    const result = await db.update(clinicSettings).set({ ...data, updatedAt: new Date() }).where(eq(clinicSettings.id, settings.id)).returning();
-    return result[0];
-  }
+  // Clinic Rooms
+  getClinicRooms(): Promise<ClinicRoom[]>;
+  getClinicRoom(id: string): Promise<ClinicRoom | undefined>;
+  createClinicRoom(room: InsertClinicRoom): Promise<ClinicRoom>;
+  updateClinicRoom(id: string, data: Partial<InsertClinicRoom>): Promise<ClinicRoom | undefined>;
+  deleteClinicRoom(id: string): Promise<boolean>;
 
   // Audit Logs (Immutable - admin only access)
   getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]>;
@@ -1064,6 +1057,50 @@ export class DatabaseStorage implements IStorage {
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const result = await db.insert(auditLogs).values(log).returning();
     return result[0];
+  }
+
+  // Clinic Settings
+  async getClinicSettings(): Promise<ClinicSettings> {
+    const result = await db.select().from(clinicSettings).limit(1);
+    if (result.length === 0) {
+      const initial = await db.insert(clinicSettings).values({}).returning();
+      return initial[0];
+    }
+    return result[0];
+  }
+
+  async updateClinicSettings(data: Partial<InsertClinicSettings>): Promise<ClinicSettings> {
+    const settings = await this.getClinicSettings();
+    const result = await db.update(clinicSettings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(clinicSettings.id, settings.id))
+      .returning();
+    return result[0];
+  }
+
+  // Clinic Rooms
+  async getClinicRooms(): Promise<ClinicRoom[]> {
+    return db.select().from(clinicRooms).where(eq(clinicRooms.isActive, true)).orderBy(clinicRooms.name);
+  }
+
+  async getClinicRoom(id: string): Promise<ClinicRoom | undefined> {
+    const result = await db.select().from(clinicRooms).where(eq(clinicRooms.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createClinicRoom(room: InsertClinicRoom): Promise<ClinicRoom> {
+    const result = await db.insert(clinicRooms).values(room).returning();
+    return result[0];
+  }
+
+  async updateClinicRoom(id: string, data: Partial<InsertClinicRoom>): Promise<ClinicRoom | undefined> {
+    const result = await db.update(clinicRooms).set(data).where(eq(clinicRooms.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteClinicRoom(id: string): Promise<boolean> {
+    const result = await db.update(clinicRooms).set({ isActive: false }).where(eq(clinicRooms.id, id)).returning();
+    return result.length > 0;
   }
 }
 

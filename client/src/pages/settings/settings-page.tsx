@@ -296,10 +296,35 @@ function AddUserDialog({
 
 function ClinicSettings() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<any>(null);
+  const [newRoomName, setNewRoomName] = useState("");
+  const [newRoomDescription, setNewRoomDescription] = useState("");
   
-  const { data: settings, isLoading } = useQuery({
+  const isAdmin = user?.role === "admin";
+
+  const { data: settings, isLoading } = useQuery<{
+    id: string;
+    clinicName: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    address?: string;
+    logoUrl?: string;
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+    youtube?: string;
+    tiktok?: string;
+  }>({
     queryKey: ["/api/clinic-settings"],
+  });
+
+  const { data: rooms = [], isLoading: roomsLoading } = useQuery<{ id: string; roomNumber: number; name: string; description?: string }[]>({
+    queryKey: ["/api/clinic-rooms"],
   });
 
   const updateMutation = useMutation({
@@ -311,30 +336,87 @@ function ClinicSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/clinic-settings"] });
       toast({ title: "Settings saved" });
     },
+    onError: () => {
+      toast({ title: "Failed to save settings", variant: "destructive" });
+    },
+  });
+
+  const createRoomMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const res = await apiRequest("POST", "/api/clinic-rooms", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinic-rooms"] });
+      toast({ title: "Room created" });
+      setShowAddRoom(false);
+      setNewRoomName("");
+      setNewRoomDescription("");
+    },
+    onError: () => {
+      toast({ title: "Failed to create room", variant: "destructive" });
+    },
+  });
+
+  const updateRoomMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name: string; description?: string } }) => {
+      const res = await apiRequest("PATCH", `/api/clinic-rooms/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinic-rooms"] });
+      toast({ title: "Room updated" });
+      setEditingRoom(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to update room", variant: "destructive" });
+    },
+  });
+
+  const deleteRoomMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/clinic-rooms/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinic-rooms"] });
+      toast({ title: "Room deleted" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete room", variant: "destructive" });
+    },
   });
 
   const form = useForm({
     defaultValues: {
-      name: "",
+      clinicName: "",
       phone: "",
       email: "",
       website: "",
       address: "",
-      numberOfRooms: 1,
-      socialMedia: { twitter: "", facebook: "", instagram: "" },
+      facebook: "",
+      instagram: "",
+      twitter: "",
+      linkedin: "",
+      youtube: "",
+      tiktok: "",
     },
   });
 
   useEffect(() => {
     if (settings) {
       form.reset({
-        name: settings.name || "",
+        clinicName: settings.clinicName || "",
         phone: settings.phone || "",
         email: settings.email || "",
         website: settings.website || "",
         address: settings.address || "",
-        numberOfRooms: settings.numberOfRooms || 1,
-        socialMedia: settings.socialMedia || { twitter: "", facebook: "", instagram: "" },
+        facebook: settings.facebook || "",
+        instagram: settings.instagram || "",
+        twitter: settings.twitter || "",
+        linkedin: settings.linkedin || "",
+        youtube: settings.youtube || "",
+        tiktok: settings.tiktok || "",
       });
     }
   }, [settings, form]);
@@ -344,7 +426,7 @@ function ClinicSettings() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: "File too large", variant: "destructive" });
+      toast({ title: "File too large (max 2MB)", variant: "destructive" });
       return;
     }
 
@@ -387,22 +469,31 @@ function ClinicSettings() {
                     className="hidden"
                     accept="image/*"
                     onChange={handleLogoUpload}
+                    data-testid="input-logo-upload"
                   />
-                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!isAdmin}
+                    data-testid="button-upload-logo"
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Upload Logo
                   </Button>
+                  <p className="text-xs text-muted-foreground mt-1">Max 2MB, PNG/JPG</p>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="clinicName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Clinic Name</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl><Input {...field} disabled={!isAdmin} data-testid="input-clinic-name" /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -412,7 +503,7 @@ function ClinicSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormControl><Input {...field} disabled={!isAdmin} data-testid="input-clinic-phone" /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -422,7 +513,7 @@ function ClinicSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
-                      <FormControl><Input type="email" {...field} /></FormControl>
+                      <FormControl><Input type="email" {...field} disabled={!isAdmin} data-testid="input-clinic-email" /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -432,17 +523,7 @@ function ClinicSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Website</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="numberOfRooms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Number of Rooms</FormLabel>
-                      <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                      <FormControl><Input {...field} disabled={!isAdmin} data-testid="input-clinic-website" /></FormControl>
                     </FormItem>
                   )}
                 />
@@ -454,7 +535,7 @@ function ClinicSettings() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Address</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormControl><Input {...field} disabled={!isAdmin} data-testid="input-clinic-address" /></FormControl>
                   </FormItem>
                 )}
               />
@@ -464,45 +545,230 @@ function ClinicSettings() {
                 <div className="grid gap-4 md:grid-cols-3">
                   <FormField
                     control={form.control}
-                    name="socialMedia.facebook"
+                    name="facebook"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Facebook</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input placeholder="facebook.com/..." {...field} disabled={!isAdmin} data-testid="input-facebook" /></FormControl>
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
-                    name="socialMedia.instagram"
+                    name="instagram"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Instagram</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input placeholder="instagram.com/..." {...field} disabled={!isAdmin} data-testid="input-instagram" /></FormControl>
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
-                    name="socialMedia.twitter"
+                    name="twitter"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Twitter</FormLabel>
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormLabel>Twitter / X</FormLabel>
+                        <FormControl><Input placeholder="x.com/..." {...field} disabled={!isAdmin} data-testid="input-twitter" /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="linkedin"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>LinkedIn</FormLabel>
+                        <FormControl><Input placeholder="linkedin.com/..." {...field} disabled={!isAdmin} data-testid="input-linkedin" /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="youtube"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>YouTube</FormLabel>
+                        <FormControl><Input placeholder="youtube.com/..." {...field} disabled={!isAdmin} data-testid="input-youtube" /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tiktok"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>TikTok</FormLabel>
+                        <FormControl><Input placeholder="tiktok.com/@..." {...field} disabled={!isAdmin} data-testid="input-tiktok" /></FormControl>
                       </FormItem>
                     )}
                   />
                 </div>
               </div>
 
-              <Button type="submit" disabled={updateMutation.isPending}>
-                {updateMutation.isPending ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
-                Save Changes
-              </Button>
+              {isAdmin && (
+                <Button type="submit" disabled={updateMutation.isPending} data-testid="button-save-settings">
+                  {updateMutation.isPending ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                  Save Changes
+                </Button>
+              )}
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      {/* Rooms Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Clinic Rooms
+              </CardTitle>
+              <CardDescription>
+                Manage rooms available for appointments
+              </CardDescription>
+            </div>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setShowAddRoom(true)} data-testid="button-add-room">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Room
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {roomsLoading ? (
+            <Loader2 className="animate-spin mx-auto" />
+          ) : (rooms as any[]).length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No rooms configured yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {(rooms as any[]).map((room: any) => (
+                <div key={room.id} className="flex items-center justify-between p-3 border rounded-lg" data-testid={`room-item-${room.id}`}>
+                  <div>
+                    <p className="font-medium">{room.name}</p>
+                    {room.description && (
+                      <p className="text-sm text-muted-foreground">{room.description}</p>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" data-testid={`button-room-menu-${room.id}`}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditingRoom(room)} data-testid={`button-edit-room-${room.id}`}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={() => deleteRoomMutation.mutate(room.id)}
+                          data-testid={`button-delete-room-${room.id}`}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Add Room Dialog */}
+      <Dialog open={showAddRoom} onOpenChange={setShowAddRoom}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Room</DialogTitle>
+            <DialogDescription>Add a new room for scheduling appointments</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="room-name">Room Name *</Label>
+              <Input
+                id="room-name"
+                value={newRoomName}
+                onChange={(e) => setNewRoomName(e.target.value)}
+                placeholder="e.g. Room 1, Operatory A"
+                data-testid="input-new-room-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="room-description">Description</Label>
+              <Input
+                id="room-description"
+                value={newRoomDescription}
+                onChange={(e) => setNewRoomDescription(e.target.value)}
+                placeholder="e.g. Main treatment room"
+                data-testid="input-new-room-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddRoom(false)}>Cancel</Button>
+            <Button 
+              onClick={() => createRoomMutation.mutate({ name: newRoomName, description: newRoomDescription || undefined })}
+              disabled={!newRoomName.trim() || createRoomMutation.isPending}
+              data-testid="button-confirm-add-room"
+            >
+              {createRoomMutation.isPending && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
+              Add Room
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Room Dialog */}
+      <Dialog open={!!editingRoom} onOpenChange={(open) => !open && setEditingRoom(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Room</DialogTitle>
+            <DialogDescription>Update room details</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-room-name">Room Name *</Label>
+              <Input
+                id="edit-room-name"
+                value={editingRoom?.name || ""}
+                onChange={(e) => setEditingRoom({ ...editingRoom, name: e.target.value })}
+                data-testid="input-edit-room-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-room-description">Description</Label>
+              <Input
+                id="edit-room-description"
+                value={editingRoom?.description || ""}
+                onChange={(e) => setEditingRoom({ ...editingRoom, description: e.target.value })}
+                data-testid="input-edit-room-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingRoom(null)}>Cancel</Button>
+            <Button 
+              onClick={() => updateRoomMutation.mutate({ 
+                id: editingRoom.id, 
+                data: { name: editingRoom.name, description: editingRoom.description || undefined } 
+              })}
+              disabled={!editingRoom?.name?.trim() || updateRoomMutation.isPending}
+              data-testid="button-confirm-edit-room"
+            >
+              {updateRoomMutation.isPending && <Loader2 className="animate-spin h-4 w-4 mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

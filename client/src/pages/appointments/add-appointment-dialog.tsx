@@ -50,6 +50,7 @@ const appointmentSchema = z.object({
   duration: z.number().min(15, "Minimum duration is 15 minutes"),
   category: z.enum(["new_visit", "follow_up", "discussion", "surgery", "checkup", "cleaning"]),
   status: z.enum(["confirmed", "pending", "canceled", "completed"]).default("pending"),
+  roomNumber: z.number().optional(),
   notes: z.string().optional(),
 });
 
@@ -92,6 +93,7 @@ export function AddAppointmentDialog({ open, onOpenChange }: AddAppointmentDialo
       duration: 30,
       category: "checkup",
       status: "pending",
+      roomNumber: undefined,
       notes: "",
     },
   });
@@ -102,6 +104,10 @@ export function AddAppointmentDialog({ open, onOpenChange }: AddAppointmentDialo
 
   const { data: doctors = [] } = useQuery<User[]>({
     queryKey: ["/api/users", { role: "doctor" }],
+  });
+
+  const { data: rooms = [] } = useQuery<{ id: string; roomNumber: number; name: string; description?: string }[]>({
+    queryKey: ["/api/clinic-rooms"],
   });
 
   const createAppointmentMutation = useMutation({
@@ -121,6 +127,7 @@ export function AddAppointmentDialog({ open, onOpenChange }: AddAppointmentDialo
         endTime: endTime.toISOString(),
         category: data.category,
         status: data.status,
+        roomNumber: data.roomNumber || null,
         notes: data.notes || null,
       });
       return res.json();
@@ -319,30 +326,60 @@ export function AddAppointmentDialog({ open, onOpenChange }: AddAppointmentDialo
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="doctorId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assign Doctor</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger data-testid="select-appointment-doctor">
-                        <SelectValue placeholder="Select a doctor (optional)" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {doctors.map((doctor) => (
-                        <SelectItem key={doctor.id} value={doctor.id}>
-                          Dr. {doctor.firstName} {doctor.lastName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="doctorId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Assign Doctor</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-appointment-doctor">
+                          <SelectValue placeholder="Select a doctor (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {doctors.map((doctor) => (
+                          <SelectItem key={doctor.id} value={doctor.id}>
+                            Dr. {doctor.firstName} {doctor.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="roomNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Room</FormLabel>
+                    <Select 
+                      onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)} 
+                      value={field.value?.toString() || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-appointment-room">
+                          <SelectValue placeholder="Select room (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {rooms.map((room) => (
+                          <SelectItem key={room.id} value={room.roomNumber.toString()}>
+                            {room.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

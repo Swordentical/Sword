@@ -122,20 +122,6 @@ export const patientTreatments = pgTable("patient_treatments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Clinic settings table
-export const clinicSettings = pgTable("clinic_settings", {
-  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull().default("DentalCare Clinic"),
-  logoUrl: text("logo_url"),
-  phone: text("phone").default("+1 (555) 123-4567"),
-  email: text("email").default("info@dentalcare.com"),
-  website: text("website").default("www.dentalcare.com"),
-  address: text("address").default("123 Medical Drive, Healthcare City, HC 12345"),
-  numberOfRooms: integer("number_of_rooms").default(1),
-  socialMedia: jsonb("social_media").default({}), // { twitter: '', facebook: '', instagram: '' }
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Appointments
 export const appointments = pgTable("appointments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -151,8 +137,6 @@ export const appointments = pgTable("appointments", {
   createdAt: timestamp("created_at").defaultNow(),
   createdById: varchar("created_by_id", { length: 36 }),
 });
-
-export const insertClinicSettingsSchema = createInsertSchema(clinicSettings).omit({ id: true, updatedAt: true });
 
 // Invoices
 export const invoices = pgTable("invoices", {
@@ -363,6 +347,35 @@ export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
   "expense", "payment_plan", "invoice_adjustment", "user", "treatment"
 ]);
 
+// Clinic Settings - singleton table for clinic configuration
+export const clinicSettings = pgTable("clinic_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  clinicName: text("clinic_name").notNull().default("DentalCare Clinic"),
+  phone: text("phone"),
+  email: text("email"),
+  website: text("website"),
+  address: text("address"),
+  logoUrl: text("logo_url"),
+  // Social media
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+  twitter: text("twitter"),
+  linkedin: text("linkedin"),
+  youtube: text("youtube"),
+  tiktok: text("tiktok"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Clinic Rooms for appointments
+export const clinicRooms = pgTable("clinic_rooms", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomNumber: integer("room_number").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Immutable Audit Log - CRITICAL for financial integrity
 // This table is append-only and records CANNOT be modified or deleted
 export const auditLogs = pgTable("audit_logs", {
@@ -549,6 +562,8 @@ export const insertDocumentSchema = createInsertSchema(documents).omit({ id: tru
 export const insertOrthodonticNoteSchema = createInsertSchema(orthodonticNotes).omit({ id: true, createdAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLog).omit({ id: true, createdAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
+export const insertClinicSettingsSchema = createInsertSchema(clinicSettings).omit({ id: true, updatedAt: true });
+export const insertClinicRoomSchema = createInsertSchema(clinicRooms).omit({ id: true, createdAt: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -607,6 +622,12 @@ export type ActivityLog = typeof activityLog.$inferSelect;
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+export type InsertClinicSettings = z.infer<typeof insertClinicSettingsSchema>;
+export type ClinicSettings = typeof clinicSettings.$inferSelect;
+
+export type InsertClinicRoom = z.infer<typeof insertClinicRoomSchema>;
+export type ClinicRoom = typeof clinicRooms.$inferSelect;
 
 // Role type
 export type UserRole = "admin" | "doctor" | "staff" | "student";

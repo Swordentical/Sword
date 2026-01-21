@@ -52,26 +52,7 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Clinic Settings
-  app.get("/api/clinic-settings", requireAuth, async (req, res) => {
-    try {
-      const settings = await storage.getClinicSettings();
-      res.json(settings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch clinic settings" });
-    }
-  });
-
-  app.patch("/api/clinic-settings", requireRole("admin"), async (req, res) => {
-    try {
-      const settings = await storage.updateClinicSettings(req.body);
-      res.json(settings);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update clinic settings" });
-    }
-  });
-
-  // Set up authentication
+  // Set up authentication FIRST
   setupAuth(app);
 
   // Dashboard stats
@@ -1941,6 +1922,114 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch patient financials" });
+    }
+  });
+
+  // Clinic Settings
+  app.get("/api/clinic-settings", requireAuth, async (req, res) => {
+    try {
+      const settings = await storage.getClinicSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch clinic settings" });
+    }
+  });
+
+  app.patch("/api/clinic-settings", requireRole("admin"), async (req, res) => {
+    try {
+      const settings = await storage.updateClinicSettings(req.body);
+      
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "clinic_settings",
+        entityId: settings.id,
+        details: "Updated clinic settings",
+      });
+
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update clinic settings" });
+    }
+  });
+
+  // Clinic Rooms
+  app.get("/api/clinic-rooms", requireAuth, async (req, res) => {
+    try {
+      const rooms = await storage.getClinicRooms();
+      res.json(rooms);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch clinic rooms" });
+    }
+  });
+
+  app.post("/api/clinic-rooms", requireRole("admin"), async (req, res) => {
+    try {
+      // Auto-generate roomNumber based on existing rooms
+      const existingRooms = await storage.getClinicRooms();
+      const maxRoomNumber = existingRooms.reduce((max, r) => Math.max(max, r.roomNumber || 0), 0);
+      const newRoomNumber = maxRoomNumber + 1;
+      
+      const room = await storage.createClinicRoom({
+        ...req.body,
+        roomNumber: newRoomNumber,
+      });
+      
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "created",
+        entityType: "clinic_room",
+        entityId: room.id,
+        details: `Created room: ${room.name}`,
+      });
+
+      res.status(201).json(room);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create clinic room" });
+    }
+  });
+
+  app.patch("/api/clinic-rooms/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const room = await storage.updateClinicRoom(req.params.id, req.body);
+      if (!room) {
+        return res.status(404).json({ message: "Room not found" });
+      }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "clinic_room",
+        entityId: room.id,
+        details: `Updated room: ${room.name}`,
+      });
+
+      res.json(room);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update clinic room" });
+    }
+  });
+
+  app.delete("/api/clinic-rooms/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const room = await storage.getClinicRoom(req.params.id);
+      if (!room) {
+        return res.status(404).json({ message: "Room not found" });
+      }
+
+      await storage.deleteClinicRoom(req.params.id);
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "deleted",
+        entityType: "clinic_room",
+        entityId: req.params.id,
+        details: `Deleted room: ${room.name}`,
+      });
+
+      res.json({ message: "Room deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete clinic room" });
     }
   });
 

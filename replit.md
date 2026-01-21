@@ -165,3 +165,25 @@ The system supports four user roles with different permission levels:
   - POST /api/insurance-claims - create claim (auto-generates claim number)
   - PATCH /api/insurance-claims/:id - update claim
   - DELETE /api/insurance-claims/:id - delete claim (admin only)
+
+### Clinic Settings & Room Management (January 2026)
+- **Clinic Settings** (Settings > Clinic tab)
+  - Basic info: clinic name, phone, email, website, address
+  - Logo upload with base64 encoding (max 2MB)
+  - Individual social media fields: Facebook, Instagram, Twitter/X, LinkedIn, YouTube, TikTok
+  - Admin-only editing, view for all authenticated users
+- **Room Management**
+  - CRUD for clinic rooms (admin only)
+  - Rooms list with edit/delete dropdown menu
+  - Add/edit room dialogs with name and description
+  - Soft delete (isActive flag) to preserve historical data
+- **Appointment Room Assignment**
+  - Room selection dropdown in Add Appointment dialog
+  - Rooms stored as roomNumber (integer) in appointments table
+- **API Endpoints**:
+  - GET/PATCH /api/clinic-settings (authenticated/admin)
+  - GET/POST /api/clinic-rooms (authenticated/admin for create)
+  - PATCH/DELETE /api/clinic-rooms/:id (admin only)
+- **Database Tables**:
+  - clinic_settings: singleton for clinic configuration
+  - clinic_rooms: room entries with name, description, isActive
