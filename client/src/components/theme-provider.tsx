@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { triggerThemeTransition } from "./theme-transition-layer";
 
 type Theme = "dark" | "light" | "system";
 
@@ -60,43 +61,19 @@ export function ThemeProvider({
   }, [theme]);
 
   const setThemeWithAnimation = useCallback((newTheme: Theme, x: number, y: number) => {
-    // Check for reduced motion preference
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Determine the target resolved theme
+    const targetResolved = newTheme === 'system' 
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : newTheme as "dark" | "light";
     
-    if (prefersReducedMotion || !document.startViewTransition) {
+    // Trigger the global overlay transition
+    triggerThemeTransition(x, y, targetResolved);
+    
+    // Small delay to let the overlay start, then change the actual theme
+    setTimeout(() => {
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
-      return;
-    }
-
-    // Calculate the maximum radius needed to cover the entire screen
-    const maxRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
-    );
-
-    const transition = document.startViewTransition(() => {
-      localStorage.setItem(storageKey, newTheme);
-      setTheme(newTheme);
-    });
-
-    transition.ready.then(() => {
-      const isDark = newTheme === 'dark' || (newTheme === 'system' && window.matchMedia("(prefers-color-scheme: dark)").matches);
-      
-      // Cinematic animation: 600ms with smooth easing
-      document.documentElement.animate(
-        {
-          clipPath: isDark
-            ? [`circle(0px at ${x}px ${y}px)`, `circle(${maxRadius}px at ${x}px ${y}px)`]
-            : [`circle(${maxRadius}px at ${x}px ${y}px)`, `circle(0px at ${x}px ${y}px)`],
-        },
-        {
-          duration: 600,
-          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-          pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)',
-        }
-      );
-    });
+    }, 50);
   }, [storageKey]);
 
   const value = {

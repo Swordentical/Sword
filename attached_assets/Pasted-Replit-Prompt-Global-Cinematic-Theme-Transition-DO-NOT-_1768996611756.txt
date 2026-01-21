@@ -1,0 +1,198 @@
+Replit Prompt — Global Cinematic Theme Transition (DO NOT TOUCH SWITCH)
+⚠️ IMPORTANT
+
+DO NOT modify the existing theme switch
+
+DO NOT change its animation
+
+DO NOT change its design
+
+Treat the switch as a trigger only
+
+Your task is to add a global, page-wide animation layer that reacts to the switch.
+
+🎯 Objective
+
+Create a full-page cinematic theme transition that visually spreads across the entire screen when dark mode is toggled, while preserving the current switch animation exactly as-is.
+
+The effect should feel like:
+
+Darkness (or light) flows across the interface, not snaps.
+
+🧱 Architectural Approach (MANDATORY)
+Add a Global Transition Overlay
+
+A fixed-position element:
+
+<div id="theme-transition-layer" />
+
+
+Positioned:
+
+position: fixed;
+inset: 0;
+pointer-events: none;
+z-index: 9999;
+
+
+This layer:
+
+Animates ONCE per toggle
+
+Disappears after animation completes
+
+Does NOT interfere with layout or clicks
+
+🌊 Animation Behavior (CORE EXPERIENCE)
+When switching Light → Dark:
+
+1️⃣ Darkness emanates from the switch origin
+
+Use:
+
+radial-gradient mask
+
+or clip-path circle
+
+Origin point = switch button position (x, y)
+
+2️⃣ The dark tone:
+
+Expands smoothly
+
+Covers entire viewport
+
+Slight vignette near edges
+
+No harsh edges
+
+3️⃣ Background colors underneath:
+
+Transition naturally while masked
+
+No flicker
+
+No repaint artifacts
+
+When switching Dark → Light:
+
+Reverse the effect:
+
+Soft light expands
+
+Darkness retreats
+
+Slight glow effect
+
+Feels like “morning light”, not flashlight
+
+🎞️ Motion & Timing Rules
+
+Duration: 600–900ms
+
+Use:
+
+ease-in-out
+
+cubic-bezier
+
+or spring physics
+
+Animation must feel:
+
+calm
+
+expensive
+
+intentional
+
+No instant jumps. No linear easing.
+
+🎨 Visual Style
+
+No particles
+
+No sparks
+
+No gimmicks
+
+No blur overload
+
+Allowed:
+
+Subtle noise/grain (optional)
+
+Very soft gradients
+
+Ambient shadow fade
+
+🧠 UX Constraints
+
+Animation runs only when user toggles
+
+Does NOT re-run on:
+
+route change
+
+page reload
+
+Respects prefers-reduced-motion
+
+If enabled → instant switch (no animation)
+
+🛠️ Technical Constraints
+
+React 18
+
+Tailwind CSS
+
+CSS variables for themes
+
+Optional:
+
+Framer Motion (recommended)
+
+Pure CSS fallback
+
+Theme state must already exist — just listen to it.
+
+🧪 Edge Cases
+
+Works on large screens & mobile
+
+No performance drop
+
+No scroll lock
+
+No white flash
+
+No hydration mismatch
+
+🚫 HARD NOs
+
+❌ Modifying the switch
+
+❌ Replacing the switch
+
+❌ Using default Tailwind transitions
+
+❌ Full opacity fade (cheap look)
+
+❌ Screen flicker
+
+✅ Acceptance Criteria
+
+This is DONE only if:
+
+The switch still feels perfect
+
+The page feels “alive” during theme change
+
+Users feel the transition, not notice the technique
+
+The app feels premium SaaS / Apple-level
+
+🧠 Design Philosophy
+
+The switch starts the story.
+The screen finishes it.

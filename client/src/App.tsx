@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeTransitionLayer } from "@/components/theme-transition-layer";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -204,6 +205,7 @@ function App() {
           <TooltipProvider>
             <Router />
             <Toaster />
+            <ThemeTransitionLayer />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
