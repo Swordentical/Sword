@@ -15,13 +15,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield } from "lucide-react";
 
@@ -36,7 +29,6 @@ const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
-  role: z.enum(["admin", "doctor", "staff", "student"]),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -86,7 +78,6 @@ export default function AuthPage() {
       firstName: "",
       lastName: "",
       email: "",
-      role: "staff",
     },
   });
 
@@ -289,29 +280,6 @@ export default function AuthPage() {
                                 data-testid="input-register-password"
                               />
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={registerForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger data-testid="select-register-role">
-                                  <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="doctor">Doctor</SelectItem>
-                                <SelectItem value="staff">Staff</SelectItem>
-                                <SelectItem value="student">Student</SelectItem>
-                              </SelectContent>
-                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}

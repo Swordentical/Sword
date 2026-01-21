@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["admin", "doctor", "staff", "student"]);
+export const userRoleEnum = pgEnum("user_role", ["admin", "doctor", "staff", "student", "pending"]);
 export const genderEnum = pgEnum("gender", ["male", "female", "other"]);
 export const appointmentStatusEnum = pgEnum("appointment_status", ["confirmed", "pending", "canceled", "completed"]);
 export const appointmentCategoryEnum = pgEnum("appointment_category", ["new_visit", "follow_up", "discussion", "surgery", "checkup", "cleaning"]);
@@ -47,7 +47,7 @@ export const users = pgTable("users", {
   email: text("email"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  role: userRoleEnum("role").notNull().default("staff"),
+  role: userRoleEnum("role").notNull().default("pending"),
   phone: text("phone"),
   avatarUrl: text("avatar_url"),
   // Doctor-specific fields
@@ -337,6 +337,31 @@ export const activityLog = pgTable("activity_log", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Audit action types
+export const auditActionTypeEnum = pgEnum("audit_action_type", ["CREATE", "UPDATE", "DELETE"]);
+
+// Audit entity types
+export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
+  "invoice", "payment", "patient", "appointment", "inventory", "lab_case",
+  "expense", "payment_plan", "invoice_adjustment", "user", "treatment"
+]);
+
+// Immutable Audit Log - CRITICAL for financial integrity
+// This table is append-only and records CANNOT be modified or deleted
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
+  userRole: text("user_role").notNull(), // Captures role at time of action
+  actionType: auditActionTypeEnum("action_type").notNull(),
+  entityType: auditEntityTypeEnum("entity_type").notNull(),
+  entityId: varchar("entity_id", { length: 36 }).notNull(),
+  previousValue: jsonb("previous_value"), // null for CREATE actions
+  newValue: jsonb("new_value"), // null for DELETE actions
+  description: text("description").notNull(),
+  ipAddress: text("ip_address"),
+  timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   appointments: many(appointments),
@@ -506,6 +531,7 @@ export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true,
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
 export const insertOrthodonticNoteSchema = createInsertSchema(orthodonticNotes).omit({ id: true, createdAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLog).omit({ id: true, createdAt: true });
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -561,6 +587,9 @@ export type OrthodonticNote = typeof orthodonticNotes.$inferSelect;
 
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;
 export type ActivityLog = typeof activityLog.$inferSelect;
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;
 
 // Role type
 export type UserRole = "admin" | "doctor" | "staff" | "student";

@@ -1,0 +1,200 @@
+Financial Visibility, Staff Authority & Audit Logs
+
+Context:
+Dental Clinic Management System with strict role-based access and financial integrity rules.
+
+👥 Staff (Secretary) – Updated Rules
+✅ Staff CAN:
+
+See all patients
+
+Create and edit patient profiles
+
+See patient-level financial status, including:
+
+Total treatment cost
+
+Amount paid
+
+Remaining balance
+
+Create invoices
+
+Record payments
+
+Collect money from patients
+
+Add notes to financial transactions
+
+Staff are operationally responsible for money collection.
+
+❌ Staff CANNOT:
+
+View financial analytics (daily/monthly/yearly charts)
+
+View or manage clinic-wide financial reports
+
+View or edit expenses history
+
+View income vs outcome summaries
+
+View activity logs
+
+Modify system financial settings
+
+Delete or alter audit logs
+
+Bypass doctor–patient assignment rules
+
+👑 Admin – Financial Authority
+
+Admin:
+
+Has full access to:
+
+Financial analytics
+
+Reports
+
+Expenses
+
+Income/outcome summaries
+
+Activity logs
+
+Is the only role allowed to:
+
+Modify financial system rules
+
+Manage expense categories
+
+Review all historical changes
+
+📜 Mandatory Audit Log System (CRITICAL)
+🔒 Audit Logging Rules
+
+Every financial or critical action MUST be logged permanently.
+
+Logs are:
+
+Append-only
+
+Immutable
+
+Never deletable
+
+Never editable
+
+Visible ONLY to Admin
+
+🧾 Actions That MUST Be Logged
+
+Log entries must be created when:
+
+Invoice is created
+
+Payment is added
+
+Payment is edited
+
+Payment is deleted
+
+Invoice amount is modified
+
+Patient balance changes
+
+Lab payment is recorded
+
+Inventory stock is adjusted
+
+Any financial value changes
+
+Any patient reassignment happens
+
+Any appointment reassignment happens
+
+📄 Audit Log Record Format
+
+Each log entry must contain:
+
+{
+  id: uuid,
+  user_id: uuid,
+  user_role: 'admin' | 'doctor' | 'staff',
+  action_type: 'CREATE' | 'UPDATE' | 'DELETE',
+  entity_type: 'invoice' | 'payment' | 'patient' | 'appointment' | 'inventory' | 'lab_case',
+  entity_id: uuid,
+  previous_value: jsonb | null,
+  new_value: jsonb | null,
+  description: string,
+  timestamp: timestamptz
+}
+
+🧠 Example Log Entry
+
+User: Staff (ID: X)
+Action: CREATE
+Entity: Payment
+Amount: 500 USD
+Patient: John Doe
+Date: 2026-01-21 14:32
+Description: “Recorded cash payment for zirconia crown”
+
+🧨 Deletion Rules (VERY IMPORTANT)
+
+Users may delete records they created (invoice/payment/etc.)
+
+Deletion:
+
+Must be soft-delete
+
+Must create a log entry
+
+❌ Logs themselves can never be deleted
+
+❌ Logs can never be modified
+
+❌ Logs can never be hidden from Admin
+
+🛡️ Backend Enforcement (Non-Optional)
+
+Logging must happen server-side
+
+Do NOT rely on frontend logging
+
+Use database triggers or backend middleware to:
+
+Capture old + new values
+
+Store logs automatically
+
+🧠 Design Principle
+
+Money without logs = risk.
+Logs without deletion = trust.
+
+Build the system as if it will be audited one day.
+
+🧪 Final Requirement
+
+Before marking the financial module “done”:
+
+Test that:
+
+Staff cannot access analytics
+
+Doctors cannot see others’ patients
+
+Admin can see full history
+
+No one can delete audit logs
+
+If you want next, I strongly recommend:
+
+🔥 Supabase RLS policies for financial tables
+
+🔥 PostgreSQL trigger examples for audit logs
+
+🔥 Admin-only audit log UI design
+
+🔥 Fraud-prevention edge cases

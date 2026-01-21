@@ -65,14 +65,30 @@ export async function registerRoutes(
     }
   });
 
-  // Activity log
-  app.get("/api/activity", requireAuth, async (req, res) => {
+  // Activity log - admin only access
+  app.get("/api/activity", requireRole("admin"), async (req, res) => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const activity = await storage.getRecentActivity(limit);
       res.json(activity);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activity" });
+    }
+  });
+
+  // Audit logs - admin only, immutable records for financial integrity
+  app.get("/api/audit-logs", requireRole("admin"), async (req, res) => {
+    try {
+      const { entityType, entityId, userId, limit } = req.query;
+      const auditLogs = await storage.getAuditLogs({
+        entityType: entityType as string,
+        entityId: entityId as string,
+        userId: userId as string,
+        limit: limit ? parseInt(limit as string) : 100,
+      });
+      res.json(auditLogs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 
@@ -176,6 +192,103 @@ export async function registerRoutes(
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Get pending users for admin approval
+  app.get("/api/users/pending", requireRole("admin"), async (req, res) => {
+    try {
+      const pendingUsers = await storage.getUsers({ role: "pending" });
+      res.json(pendingUsers.map(u => ({ ...u, password: undefined })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch pending users" });
+    }
+  });
+
+  // Approve user and assign role (admin only)
+  app.post("/api/users/:id/approve", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+      
+      const validRoles = ["admin", "doctor", "staff", "student"];
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({ 
+          message: "Invalid role. Must be one of: admin, doctor, staff, student" 
+        });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.role !== "pending") {
+        return res.status(400).json({ message: "User is already approved" });
+      }
+      
+      const previousRole = user.role;
+      const updatedUser = await storage.updateUser(id, { role });
+      
+      // Log the role assignment with full audit trail
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "approved",
+        entityType: "user",
+        entityId: id,
+        details: `Approved user ${user.firstName} ${user.lastName} and assigned role: ${role}`,
+      });
+      
+      res.json({ 
+        message: `User approved and assigned role: ${role}`,
+        user: { ...updatedUser, password: undefined }
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to approve user" });
+    }
+  });
+
+  // Change user role (admin only) - for users already approved
+  app.post("/api/users/:id/role", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { role } = req.body;
+      
+      const validRoles = ["admin", "doctor", "staff", "student", "pending"];
+      if (!role || !validRoles.includes(role)) {
+        return res.status(400).json({ 
+          message: "Invalid role. Must be one of: admin, doctor, staff, student, pending" 
+        });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const currentUserId = (req.user as any).id;
+      if (id === currentUserId && role === "pending") {
+        return res.status(400).json({ message: "Cannot demote your own account to pending" });
+      }
+      
+      const previousRole = user.role;
+      const updatedUser = await storage.updateUser(id, { role });
+      
+      // Log the role change with full audit trail
+      await storage.logActivity({
+        userId: currentUserId,
+        action: "role_changed",
+        entityType: "user",
+        entityId: id,
+        details: `Changed role for ${user.firstName} ${user.lastName} from ${previousRole} to ${role}`,
+      });
+      
+      res.json({ 
+        message: `User role changed from ${previousRole} to ${role}`,
+        user: { ...updatedUser, password: undefined }
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to change user role" });
     }
   });
 
@@ -594,12 +707,28 @@ export async function registerRoutes(
         }
       }
 
+      const user = req.user as any;
+      
+      // Activity log for dashboard
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "created",
         entityType: "invoice",
         entityId: invoice.id,
         details: `Created invoice ${invoice.invoiceNumber} for $${invoice.finalAmount}`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "invoice",
+        entityId: invoice.id,
+        previousValue: null,
+        newValue: invoice,
+        description: `Created invoice ${invoice.invoiceNumber} for $${invoice.finalAmount}`,
+        ipAddress: req.ip || null,
       });
 
       res.status(201).json(invoice);
@@ -645,17 +774,38 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      // Get previous state for audit log
+      const previousInvoice = await storage.getInvoice(req.params.id);
+      if (!previousInvoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
       const invoice = await storage.updateInvoice(req.params.id, parsed.data);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
 
+      const user = req.user as any;
+      
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "updated",
         entityType: "invoice",
         entityId: invoice.id,
         details: `Updated invoice ${invoice.invoiceNumber}`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "invoice",
+        entityId: invoice.id,
+        previousValue: previousInvoice,
+        newValue: invoice,
+        description: `Updated invoice ${invoice.invoiceNumber}`,
+        ipAddress: req.ip || null,
       });
 
       res.json(invoice);
@@ -810,9 +960,10 @@ export async function registerRoutes(
 
   app.post("/api/payments", requireRole("admin", "doctor", "staff"), async (req, res) => {
     try {
+      const user = req.user as any;
       const parsed = insertPaymentSchema.safeParse({
         ...req.body,
-        createdById: (req.user as any).id,
+        createdById: user.id,
       });
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -821,11 +972,24 @@ export async function registerRoutes(
       const payment = await storage.createPayment(parsed.data);
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "created",
         entityType: "payment",
         entityId: payment.id,
         details: `Recorded payment of $${payment.amount}`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "payment",
+        entityId: payment.id,
+        previousValue: null,
+        newValue: payment,
+        description: `Recorded payment of $${payment.amount} via ${payment.paymentMethod}`,
+        ipAddress: req.ip || null,
       });
 
       res.status(201).json(payment);
@@ -842,17 +1006,38 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Refund reason is required" });
       }
 
+      // Get previous state for audit log
+      const previousPayment = await storage.getPayment(req.params.id);
+      if (!previousPayment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
       const payment = await storage.refundPayment(req.params.id, reason);
       if (!payment) {
         return res.status(404).json({ message: "Payment not found or already refunded" });
       }
 
+      const user = req.user as any;
+
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "refunded",
         entityType: "payment",
         entityId: payment.id,
         details: `Refunded payment of $${payment.amount}: ${reason}`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "payment",
+        entityId: payment.id,
+        previousValue: previousPayment,
+        newValue: payment,
+        description: `Refunded payment of $${payment.amount}: ${reason}`,
+        ipAddress: req.ip || null,
       });
 
       res.json(payment);
@@ -1160,9 +1345,10 @@ export async function registerRoutes(
 
   app.post("/api/expenses", requireRole("admin"), async (req, res) => {
     try {
+      const user = req.user as any;
       const parsed = insertExpenseSchema.safeParse({
         ...req.body,
-        createdById: (req.user as any).id,
+        createdById: user.id,
       });
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -1171,11 +1357,24 @@ export async function registerRoutes(
       const expense = await storage.createExpense(parsed.data);
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "created",
         entityType: "expense",
         entityId: expense.id,
         details: `Created expense: ${expense.description} ($${expense.amount})`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "expense",
+        entityId: expense.id,
+        previousValue: null,
+        newValue: expense,
+        description: `Created expense: ${expense.description} ($${expense.amount})`,
+        ipAddress: req.ip || null,
       });
 
       res.status(201).json(expense);
@@ -1186,17 +1385,38 @@ export async function registerRoutes(
 
   app.patch("/api/expenses/:id", requireRole("admin"), async (req, res) => {
     try {
+      const user = req.user as any;
+      
+      // Get previous state for audit log
+      const previousExpense = await storage.getExpense(req.params.id);
+      if (!previousExpense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
       const expense = await storage.updateExpense(req.params.id, req.body);
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "updated",
         entityType: "expense",
         entityId: expense.id,
         details: `Updated expense: ${expense.description}`,
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "expense",
+        entityId: expense.id,
+        previousValue: previousExpense,
+        newValue: expense,
+        description: `Updated expense: ${expense.description}`,
+        ipAddress: req.ip || null,
       });
 
       res.json(expense);
@@ -1207,17 +1427,38 @@ export async function registerRoutes(
 
   app.delete("/api/expenses/:id", requireRole("admin"), async (req, res) => {
     try {
+      const user = req.user as any;
+      
+      // Get previous state for audit log
+      const previousExpense = await storage.getExpense(req.params.id);
+      if (!previousExpense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+
       const success = await storage.deleteExpense(req.params.id);
       if (!success) {
         return res.status(404).json({ message: "Expense not found" });
       }
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "deleted",
         entityType: "expense",
         entityId: req.params.id,
         details: "Deleted expense record",
+      });
+
+      // Immutable audit log for financial integrity
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "DELETE",
+        entityType: "expense",
+        entityId: req.params.id,
+        previousValue: previousExpense,
+        newValue: null,
+        description: `Deleted expense: ${previousExpense.description} ($${previousExpense.amount})`,
+        ipAddress: req.ip || null,
       });
 
       res.json({ message: "Expense deleted" });

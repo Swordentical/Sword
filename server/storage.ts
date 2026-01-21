@@ -4,7 +4,7 @@ import {
   users, patients, treatments, patientTreatments, appointments,
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
   invoiceAdjustments, expenses, insuranceClaims, inventoryItems, labCases,
-  documents, orthodonticNotes, activityLog,
+  documents, orthodonticNotes, activityLog, auditLogs,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Treatment, type InsertTreatment,
@@ -23,6 +23,7 @@ import {
   type Document, type InsertDocument,
   type OrthodonticNote, type InsertOrthodonticNote,
   type ActivityLog, type InsertActivityLog,
+  type AuditLog, type InsertAuditLog,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -157,6 +158,10 @@ export interface IStorage {
   // Activity Log
   getRecentActivity(limit?: number): Promise<ActivityLog[]>;
   logActivity(log: InsertActivityLog): Promise<ActivityLog>;
+
+  // Audit Logs (Immutable - admin only access)
+  getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]>;
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 
   // Dashboard stats
   getDashboardStats(): Promise<{
@@ -1007,6 +1012,38 @@ export class DatabaseStorage implements IStorage {
       monthlyRevenue: Number(revenueResult?.total || 0),
       pendingPayments: Number(pendingResult?.total || 0),
     };
+  }
+
+  // Audit Logs - Immutable logging for financial integrity
+  async getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]> {
+    const conditions = [];
+    if (filters?.entityType) {
+      conditions.push(eq(auditLogs.entityType, filters.entityType as any));
+    }
+    if (filters?.entityId) {
+      conditions.push(eq(auditLogs.entityId, filters.entityId));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(auditLogs.userId, filters.userId));
+    }
+    
+    const query = db.select().from(auditLogs);
+    
+    if (conditions.length > 0) {
+      return query
+        .where(and(...conditions))
+        .orderBy(desc(auditLogs.timestamp))
+        .limit(filters?.limit || 100);
+    }
+    
+    return query
+      .orderBy(desc(auditLogs.timestamp))
+      .limit(filters?.limit || 100);
+  }
+
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const result = await db.insert(auditLogs).values(log).returning();
+    return result[0];
   }
 }
 
