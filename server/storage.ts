@@ -159,6 +159,26 @@ export interface IStorage {
   getRecentActivity(limit?: number): Promise<ActivityLog[]>;
   logActivity(log: InsertActivityLog): Promise<ActivityLog>;
 
+  // Clinic Settings
+  getClinicSettings(): Promise<any>;
+  updateClinicSettings(data: any): Promise<any>;
+
+  // Clinic Settings
+  async getClinicSettings(): Promise<any> {
+    const result = await db.select().from(clinicSettings).limit(1);
+    if (result.length === 0) {
+      const initial = await db.insert(clinicSettings).values({}).returning();
+      return initial[0];
+    }
+    return result[0];
+  }
+
+  async updateClinicSettings(data: any): Promise<any> {
+    const settings = await this.getClinicSettings();
+    const result = await db.update(clinicSettings).set({ ...data, updatedAt: new Date() }).where(eq(clinicSettings.id, settings.id)).returning();
+    return result[0];
+  }
+
   // Audit Logs (Immutable - admin only access)
   getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;

@@ -295,6 +295,68 @@ function AddUserDialog({
 }
 
 function ClinicSettings() {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["/api/clinic-settings"],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", "/api/clinic-settings", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clinic-settings"] });
+      toast({ title: "Settings saved" });
+    },
+  });
+
+  const form = useForm({
+    defaultValues: {
+      name: "",
+      phone: "",
+      email: "",
+      website: "",
+      address: "",
+      numberOfRooms: 1,
+      socialMedia: { twitter: "", facebook: "", instagram: "" },
+    },
+  });
+
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        name: settings.name || "",
+        phone: settings.phone || "",
+        email: settings.email || "",
+        website: settings.website || "",
+        address: settings.address || "",
+        numberOfRooms: settings.numberOfRooms || 1,
+        socialMedia: settings.socialMedia || { twitter: "", facebook: "", instagram: "" },
+      });
+    }
+  }, [settings, form]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: "File too large", variant: "destructive" });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      updateMutation.mutate({ logoUrl: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  if (isLoading) return <Loader2 className="animate-spin mx-auto" />;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -307,47 +369,138 @@ function ClinicSettings() {
             Manage your clinic's basic information
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-              <Upload className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div>
-              <Button variant="outline" size="sm">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Logo
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => updateMutation.mutate(data))} className="space-y-4">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
+                  {settings?.logoUrl ? (
+                    <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                  ) : (
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Logo
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clinic Name</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl><Input type="email" {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="website"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Website</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="numberOfRooms"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Rooms</FormLabel>
+                      <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="text-sm font-medium">Social Media Accounts</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="socialMedia.facebook"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Facebook</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="socialMedia.instagram"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Instagram</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="socialMedia.twitter"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Twitter</FormLabel>
+                        <FormControl><Input {...field} /></FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
+                Save Changes
               </Button>
-              <p className="text-xs text-muted-foreground mt-1">
-                PNG, JPG up to 2MB
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Clinic Name</Label>
-              <Input defaultValue="DentalCare Clinic" />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone Number</Label>
-              <Input defaultValue="+1 (555) 123-4567" />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" defaultValue="info@dentalcare.com" />
-            </div>
-            <div className="space-y-2">
-              <Label>Website</Label>
-              <Input defaultValue="www.dentalcare.com" />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Address</Label>
-            <Input defaultValue="123 Medical Drive, Healthcare City, HC 12345" />
-          </div>
-
-          <Button>Save Changes</Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

@@ -122,6 +122,20 @@ export const patientTreatments = pgTable("patient_treatments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Clinic settings table
+export const clinicSettings = pgTable("clinic_settings", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().default("DentalCare Clinic"),
+  logoUrl: text("logo_url"),
+  phone: text("phone").default("+1 (555) 123-4567"),
+  email: text("email").default("info@dentalcare.com"),
+  website: text("website").default("www.dentalcare.com"),
+  address: text("address").default("123 Medical Drive, Healthcare City, HC 12345"),
+  numberOfRooms: integer("number_of_rooms").default(1),
+  socialMedia: jsonb("social_media").default({}), // { twitter: '', facebook: '', instagram: '' }
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Appointments
 export const appointments = pgTable("appointments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -132,10 +146,13 @@ export const appointments = pgTable("appointments", {
   endTime: timestamp("end_time").notNull(),
   status: appointmentStatusEnum("status").default("pending"),
   category: appointmentCategoryEnum("category").default("checkup"),
+  roomNumber: integer("room_number"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   createdById: varchar("created_by_id", { length: 36 }),
 });
+
+export const insertClinicSettingsSchema = createInsertSchema(clinicSettings).omit({ id: true, updatedAt: true });
 
 // Invoices
 export const invoices = pgTable("invoices", {

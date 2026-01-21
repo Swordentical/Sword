@@ -52,6 +52,25 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Clinic Settings
+  app.get("/api/clinic-settings", requireAuth, async (req, res) => {
+    try {
+      const settings = await storage.getClinicSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch clinic settings" });
+    }
+  });
+
+  app.patch("/api/clinic-settings", requireRole("admin"), async (req, res) => {
+    try {
+      const settings = await storage.updateClinicSettings(req.body);
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update clinic settings" });
+    }
+  });
+
   // Set up authentication
   setupAuth(app);
 
