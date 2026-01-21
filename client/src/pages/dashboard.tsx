@@ -245,31 +245,36 @@ function LiveClock() {
       {isAnalog ? (
         <div className="relative h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 rounded-full border-2 border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg">
           <div className="absolute inset-1 rounded-full border border-primary/10" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-primary shadow-sm" />
-          </div>
-          <div 
-            className="absolute top-1/2 left-1/2 h-4 sm:h-5 md:h-6 w-1 bg-foreground rounded-full origin-bottom shadow-sm"
-            style={{ transform: `translate(-50%, -100%) rotate(${hourDeg}deg)` }}
-          />
-          <div 
-            className="absolute top-1/2 left-1/2 h-5 sm:h-7 md:h-8 w-0.5 bg-foreground/80 rounded-full origin-bottom"
-            style={{ transform: `translate(-50%, -100%) rotate(${minuteDeg}deg)` }}
-          />
-          <div 
-            className="absolute top-1/2 left-1/2 h-5 sm:h-7 md:h-8 w-px bg-primary rounded-full origin-bottom"
-            style={{ transform: `translate(-50%, -100%) rotate(${secondDeg}deg)` }}
-          />
           {[...Array(12)].map((_, i) => (
             <div
               key={i}
-              className={`absolute left-1/2 ${i % 3 === 0 ? 'h-2 w-0.5 bg-foreground/60 top-1' : 'h-1 w-px bg-muted-foreground/40 top-1.5'}`}
-              style={{ 
-                transform: `translateX(-50%) rotate(${i * 30}deg)`, 
-                transformOrigin: i % 3 === 0 ? '50% 28px' : '50% 30px'
-              }}
-            />
+              className="absolute inset-0 flex justify-center"
+              style={{ transform: `rotate(${i * 30}deg)` }}
+            >
+              <div className={`${i % 3 === 0 ? 'h-2 w-0.5 bg-foreground/60 mt-1' : 'h-1.5 w-px bg-muted-foreground/40 mt-1.5'}`} />
+            </div>
           ))}
+          <div 
+            className="absolute inset-0 flex justify-center"
+            style={{ transform: `rotate(${hourDeg}deg)` }}
+          >
+            <div className="w-1 h-[25%] bg-foreground rounded-full mt-[25%] shadow-sm" />
+          </div>
+          <div 
+            className="absolute inset-0 flex justify-center"
+            style={{ transform: `rotate(${minuteDeg}deg)` }}
+          >
+            <div className="w-0.5 h-[35%] bg-foreground/80 rounded-full mt-[15%]" />
+          </div>
+          <div 
+            className="absolute inset-0 flex justify-center"
+            style={{ transform: `rotate(${secondDeg}deg)` }}
+          >
+            <div className="w-px h-[35%] bg-primary rounded-full mt-[15%]" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-primary shadow-sm z-10" />
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-2 sm:gap-3">
