@@ -237,50 +237,50 @@ function LiveClock() {
 
   return (
     <div 
-      className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover-elevate transition-colors"
+      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover-elevate transition-colors"
       onClick={toggleClockStyle}
       title="Click to toggle clock style"
       data-testid="button-clock-toggle"
     >
       {isAnalog ? (
-        <div className="relative h-14 w-14 rounded-full border-2 border-primary/30 bg-card shadow-inner">
+        <div className="relative h-20 w-20 rounded-full border-2 border-primary/30 bg-card shadow-inner">
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+            <div className="h-2 w-2 rounded-full bg-primary" />
           </div>
           <div 
-            className="absolute top-1/2 left-1/2 h-3.5 w-0.5 bg-foreground rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-5 w-1 bg-foreground rounded-full origin-bottom"
             style={{ transform: `translate(-50%, -100%) rotate(${hourDeg}deg)` }}
           />
           <div 
-            className="absolute top-1/2 left-1/2 h-5 w-0.5 bg-foreground/70 rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-7 w-0.5 bg-foreground/70 rounded-full origin-bottom"
             style={{ transform: `translate(-50%, -100%) rotate(${minuteDeg}deg)` }}
           />
           <div 
-            className="absolute top-1/2 left-1/2 h-5 w-px bg-primary rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-7 w-px bg-primary rounded-full origin-bottom"
             style={{ transform: `translate(-50%, -100%) rotate(${secondDeg}deg)` }}
           />
           {[...Array(12)].map((_, i) => (
             <div
               key={i}
-              className="absolute top-1 left-1/2 h-1 w-px bg-muted-foreground/30"
-              style={{ transform: `translateX(-50%) rotate(${i * 30}deg)`, transformOrigin: '50% 24px' }}
+              className="absolute top-1.5 left-1/2 h-1.5 w-0.5 bg-muted-foreground/40"
+              style={{ transform: `translateX(-50%) rotate(${i * 30}deg)`, transformOrigin: '50% 36px' }}
             />
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-foreground" />
-          <div className="text-2xl font-bold tabular-nums tracking-tight">
+        <div className="flex items-center gap-3">
+          <Clock className="h-7 w-7 text-foreground" />
+          <div className="text-3xl font-bold tabular-nums tracking-tight">
             {format(time, "HH:mm")}
-            <span className="text-lg text-muted-foreground">:{format(time, "ss")}</span>
+            <span className="text-xl text-muted-foreground">:{format(time, "ss")}</span>
           </div>
         </div>
       )}
       <div className="hidden sm:block text-right">
-        <div className="text-xs font-medium text-muted-foreground">
+        <div className="text-sm font-medium text-muted-foreground">
           {format(time, "EEEE")}
         </div>
-        <div className="text-sm font-semibold">
+        <div className="text-base font-semibold">
           {format(time, "MMM d, yyyy")}
         </div>
       </div>
@@ -515,6 +515,135 @@ function QuickActionButton({
   );
 }
 
+const INSPIRATIONAL_QUOTES = [
+  { text: "The art of medicine consists of amusing the patient while nature cures the disease.", author: "Voltaire", category: "Philosophy" },
+  { text: "Wherever the art of medicine is loved, there is also a love of humanity.", author: "Hippocrates", category: "Medical" },
+  { text: "The good physician treats the disease; the great physician treats the patient who has the disease.", author: "William Osler", category: "Medical" },
+  { text: "The best way to find yourself is to lose yourself in the service of others.", author: "Mahatma Gandhi", category: "Philosophy" },
+  { text: "Science is organized knowledge. Wisdom is organized life.", author: "Immanuel Kant", category: "Science" },
+  { text: "In nothing do men more nearly approach the gods than in giving health to men.", author: "Cicero", category: "Medical" },
+  { text: "The greatest wealth is health.", author: "Virgil", category: "Philosophy" },
+  { text: "Medicine is a science of uncertainty and an art of probability.", author: "William Osler", category: "Medical" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "Empowerment" },
+  { text: "It is health that is real wealth and not pieces of gold and silver.", author: "Mahatma Gandhi", category: "Philosophy" },
+  { text: "The first wealth is health.", author: "Ralph Waldo Emerson", category: "Philosophy" },
+  { text: "Healing is a matter of time, but it is sometimes also a matter of opportunity.", author: "Hippocrates", category: "Medical" },
+  { text: "Science knows no country, because knowledge belongs to humanity.", author: "Louis Pasteur", category: "Science" },
+  { text: "The doctor of the future will give no medication, but will interest his patients in the care of the human frame.", author: "Thomas Edison", category: "Medical" },
+  { text: "Nothing in life is to be feared, it is only to be understood.", author: "Marie Curie", category: "Science" },
+  { text: "Let food be thy medicine and medicine be thy food.", author: "Hippocrates", category: "Medical" },
+  { text: "The mind is everything. What you think you become.", author: "Buddha", category: "Philosophy" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill", category: "Empowerment" },
+  { text: "A healthy outside starts from the inside.", author: "Robert Urich", category: "Advice" },
+  { text: "Take care of your body. It's the only place you have to live.", author: "Jim Rohn", category: "Advice" },
+  { text: "An ounce of prevention is worth a pound of cure.", author: "Benjamin Franklin", category: "Advice" },
+  { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney", category: "Empowerment" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt", category: "Empowerment" },
+  { text: "Your body hears everything your mind says.", author: "Naomi Judd", category: "Philosophy" },
+  { text: "Health is not valued till sickness comes.", author: "Thomas Fuller", category: "Philosophy" },
+  { text: "The human body is the best picture of the human soul.", author: "Ludwig Wittgenstein", category: "Philosophy" },
+  { text: "Life is not merely to be alive, but to be well.", author: "Marcus Valerius Martial", category: "Philosophy" },
+  { text: "Prevention is better than cure.", author: "Desiderius Erasmus", category: "Medical" },
+  { text: "The physician must be able to tell the antecedents, know the present, and foretell the future.", author: "Hippocrates", category: "Medical" },
+  { text: "Walking is man's best medicine.", author: "Hippocrates", category: "Advice" },
+  { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins", category: "Empowerment" },
+  { text: "Do not go where the path may lead, go instead where there is no path and leave a trail.", author: "Ralph Waldo Emerson", category: "Philosophy" },
+  { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson", category: "Empowerment" },
+  { text: "The purpose of life is not to be happy. It is to be useful.", author: "Ralph Waldo Emerson", category: "Philosophy" },
+  { text: "Education is the most powerful weapon which you can use to change the world.", author: "Nelson Mandela", category: "Empowerment" },
+  { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein", category: "Science" },
+  { text: "Imagination is more important than knowledge.", author: "Albert Einstein", category: "Science" },
+  { text: "The only true wisdom is in knowing you know nothing.", author: "Socrates", category: "Philosophy" },
+  { text: "Be the change you wish to see in the world.", author: "Mahatma Gandhi", category: "Philosophy" },
+  { text: "What we know is a drop, what we don't know is an ocean.", author: "Isaac Newton", category: "Science" },
+  { text: "The science of today is the technology of tomorrow.", author: "Edward Teller", category: "Science" },
+  { text: "Every patient is a lesson in humility.", author: "Unknown", category: "Medical" },
+  { text: "Empathy is the starting point for creating a community and taking action.", author: "Max Carver", category: "Empowerment" },
+  { text: "A smile is the universal welcome.", author: "Max Eastman", category: "Advice" },
+  { text: "The best doctor gives the least medicines.", author: "Benjamin Franklin", category: "Medical" },
+  { text: "Health is a state of complete harmony of the body, mind and spirit.", author: "B.K.S. Iyengar", category: "Philosophy" },
+  { text: "Rest when you're weary. Refresh and renew yourself.", author: "Ralph Marston", category: "Advice" },
+  { text: "Happiness lies first of all in health.", author: "George William Curtis", category: "Philosophy" },
+  { text: "Your health is what you make of it.", author: "Unknown", category: "Advice" },
+  { text: "The groundwork for all happiness is good health.", author: "Leigh Hunt", category: "Philosophy" },
+  { text: "He who has health has hope, and he who has hope has everything.", author: "Thomas Carlyle", category: "Philosophy" },
+  { text: "A healthy attitude is contagious but don't wait to catch it from others.", author: "Tom Stoppard", category: "Advice" },
+  { text: "To keep the body in good health is a duty.", author: "Buddha", category: "Philosophy" },
+  { text: "Good health is not something we can buy. However, it can be an extremely valuable savings account.", author: "Anne Wilson Schaef", category: "Advice" },
+  { text: "The higher your energy level, the more efficient your body.", author: "Tony Robbins", category: "Empowerment" },
+  { text: "Those who think they have no time for healthy eating will sooner or later have to find time for illness.", author: "Edward Stanley", category: "Advice" },
+];
+
+function InspirationalQuotes() {
+  const [currentIndex, setCurrentIndex] = useState(() => 
+    Math.floor(Math.random() * INSPIRATIONAL_QUOTES.length)
+  );
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsAnimating(true);
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % INSPIRATIONAL_QUOTES.length);
+        setIsAnimating(false);
+      }, 500);
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const quote = INSPIRATIONAL_QUOTES[currentIndex];
+  const categoryColors: Record<string, string> = {
+    Philosophy: "text-purple-500 dark:text-purple-400",
+    Medical: "text-emerald-500 dark:text-emerald-400",
+    Science: "text-blue-500 dark:text-blue-400",
+    Empowerment: "text-amber-500 dark:text-amber-400",
+    Advice: "text-rose-500 dark:text-rose-400",
+  };
+
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <FileText className="h-4 w-4 text-muted-foreground" />
+          Daily Inspiration
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <div 
+          className={cn(
+            "transition-all duration-500 ease-in-out",
+            isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+          )}
+        >
+          <blockquote className="text-sm italic text-foreground leading-relaxed mb-2">
+            "{quote.text}"
+          </blockquote>
+          <div className="flex items-center justify-between">
+            <cite className="text-xs text-muted-foreground not-italic font-medium">
+              — {quote.author}
+            </cite>
+            <Badge variant="outline" className={cn("text-xs", categoryColors[quote.category])}>
+              {quote.category}
+            </Badge>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 mt-3">
+          {INSPIRATIONAL_QUOTES.slice(0, 5).map((_, i) => (
+            <div 
+              key={i} 
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                i === currentIndex % 5 ? "bg-primary" : "bg-muted"
+              )}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 type WidgetSlot = "header" | "fullWidth" | "main" | "sidebar";
 
 type WidgetConfig = {
@@ -531,7 +660,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "appointments", label: "Upcoming Appointments", slot: "main", enabled: true, order: 0 },
   { id: "quickActions", label: "Quick Actions", slot: "sidebar", enabled: true, order: 0 },
   { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 1 },
-  { id: "productivity", label: "Productivity", slot: "sidebar", enabled: true, order: 2 },
+  { id: "productivity", label: "Daily Inspiration", slot: "sidebar", enabled: true, order: 2 },
 ];
 
 const SLOT_LABELS: Record<WidgetSlot, string> = {
@@ -873,10 +1002,10 @@ export default function Dashboard() {
             testId="button-quick-new-appointment"
           />
           <QuickActionButton
-            icon={Stethoscope}
-            label="Treatments"
-            href="/treatments"
-            testId="button-quick-treatments"
+            icon={Settings2}
+            label="Settings"
+            href="/settings"
+            testId="button-quick-settings"
           />
           {!isStudent && (
             <>
@@ -952,44 +1081,7 @@ export default function Dashboard() {
   };
 
   const renderProductivityWidget = () => {
-    const todayApts = stats?.todayAppointments || 0;
-    const completionRate = todayApts > 0 ? Math.round((todayApts / 10) * 100) : 0;
-    
-    return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            Today's Progress
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-3">
-          <div className="space-y-3">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-muted-foreground">Appointments</span>
-                <span className="font-medium">{todayApts}/10</span>
-              </div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${Math.min(completionRate, 100)}%` }}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5">
-                <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="text-muted-foreground">Status</span>
-              </div>
-              <Badge variant="secondary">
-                {completionRate >= 80 ? "Excellent" : completionRate >= 50 ? "On Track" : "Getting Started"}
-              </Badge>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <InspirationalQuotes />;
   };
 
   const getSlotWidgets = (slot: WidgetSlot) => 
@@ -1053,13 +1145,15 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex-1 sm:flex-none sm:w-64">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex-1 sm:flex-none sm:w-80 lg:w-96">
                 <GlobalSearch />
               </div>
-              {headerWidgets.map(w => (
-                <div key={w.id} className="hidden lg:block">{renderWidgetById(w.id)}</div>
-              ))}
+              <div className="hidden lg:flex items-center gap-3">
+                {headerWidgets.map(w => (
+                  <div key={w.id}>{renderWidgetById(w.id)}</div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

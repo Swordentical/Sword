@@ -61,8 +61,15 @@ export function ThemeProvider({
   const value = {
     theme,
     setTheme: (newTheme: Theme) => {
+      const root = window.document.documentElement;
+      root.classList.add("dark-transition");
+      
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
+      
+      setTimeout(() => {
+        root.classList.remove("dark-transition");
+      }, 600);
     },
     resolvedTheme,
   };
