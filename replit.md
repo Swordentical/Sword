@@ -93,6 +93,17 @@ The system supports four user roles with different permission levels:
 
 ## Recent Changes
 
+### Enhanced Inventory Management (January 2026)
+- Full CRUD operations for inventory items with edit functionality
+- Quick quantity update dialog (add/subtract/set amounts)
+- Print low stock report functionality with printable HTML output
+- Dashboard low stock widget using dedicated /api/inventory/low-stock endpoint
+- Click-to-filter summary cards for low stock and out of stock items
+- Delete with confirmation and audit logging
+- API endpoints:
+  - GET /api/inventory/low-stock (returns items where currentQuantity <= minimumQuantity)
+  - DELETE /api/inventory/:id (admin only, with audit logging)
+
 ### User Management Enhancements (January 2026)
 - Added edit user functionality with EditUserDialog (firstName, lastName, email, phone, role)
 - Added activate/deactivate user toggle in dropdown menu

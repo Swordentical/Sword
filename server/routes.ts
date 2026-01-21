@@ -1860,6 +1860,18 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/inventory/low-stock", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getInventoryItems({});
+      const lowStockItems = items.filter(item => 
+        item.currentQuantity <= item.minimumQuantity
+      );
+      res.json(lowStockItems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch low stock items" });
+    }
+  });
+
   app.post("/api/inventory", requireRole("admin", "doctor", "staff"), async (req, res) => {
     try {
       const parsed = insertInventoryItemSchema.safeParse(req.body);
@@ -1936,24 +1948,31 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/inventory/low-stock", requireAuth, async (req, res) => {
-    try {
-      const items = await storage.getInventoryItems({});
-      const lowStockItems = items.filter(item => 
-        item.currentQuantity <= item.minimumQuantity
-      );
-      res.json(lowStockItems);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch low stock items" });
-    }
-  });
-
   app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
     try {
+      const user = req.user as any;
+      const item = await storage.getInventoryItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
       const deleted = await storage.deleteInventoryItem(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Item not found" });
       }
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "DELETE",
+        entityType: "inventory",
+        entityId: req.params.id,
+        previousValue: item,
+        newValue: null,
+        description: `Deleted inventory item: ${item.name}`,
+        ipAddress: req.ip || null,
+      });
+
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete inventory item" });
