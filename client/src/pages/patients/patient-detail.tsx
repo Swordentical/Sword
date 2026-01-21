@@ -565,9 +565,11 @@ function TreatmentHistorySection({
   const [editingTreatment, setEditingTreatment] = useState<PatientTreatmentWithDetails | null>(null);
   const [deletingTreatmentId, setDeletingTreatmentId] = useState<string | null>(null);
 
-  const { data: treatments, isLoading } = useQuery<PatientTreatmentWithDetails[]>({
+  const { data: treatments, isLoading: treatmentsLoading } = useQuery<PatientTreatmentWithDetails[]>({
     queryKey: ["/api/patients", patientId, "treatments"],
   });
+
+  const isLoading = treatmentsLoading;
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string | null }) => {
@@ -926,16 +928,23 @@ function FinancialsSection({
   patientName: string;
   financials: PatientFinancials | undefined;
 }) {
+  const { data: fetchedFinancials, isLoading: financialsLoading } = useQuery<PatientFinancials>({
+    queryKey: ["/api/patients", patientId, "financials"],
+    enabled: !financials
+  });
+
   const handlePrintFinancials = () => {
     window.print();
   };
+
+  const currentFinancials = financials || fetchedFinancials;
 
   const handlePrintInvoice = (invoice: any) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
     // Filter payments for this specific invoice
-    const invoicePayments = (financials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
+    const invoicePayments = (currentFinancials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
     const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
@@ -960,6 +969,10 @@ function FinancialsSection({
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
             .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
             .payment-row { color: #1e7e34; font-size: 13px; }
+            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+            .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
+            .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
+            .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
@@ -1047,7 +1060,7 @@ function FinancialsSection({
   };
 
 
-  if (isLoading) {
+  if (financialsLoading && !currentFinancials) {
     return (
       <div className="flex items-center justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1055,7 +1068,7 @@ function FinancialsSection({
     );
   }
 
-  if (!financials) {
+  if (!currentFinancials) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <DollarSign className="h-12 w-12 mb-3 opacity-50" />
@@ -1064,7 +1077,7 @@ function FinancialsSection({
     );
   }
 
-  const { summary, treatmentsByCategory, invoices, payments } = financials;
+  const { summary, treatmentsByCategory, invoices, payments } = currentFinancials;
 
   return (
     <div className="space-y-6">
@@ -2111,6 +2124,7 @@ export default function PatientDetail() {
   const [activeTab, setActiveTab] = useState("personal");
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
   const [quickAppointmentOpen, setQuickAppointmentOpen] = useState(false);
+  const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
   const { user } = useAuth();
 
   const canEditMedicalHistory = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
@@ -2119,7 +2133,11 @@ export default function PatientDetail() {
     queryKey: ["/api/patients", params.id],
   });
 
-  if (isLoading) {
+  const { data: financials, isLoading: financialsLoading } = useQuery<PatientFinancials>({
+    queryKey: ["/api/patients", params.id, "financials"],
+  });
+
+  if (isLoading || financialsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
