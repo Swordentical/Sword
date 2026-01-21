@@ -213,3 +213,29 @@ The system supports four user roles with different permission levels:
 - **Database Tables**:
   - clinic_settings: singleton for clinic configuration
   - clinic_rooms: room entries with name, description, isActive
+
+### External Labs & Lab Services Management (January 2026)
+- **External Labs Page** (`/lab-work` - "Manage Labs" tab)
+  - Full CRUD for external dental labs (admin only for create/edit/delete)
+  - Lab details: name, phone, email, address, contact person
+  - Soft delete (isActive flag) to preserve historical data
+  - Labs displayed in card grid with services per lab
+- **Lab Services Management**
+  - CRUD for lab-specific services with pricing
+  - Services tied to specific labs via foreign key
+  - Service details: name, description, price
+- **Lab Case Integration**
+  - Lab case creation now selects from database of labs
+  - Service selection auto-populates case type and cost
+  - Lab cases reference externalLabId and labServiceId
+- **API Endpoints**:
+  - GET /api/external-labs (authenticated)
+  - POST /api/external-labs (admin only)
+  - PATCH/DELETE /api/external-labs/:id (admin only)
+  - GET /api/external-labs/:id/services (authenticated)
+  - GET /api/lab-services (authenticated)
+  - POST /api/lab-services (admin only)
+  - PATCH/DELETE /api/lab-services/:id (admin only)
+- **Database Tables**:
+  - external_labs: lab entries with contact info and isActive flag
+  - lab_services: service entries with labId, name, description, price, isActive
