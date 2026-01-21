@@ -590,6 +590,10 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
     },
   });
 
+  const handlePrintFinancials = () => {
+    window.print();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -609,8 +613,14 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex justify-end print:hidden">
+        <Button variant="outline" size="sm" onClick={handlePrintFinancials}>
+          <FileText className="h-4 w-4 mr-2" />
+          Print Treatment History
+        </Button>
+      </div>
       {treatments.map((pt) => (
-        <Card key={pt.id} className="hover-elevate">
+        <Card key={pt.id} className="hover-elevate break-inside-avoid">
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
@@ -630,7 +640,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
                         : "outline"
                     }
                   >
-                    {pt.status?.replace(/_/g, " ")}
+                    {pt.status?.replace(/_/g, " ") || "planned"}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-2">
@@ -641,7 +651,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
                 )}
                 <p className="text-sm font-medium mt-2">${pt.price}</p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 print:hidden">
                 <Button 
                   size="icon" 
                   variant="ghost" 
@@ -676,7 +686,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
             <div className="space-y-2">
               <Label>Status</Label>
               <Select 
-                value={editingTreatment?.status} 
+                value={editingTreatment?.status || "planned"} 
                 onValueChange={(status) => setEditingTreatment(prev => prev ? { ...prev, status: status as any } : null)}
               >
                 <SelectTrigger>
@@ -705,7 +715,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
             <Button 
               onClick={() => editingTreatment && updateMutation.mutate({ 
                 id: editingTreatment.id, 
-                status: editingTreatment.status, 
+                status: editingTreatment.status || "planned", 
                 notes: editingTreatment.notes 
               })}
               disabled={updateMutation.isPending}
@@ -783,6 +793,10 @@ function FinancialsSection({ patientId }: { patientId: string }) {
     queryKey: ["/api/patients", patientId, "financials"],
   });
 
+  const handlePrintFinancials = () => {
+    window.print();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -804,6 +818,12 @@ function FinancialsSection({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end print:hidden">
+        <Button variant="outline" size="sm" onClick={handlePrintFinancials}>
+          <FileText className="h-4 w-4 mr-2" />
+          Print Financial Statement
+        </Button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-primary/10 to-transparent">
           <CardContent className="p-4">
@@ -1873,7 +1893,11 @@ export default function PatientDetail() {
           <h1 className="text-2xl font-bold text-foreground">Patient Profile</h1>
           <p className="text-muted-foreground">View and manage patient information</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 print:hidden">
+          <Button variant="outline" onClick={() => window.print()} data-testid="button-print-profile">
+            <FileText className="h-4 w-4 mr-2" />
+            Print Profile
+          </Button>
           <Button variant="outline" onClick={() => setQuickAppointmentOpen(true)} data-testid="button-quick-appointment">
             <Calendar className="h-4 w-4 mr-2" />
             Add Appointment
