@@ -93,6 +93,17 @@ The system supports four user roles with different permission levels:
 
 ## Recent Changes
 
+### Dashboard Improvements (January 2026)
+- Comprehensive dashboard redesign with modern, responsive layout
+- **LiveClock**: Analog/digital toggle (persisted to localStorage as "dashboard-clock-style")
+- **MiniStatCard**: Thinner, more compact statistics cards
+- **Appointments widget**: Independent scrolling (400px/500px height), grouped by date
+- **Quick Actions**: Redesigned as compact 3-column grid
+- **Productivity widget**: Shows today's progress with completion rate bar
+- **Widget customization**: Settings panel for toggling/reordering widgets (stored in localStorage as "dashboard-widgets-config-v3")
+- Global search bar moved to header for better accessibility
+- All interactive elements follow UI guidelines (hover-elevate, proper semantics, data-testid attributes)
+
 ### Enhanced Inventory Management (January 2026)
 - Full CRUD operations for inventory items with edit functionality
 - Quick quantity update dialog (add/subtract/set amounts)
