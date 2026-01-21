@@ -641,7 +641,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
           <div class="details">
             <div>
               <div class="section-title">Bill To</div>
-              <div style="font-size: 18px; font-weight: bold; color: #000;">${patient?.firstName} ${patient?.lastName}</div>
+              <div style="font-size: 18px; font-weight: bold; color: #000;">${patientName}</div>
               <div style="color: #666; margin-top: 4px;">Patient ID: ${patientId}</div>
             </div>
             <div style="text-align: right;">
@@ -944,7 +944,7 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
           <div class="details">
             <div>
               <div class="section-title">Bill To</div>
-              <div style="font-size: 18px; font-weight: bold; color: #000;">${patient?.firstName} ${patient?.lastName}</div>
+              <div style="font-size: 18px; font-weight: bold; color: #000;">${patientName}</div>
               <div style="color: #666; margin-top: 4px;">Patient ID: ${patientId}</div>
             </div>
             <div style="text-align: right;">
