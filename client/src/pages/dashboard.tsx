@@ -79,8 +79,9 @@ function TodayAppointmentCard({
 
   return (
     <div 
-      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover-elevate cursor-pointer transition-colors hover:bg-accent/50"
+      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
       onClick={() => onClick(appointment)}
+      data-testid={`card-appointment-${appointment.id}`}
     >
       <div className="text-center min-w-[60px]">
         <div className="text-lg font-bold text-foreground">
@@ -162,36 +163,38 @@ function EditAppointmentDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="time">Date & Time</Label>
+            <Label htmlFor="edit-apt-time">Date & Time</Label>
             <Input
-              id="time"
+              id="edit-apt-time"
               type="datetime-local"
               value={newTime}
               onChange={(e) => setNewTime(e.target.value)}
+              data-testid="input-appointment-datetime"
             />
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             <Button
-              className="w-full"
               variant="default"
               onClick={() => updateMutation.mutate({ status: "confirmed", startTime: new Date(newTime).toISOString() })}
               disabled={updateMutation.isPending}
+              data-testid="button-confirm-appointment"
             >
               Confirm
             </Button>
             <Button
-              className="w-full"
               variant="outline"
               onClick={() => updateMutation.mutate({ status: "completed", startTime: new Date(newTime).toISOString() })}
               disabled={updateMutation.isPending}
+              data-testid="button-complete-appointment"
             >
               Complete
             </Button>
             <Button
-              className="w-full col-span-2"
+              className="col-span-2"
               variant="destructive"
               onClick={() => updateMutation.mutate({ status: "canceled", startTime: new Date(newTime).toISOString() })}
               disabled={updateMutation.isPending}
+              data-testid="button-cancel-appointment"
             >
               Cancel Appointment
             </Button>
