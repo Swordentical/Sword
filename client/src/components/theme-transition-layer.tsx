@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
 interface TransitionState {
@@ -18,7 +17,6 @@ export function triggerThemeTransition(x: number, y: number, theme: "dark" | "li
 }
 
 export function ThemeTransitionLayer() {
-  const { resolvedTheme } = useTheme();
   const [transition, setTransition] = useState<TransitionState>({
     isAnimating: false,
     originX: 0,
@@ -28,7 +26,6 @@ export function ThemeTransitionLayer() {
   const [progress, setProgress] = useState(0);
 
   const startTransition = useCallback((x: number, y: number, theme: "dark" | "light") => {
-    // Check for reduced motion preference
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
@@ -41,22 +38,18 @@ export function ThemeTransitionLayer() {
     });
     setProgress(0);
 
-    // Animate progress from 0 to 1 over 700ms
     const startTime = performance.now();
-    const duration = 700;
+    const duration = 600;
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const newProgress = Math.min(elapsed / duration, 1);
-      
-      // Ease out cubic for smooth deceleration
       const eased = 1 - Math.pow(1 - newProgress, 3);
       setProgress(eased);
 
       if (newProgress < 1) {
         requestAnimationFrame(animate);
       } else {
-        // Animation complete
         setTimeout(() => {
           setTransition((prev) => ({ ...prev, isAnimating: false }));
           setProgress(0);
@@ -78,7 +71,6 @@ export function ThemeTransitionLayer() {
     return null;
   }
 
-  // Calculate the maximum radius needed to cover the entire screen
   const maxRadius = Math.hypot(
     Math.max(transition.originX, window.innerWidth - transition.originX),
     Math.max(transition.originY, window.innerHeight - transition.originY)
@@ -87,68 +79,57 @@ export function ThemeTransitionLayer() {
   const currentRadius = progress * maxRadius;
   const isDarkTransition = transition.targetTheme === "dark";
 
+  // Only show during the middle of the animation for a subtle ripple effect
+  const rippleOpacity = progress < 0.1 ? progress * 10 : progress > 0.7 ? (1 - progress) * 3.33 : 1;
+
   return (
     <div
       className="fixed inset-0 pointer-events-none"
       style={{ zIndex: 99999 }}
       aria-hidden="true"
     >
-      {/* Main transition circle */}
+      {/* Ripple ring effect - just a subtle border ring expanding outward */}
       <div
-        className={cn(
-          "absolute inset-0 transition-none",
-          isDarkTransition 
-            ? "bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" 
-            : "bg-gradient-to-br from-amber-50 via-white to-sky-50"
-        )}
+        className="absolute rounded-full"
         style={{
-          clipPath: isDarkTransition
-            ? `circle(${currentRadius}px at ${transition.originX}px ${transition.originY}px)`
-            : `circle(${maxRadius - currentRadius}px at ${transition.originX}px ${transition.originY}px)`,
+          left: transition.originX - currentRadius,
+          top: transition.originY - currentRadius,
+          width: currentRadius * 2,
+          height: currentRadius * 2,
+          opacity: rippleOpacity * 0.4,
+          boxShadow: isDarkTransition
+            ? `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(99, 102, 241, 0.3), 0 0 ${currentRadius * 0.05}px rgba(99, 102, 241, 0.2)`
+            : `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(251, 191, 36, 0.3), 0 0 ${currentRadius * 0.05}px rgba(251, 191, 36, 0.2)`,
         }}
       />
 
-      {/* Soft edge glow for dark transition */}
-      {isDarkTransition && progress > 0.1 && progress < 0.9 && (
+      {/* Soft glow at the origin point */}
+      {progress > 0 && progress < 0.8 && (
         <div
-          className="absolute inset-0 opacity-30"
+          className={cn(
+            "absolute rounded-full",
+            isDarkTransition ? "bg-indigo-500/20" : "bg-amber-400/30"
+          )}
           style={{
-            background: `radial-gradient(circle ${currentRadius * 0.1}px at ${transition.originX}px ${transition.originY}px, transparent 80%, rgba(99, 102, 241, 0.3) 100%)`,
-            clipPath: `circle(${currentRadius}px at ${transition.originX}px ${transition.originY}px)`,
+            left: transition.originX - 50,
+            top: transition.originY - 50,
+            width: 100,
+            height: 100,
+            filter: "blur(30px)",
+            opacity: (1 - progress) * 0.8,
+            transform: `scale(${1 + progress * 2})`,
           }}
         />
       )}
 
-      {/* Warm glow edge for light transition */}
-      {!isDarkTransition && progress > 0.1 && progress < 0.9 && (
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            background: `radial-gradient(circle ${(maxRadius - currentRadius) * 0.15}px at ${transition.originX}px ${transition.originY}px, rgba(251, 191, 36, 0.4) 0%, transparent 70%)`,
-          }}
-        />
-      )}
-
-      {/* Subtle vignette for dark mode */}
-      {isDarkTransition && progress > 0.5 && (
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.15) 100%)",
-            opacity: (progress - 0.5) * 2,
-            clipPath: `circle(${currentRadius}px at ${transition.originX}px ${transition.originY}px)`,
-          }}
-        />
-      )}
-
-      {/* Ambient grain texture (very subtle) */}
+      {/* Very subtle ambient wash - almost invisible */}
       <div
-        className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          clipPath: isDarkTransition
-            ? `circle(${currentRadius}px at ${transition.originX}px ${transition.originY}px)`
-            : undefined,
+          background: isDarkTransition
+            ? `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(30, 27, 75, 0.08) 0%, transparent 70%)`
+            : `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(254, 243, 199, 0.12) 0%, transparent 70%)`,
+          opacity: rippleOpacity,
         }}
       />
     </div>
