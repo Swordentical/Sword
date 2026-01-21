@@ -164,7 +164,7 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
   
-  /* View Transition API styles for circular theme animation */
+  /* Cinematic View Transition for theme switching */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
@@ -185,6 +185,11 @@
   
   .dark::view-transition-new(root) {
     z-index: 1;
+  }
+  
+  /* Smooth color transitions for elements not covered by view transition */
+  html {
+    color-scheme: light dark;
   }
 }
 

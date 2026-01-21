@@ -1,0 +1,170 @@
+Replit Prompt — Cinematic Dark Mode Transition (Sun → Moon)
+🎯 Objective
+
+Create a modern, premium dark mode switch with a smooth, immersive transition, not a basic on/off toggle.
+
+The transition should feel like:
+
+The sun sets → darkness spreads → the moon rises
+
+This should enhance user experience emotionally, not just functionally.
+
+🎨 Design & Interaction Requirements
+Switch Design
+
+Custom-designed toggle (NOT default switch)
+
+Visual elements:
+
+Sun icon (light mode)
+
+Moon icon (dark mode)
+
+Subtle glow on active state
+
+Micro-animations (scale, rotation, glow)
+
+🌊 Transition Behavior (CRITICAL)
+
+When user toggles theme:
+
+1️⃣ The animation starts from the switch position
+
+Use a radial or expanding mask
+
+The color transition spreads outward from the switch
+
+Feels like light fading or darkness expanding
+
+2️⃣ Screen fill animation
+
+Light → Dark:
+
+Warm colors fade
+
+Darkness fills the screen smoothly
+
+Dark → Light:
+
+Soft light expands
+
+Shadows retreat
+
+3️⃣ Sun ↔ Moon animation
+
+Sun:
+
+Shrinks + fades
+
+Rotates slightly
+
+Moon:
+
+Gently rises
+
+Slight glow
+
+Smooth easing (no sharp motion)
+
+🎞️ Motion Rules
+
+Use ease-in-out cubic / spring animation
+
+Duration: ~500–700ms (not instant)
+
+No flashing
+
+No harsh color jumps
+
+No layout shifts
+
+🧠 UX Principles
+
+Animation must feel natural and calm
+
+Should feel “premium SaaS / Apple-level”
+
+No distraction after animation ends
+
+Must respect prefers-reduced-motion
+
+🛠️ Technical Requirements
+Stack
+
+React 18
+
+Tailwind CSS
+
+CSS variables for theme colors
+
+Optional: Framer Motion (recommended)
+
+Theme Handling
+
+Use CSS variables:
+
+--bg
+--fg
+--card
+--border
+--accent
+
+
+Persist theme in:
+
+localStorage
+
+Sync with system preference on first load
+
+🧪 Edge Cases
+
+Page reload preserves theme
+
+Works on mobile & desktop
+
+Works inside modal/dialog
+
+Animation does not replay on every route change
+
+🚫 Avoid
+
+❌ Basic checkbox toggle
+
+❌ Instant background color switch
+
+❌ Overly long animation
+
+❌ Gimmicky effects
+
+❌ Re-render flicker
+
+🌙 Inspiration Keywords (DO NOT COPY, JUST FEEL)
+
+“Material You”
+
+“Apple macOS theme transitions”
+
+“Cinematic UI”
+
+“Ambient interface”
+
+“Calm technology”
+
+✅ Acceptance Criteria
+
+Dark mode is considered DONE only if:
+
+Transition feels smooth and intentional
+
+User instantly understands what happened
+
+The switch feels delightful, not technical
+
+It looks unique (not template-like)
+
+🧠 Philosophy
+
+Dark mode is not a feature.
+It’s a mood.
+
+Build it accordingly.

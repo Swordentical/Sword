@@ -60,11 +60,10 @@ export function ThemeProvider({
   }, [theme]);
 
   const setThemeWithAnimation = useCallback((newTheme: Theme, x: number, y: number) => {
-    const root = document.documentElement;
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     
-    // Check if View Transitions API is supported
-    if (!document.startViewTransition) {
-      // Fallback: just change theme without animation
+    if (prefersReducedMotion || !document.startViewTransition) {
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
       return;
@@ -76,11 +75,6 @@ export function ThemeProvider({
       Math.max(y, window.innerHeight - y)
     );
 
-    // Set CSS custom properties for the animation origin
-    root.style.setProperty('--theme-transition-x', `${x}px`);
-    root.style.setProperty('--theme-transition-y', `${y}px`);
-    root.style.setProperty('--theme-transition-radius', `${maxRadius}px`);
-
     const transition = document.startViewTransition(() => {
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
@@ -89,7 +83,7 @@ export function ThemeProvider({
     transition.ready.then(() => {
       const isDark = newTheme === 'dark' || (newTheme === 'system' && window.matchMedia("(prefers-color-scheme: dark)").matches);
       
-      // Animate the clip-path from a small circle to covering the whole screen
+      // Cinematic animation: 600ms with smooth easing
       document.documentElement.animate(
         {
           clipPath: isDark
@@ -97,8 +91,8 @@ export function ThemeProvider({
             : [`circle(${maxRadius}px at ${x}px ${y}px)`, `circle(0px at ${x}px ${y}px)`],
         },
         {
-          duration: 400,
-          easing: 'ease-out',
+          duration: 600,
+          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
           pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)',
         }
       );
