@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { cn } from "@/lib/utils";
 
 interface TransitionState {
   isAnimating: boolean;
@@ -39,12 +38,12 @@ export function ThemeTransitionLayer() {
     setProgress(0);
 
     const startTime = performance.now();
-    const duration = 600;
+    const duration = 900;
 
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const newProgress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - newProgress, 3);
+      const eased = 1 - Math.pow(1 - newProgress, 4);
       setProgress(eased);
 
       if (newProgress < 1) {
@@ -53,7 +52,7 @@ export function ThemeTransitionLayer() {
         setTimeout(() => {
           setTransition((prev) => ({ ...prev, isAnimating: false }));
           setProgress(0);
-        }, 50);
+        }, 100);
       }
     };
 
@@ -74,64 +73,98 @@ export function ThemeTransitionLayer() {
   const maxRadius = Math.hypot(
     Math.max(transition.originX, window.innerWidth - transition.originX),
     Math.max(transition.originY, window.innerHeight - transition.originY)
-  );
+  ) * 1.2;
 
   const currentRadius = progress * maxRadius;
   const isDarkTransition = transition.targetTheme === "dark";
 
-  // Only show during the middle of the animation for a subtle ripple effect
-  const rippleOpacity = progress < 0.1 ? progress * 10 : progress > 0.7 ? (1 - progress) * 3.33 : 1;
+  const fadeIn = progress < 0.15 ? progress / 0.15 : 1;
+  const fadeOut = progress > 0.6 ? 1 - (progress - 0.6) / 0.4 : 1;
+  const ambientOpacity = fadeIn * fadeOut * 0.35;
 
   return (
     <div
-      className="fixed inset-0 pointer-events-none"
-      style={{ zIndex: 99999 }}
+      className="fixed inset-0 pointer-events-none overflow-hidden"
+      style={{ zIndex: -1 }}
       aria-hidden="true"
     >
-      {/* Ripple ring effect - just a subtle border ring expanding outward */}
       <div
-        className="absolute rounded-full"
+        className="absolute"
         style={{
-          left: transition.originX - currentRadius,
-          top: transition.originY - currentRadius,
+          left: transition.originX,
+          top: transition.originY,
           width: currentRadius * 2,
           height: currentRadius * 2,
-          opacity: rippleOpacity * 0.4,
-          boxShadow: isDarkTransition
-            ? `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(99, 102, 241, 0.3), 0 0 ${currentRadius * 0.05}px rgba(99, 102, 241, 0.2)`
-            : `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(251, 191, 36, 0.3), 0 0 ${currentRadius * 0.05}px rgba(251, 191, 36, 0.2)`,
+          transform: `translate(-50%, -50%)`,
+          background: isDarkTransition
+            ? `radial-gradient(circle, rgba(30, 27, 75, ${ambientOpacity}) 0%, rgba(15, 10, 50, ${ambientOpacity * 0.6}) 40%, transparent 70%)`
+            : `radial-gradient(circle, rgba(255, 251, 235, ${ambientOpacity}) 0%, rgba(254, 243, 199, ${ambientOpacity * 0.7}) 40%, transparent 70%)`,
+          willChange: "width, height",
         }}
       />
 
-      {/* Soft glow at the origin point */}
-      {progress > 0 && progress < 0.8 && (
+      {progress < 0.5 && (
         <div
-          className={cn(
-            "absolute rounded-full",
-            isDarkTransition ? "bg-indigo-500/20" : "bg-amber-400/30"
-          )}
+          className="absolute rounded-full"
           style={{
-            left: transition.originX - 50,
-            top: transition.originY - 50,
-            width: 100,
-            height: 100,
-            filter: "blur(30px)",
-            opacity: (1 - progress) * 0.8,
-            transform: `scale(${1 + progress * 2})`,
+            left: transition.originX - 80,
+            top: transition.originY - 80,
+            width: 160,
+            height: 160,
+            background: isDarkTransition
+              ? "radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)"
+              : "radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%)",
+            opacity: (0.5 - progress) * 2,
+            transform: `scale(${1 + progress * 3})`,
+            filter: "blur(20px)",
+            willChange: "transform, opacity",
           }}
         />
       )}
 
-      {/* Very subtle ambient wash - almost invisible */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: isDarkTransition
-            ? `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(30, 27, 75, 0.08) 0%, transparent 70%)`
-            : `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(254, 243, 199, 0.12) 0%, transparent 70%)`,
-          opacity: rippleOpacity,
-        }}
-      />
+      {isDarkTransition && progress > 0.2 && progress < 0.8 && (
+        <>
+          {[...Array(8)].map((_, i) => {
+            const angle = (i / 8) * Math.PI * 2 + progress * 0.5;
+            const distance = 50 + progress * 150;
+            const x = transition.originX + Math.cos(angle) * distance;
+            const y = transition.originY + Math.sin(angle) * distance;
+            const starOpacity = (1 - Math.abs(progress - 0.5) * 2) * 0.4;
+            
+            return (
+              <div
+                key={i}
+                className="absolute rounded-full bg-white"
+                style={{
+                  left: x,
+                  top: y,
+                  width: 2 + Math.random(),
+                  height: 2 + Math.random(),
+                  opacity: starOpacity,
+                  transform: "translate(-50%, -50%)",
+                  willChange: "opacity",
+                }}
+              />
+            );
+          })}
+        </>
+      )}
+
+      {!isDarkTransition && progress > 0.1 && progress < 0.7 && (
+        <div
+          className="absolute"
+          style={{
+            left: transition.originX - currentRadius * 0.3,
+            top: transition.originY - currentRadius * 0.3,
+            width: currentRadius * 0.6,
+            height: currentRadius * 0.6,
+            background: "radial-gradient(ellipse 100% 60% at 50% 50%, rgba(255, 237, 213, 0.15) 0%, transparent 60%)",
+            opacity: (0.7 - progress) * 1.5,
+            filter: "blur(30px)",
+            willChange: "opacity",
+          }}
+        />
+      )}
     </div>
   );
 }

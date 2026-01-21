@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeTransitionLayer } from "@/components/theme-transition-layer";
+import { AmbientBackground, InvisibleThemeTrigger } from "@/components/ambient-background";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -200,12 +201,14 @@ function Router() {
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="dental-clinic-theme">
+      <AmbientBackground />
+      <ThemeTransitionLayer />
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
+            <InvisibleThemeTrigger />
             <Router />
             <Toaster />
-            <ThemeTransitionLayer />
           </TooltipProvider>
         </AuthProvider>
       </QueryClientProvider>
