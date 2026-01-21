@@ -113,6 +113,12 @@ const mainNavItems: NavItem[] = [
     roles: ["admin", "doctor", "staff"],
   },
   {
+    title: "Audit Logs",
+    url: "/audit-logs",
+    icon: ShieldCheck,
+    roles: ["admin"],
+  },
+  {
     title: "User Management",
     url: "/admin/users",
     icon: ShieldCheck,

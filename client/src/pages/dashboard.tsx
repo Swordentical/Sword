@@ -520,7 +520,6 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "stats", label: "Statistics Cards", slot: "fullWidth", enabled: true, order: 0 },
   { id: "appointments", label: "Upcoming Appointments", slot: "main", enabled: true, order: 0 },
   { id: "quickActions", label: "Quick Actions", slot: "main", enabled: true, order: 1 },
-  { id: "activity", label: "Recent Activity", slot: "sidebar", enabled: true, order: 0 },
   { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 1 },
 ];
 
@@ -741,10 +740,6 @@ export default function Dashboard() {
       </div>
     );
   };
-
-  const { data: recentActivity, isLoading: activityLoading } = useQuery<ActivityLog[]>({
-    queryKey: ["/api/activity/recent"],
-  });
 
   const { data: lowStockItems, isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory/low-stock"],
@@ -992,7 +987,6 @@ export default function Dashboard() {
       case "stats": return renderStatsWidget();
       case "appointments": return renderAppointmentsWidget();
       case "quickActions": return renderQuickActionsWidget();
-      case "activity": return renderActivityWidget();
       case "lowStock": return renderLowStockWidget();
       default: return null;
     }

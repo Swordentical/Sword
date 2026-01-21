@@ -163,6 +163,14 @@ function DoctorsPageWrapper() {
   );
 }
 
+function AuditLogsPageWrapper() {
+  return (
+    <MainLayout>
+      <AuditLogsPage />
+    </MainLayout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -178,6 +186,7 @@ function Router() {
       <ProtectedRoute path="/reports" component={ReportsPageWrapper} />
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/insurance-claims" component={InsuranceClaimsPageWrapper} />
+      <ProtectedRoute path="/audit-logs" component={AuditLogsPageWrapper} />
       <ProtectedRoute path="/settings" component={SettingsPageWrapper} />
       <ProtectedRoute path="/admin/users" component={UserManagementPageWrapper} />
       <Route path="/auth" component={AuthPage} />

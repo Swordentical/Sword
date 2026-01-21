@@ -66,10 +66,9 @@ export async function registerRoutes(
   });
 
   // Activity log - admin only access
-  app.get("/api/activity", requireRole("admin"), async (req, res) => {
+  app.get("/api/activity/all", requireRole("admin"), async (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-      const activity = await storage.getRecentActivity(limit);
+      const activity = await storage.getRecentActivity(100);
       res.json(activity);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activity" });
