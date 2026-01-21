@@ -38,7 +38,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import type { AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
+import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -315,8 +315,18 @@ function TodayAppointmentCard({ appointment }: { appointment: AppointmentWithPat
         <div className="font-medium truncate">
           {appointment.patient.firstName} {appointment.patient.lastName}
         </div>
-        <div className="text-sm text-muted-foreground truncate">
-          {appointment.title}
+        <div className="flex flex-col gap-0.5 mt-0.5">
+          <div className="text-sm text-muted-foreground truncate">
+            {appointment.title}
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+            {appointment.doctor && (
+              <span className="truncate">Dr. {appointment.doctor.firstName} {appointment.doctor.lastName}</span>
+            )}
+            {appointment.roomNumber && (
+              <span>Room {appointment.roomNumber}</span>
+            )}
+          </div>
         </div>
       </div>
       <AppointmentStatusBadge status={appointment.status || "pending"} />
