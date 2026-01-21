@@ -599,6 +599,11 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Filter payments for this specific invoice
+    const invoicePayments = payments?.filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded) || [];
+    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
+
     const invoiceHtml = `
       <html>
         <head>
@@ -623,6 +628,8 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
+            .payments-section { margin-top: 20px; }
+            .payment-row { color: #1e7e34; font-size: 13px; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
@@ -664,15 +671,29 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
             <tbody>
               <tr>
                 <td>Dental Services and Treatments</td>
-                <td style="text-align: right;">$${invoice.totalAmount}</td>
+                <td style="text-align: right;">$${parseFloat(invoice.totalAmount).toFixed(2)}</td>
               </tr>
+              ${invoicePayments.map((p: any) => `
+                <tr class="payment-row">
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
 
           <div class="totals">
+            <div class="total-row">
+              <span>Total Charges</span>
+              <span>$${parseFloat(invoice.totalAmount).toFixed(2)}</span>
+            </div>
+            <div class="total-row" style="color: #1e7e34;">
+              <span>Total Paid</span>
+              <span>-$${totalPaid.toFixed(2)}</span>
+            </div>
             <div class="total-row grand-total">
-              <span>Total Amount Due</span>
-              <span>$${invoice.finalAmount}</span>
+              <span>Balance Remaining</span>
+              <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
             </div>
           </div>
 
@@ -902,6 +923,11 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    // Filter payments for this specific invoice
+    const invoicePayments = payments?.filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded) || [];
+    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
+
     const invoiceHtml = `
       <html>
         <head>
@@ -926,6 +952,8 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
+            .payments-section { margin-top: 20px; }
+            .payment-row { color: #1e7e34; font-size: 13px; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
@@ -967,15 +995,29 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
             <tbody>
               <tr>
                 <td>Dental Services and Treatments</td>
-                <td style="text-align: right;">$${invoice.totalAmount}</td>
+                <td style="text-align: right;">$${parseFloat(invoice.totalAmount).toFixed(2)}</td>
               </tr>
+              ${invoicePayments.map((p: any) => `
+                <tr class="payment-row">
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
 
           <div class="totals">
+            <div class="total-row">
+              <span>Total Charges</span>
+              <span>$${parseFloat(invoice.totalAmount).toFixed(2)}</span>
+            </div>
+            <div class="total-row" style="color: #1e7e34;">
+              <span>Total Paid</span>
+              <span>-$${totalPaid.toFixed(2)}</span>
+            </div>
             <div class="total-row grand-total">
-              <span>Total Amount Due</span>
-              <span>$${invoice.finalAmount}</span>
+              <span>Balance Remaining</span>
+              <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
             </div>
           </div>
 
