@@ -339,17 +339,30 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      const user = req.user as any;
       const patient = await storage.createPatient({
         ...parsed.data,
-        createdById: (req.user as any).id,
+        createdById: user.id,
       });
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "created",
         entityType: "patient",
         entityId: patient.id,
         details: `Added patient ${patient.firstName} ${patient.lastName}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "patient",
+        entityId: patient.id,
+        previousValue: null,
+        newValue: patient,
+        description: `Created patient ${patient.firstName} ${patient.lastName}`,
+        ipAddress: req.ip || null,
       });
 
       res.status(201).json(patient);
@@ -394,17 +407,32 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      // Get previous state for audit log
+      const previousPatient = await storage.getPatient(req.params.id);
+
       const patient = await storage.updatePatient(req.params.id, parsed.data);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "updated",
         entityType: "patient",
         entityId: patient.id,
         details: `Updated patient ${patient.firstName} ${patient.lastName}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "patient",
+        entityId: patient.id,
+        previousValue: previousPatient,
+        newValue: patient,
+        description: `Updated patient ${patient.firstName} ${patient.lastName}`,
+        ipAddress: req.ip || null,
       });
 
       res.json(patient);
@@ -415,6 +443,7 @@ export async function registerRoutes(
 
   app.delete("/api/patients/:id", requireRole("admin", "doctor"), async (req, res) => {
     try {
+      const user = req.user as any;
       const patient = await storage.getPatient(req.params.id);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
@@ -443,11 +472,23 @@ export async function registerRoutes(
       }
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "deleted",
         entityType: "patient",
         entityId: req.params.id,
         details: `Deleted patient ${patient.firstName} ${patient.lastName}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "DELETE",
+        entityType: "patient",
+        entityId: req.params.id,
+        previousValue: patient,
+        newValue: null,
+        description: `Deleted patient ${patient.firstName} ${patient.lastName}`,
+        ipAddress: req.ip || null,
       });
 
       res.json({ message: "Patient deleted successfully" });
@@ -651,6 +692,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      const user = req.user as any;
       const appointment = await storage.createAppointment(parsed.data);
 
       // Get patient for activity log
@@ -659,11 +701,23 @@ export async function registerRoutes(
       // Log activity
       try {
         await storage.logActivity({
-          userId: (req.user as any).id,
+          userId: user.id,
           action: "created",
           entityType: "appointment",
           entityId: appointment.id,
           details: `Scheduled appointment for ${patient?.firstName || "Unknown"} ${patient?.lastName || "Patient"}`,
+        });
+
+        await storage.createAuditLog({
+          userId: user.id,
+          userRole: user.role,
+          actionType: "CREATE",
+          entityType: "appointment",
+          entityId: appointment.id,
+          previousValue: null,
+          newValue: appointment,
+          description: `Scheduled appointment for ${patient?.firstName || "Unknown"} ${patient?.lastName || "Patient"}`,
+          ipAddress: req.ip || null,
         });
       } catch (logError) {
         console.error("Failed to log activity for appointment creation:", logError);
@@ -693,10 +747,27 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      // Get previous state for audit log
+      const previousAppointment = await storage.getAppointment(req.params.id);
+      
       const appointment = await storage.updateAppointment(req.params.id, parsed.data);
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
+
+      const user = req.user as any;
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "appointment",
+        entityId: appointment.id,
+        previousValue: previousAppointment,
+        newValue: appointment,
+        description: `Updated appointment ${appointment.title || appointment.id}`,
+        ipAddress: req.ip || null,
+      });
+
       res.json(appointment);
     } catch (error) {
       res.status(500).json({ message: "Failed to update appointment" });
@@ -1686,6 +1757,20 @@ export async function registerRoutes(
       }
 
       const item = await storage.createInventoryItem(parsed.data);
+
+      const user = req.user as any;
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "inventory",
+        entityId: item.id,
+        previousValue: null,
+        newValue: item,
+        description: `Created inventory item: ${item.name}`,
+        ipAddress: req.ip || null,
+      });
+
       res.status(201).json(item);
     } catch (error) {
       res.status(500).json({ message: "Failed to create inventory item" });
@@ -1694,6 +1779,11 @@ export async function registerRoutes(
 
   app.patch("/api/inventory/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
     try {
+      const user = req.user as any;
+      
+      // Get previous state for audit log
+      const previousItem = await storage.getInventoryItem(req.params.id);
+
       const updateSchema = insertInventoryItemSchema.pick({
         name: true,
         category: true,
@@ -1716,6 +1806,19 @@ export async function registerRoutes(
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "inventory",
+        entityId: item.id,
+        previousValue: previousItem,
+        newValue: item,
+        description: `Updated inventory item: ${item.name}`,
+        ipAddress: req.ip || null,
+      });
+
       res.json(item);
     } catch (error) {
       res.status(500).json({ message: "Failed to update inventory item" });
@@ -1759,13 +1862,26 @@ export async function registerRoutes(
       const labCase = await storage.createLabCase(parsed.data);
 
       const patient = await storage.getPatient(parsed.data.patientId);
+      const user = req.user as any;
 
       await storage.logActivity({
-        userId: (req.user as any).id,
+        userId: user.id,
         action: "created",
         entityType: "lab_case",
         entityId: labCase.id,
         details: `Created lab case for ${patient?.firstName} ${patient?.lastName}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "lab_case",
+        entityId: labCase.id,
+        previousValue: null,
+        newValue: labCase,
+        description: `Created lab case for ${patient?.firstName} ${patient?.lastName}`,
+        ipAddress: req.ip || null,
       });
 
       res.status(201).json(labCase);
@@ -1776,6 +1892,11 @@ export async function registerRoutes(
 
   app.patch("/api/lab-cases/:id", requireRole("admin", "doctor"), async (req, res) => {
     try {
+      const user = req.user as any;
+      
+      // Get previous state for audit log
+      const previousLabCase = await storage.getLabCase(req.params.id);
+
       const updateSchema = insertLabCaseSchema.pick({
         labName: true,
         caseType: true,
@@ -1797,6 +1918,19 @@ export async function registerRoutes(
       if (!labCase) {
         return res.status(404).json({ message: "Lab case not found" });
       }
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "lab_case",
+        entityId: labCase.id,
+        previousValue: previousLabCase,
+        newValue: labCase,
+        description: `Updated lab case ${labCase.id}`,
+        ipAddress: req.ip || null,
+      });
+
       res.json(labCase);
     } catch (error) {
       res.status(500).json({ message: "Failed to update lab case" });
