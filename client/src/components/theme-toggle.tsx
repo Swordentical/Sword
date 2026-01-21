@@ -1,20 +1,36 @@
 import { useTheme } from "@/components/theme-provider";
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { triggerThemeTransition } from "./theme-transition-layer";
 
 export function ThemeToggle() {
-  const { resolvedTheme, setThemeWithAnimation } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const containerRef = useRef<HTMLButtonElement>(null);
+  const originRef = useRef({ x: 0, y: 0 });
 
-  const handleToggle = () => {
+  const handleToggle = useCallback(() => {
+    // Step 1: Measure position FIRST (no state changes)
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
-      setThemeWithAnimation(isDark ? "light" : "dark", x, y);
+      originRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
     }
-  };
+
+    const nextTheme = isDark ? "light" : "dark";
+
+    // Step 2: Start animation in next frame (before theme change)
+    requestAnimationFrame(() => {
+      triggerThemeTransition(originRef.current.x, originRef.current.y, nextTheme);
+      
+      // Step 3: Change theme AFTER animation has started (50ms delay)
+      setTimeout(() => {
+        setTheme(nextTheme);
+      }, 50);
+    });
+  }, [isDark, setTheme]);
 
   return (
     <button

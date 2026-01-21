@@ -1,12 +1,10 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { triggerThemeTransition } from "./theme-transition-layer";
+import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "dark" | "light" | "system";
 
 type ThemeProviderContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  setThemeWithAnimation: (theme: Theme, x: number, y: number) => void;
   resolvedTheme: "dark" | "light";
 };
 
@@ -60,27 +58,12 @@ export function ThemeProvider({
     }
   }, [theme]);
 
-  const setThemeWithAnimation = useCallback((newTheme: Theme, x: number, y: number) => {
-    // Determine the target resolved theme
-    const targetResolved = newTheme === 'system' 
-      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-      : newTheme as "dark" | "light";
-    
-    // Trigger the ambient transition effect
-    triggerThemeTransition(x, y, targetResolved);
-    
-    // Change the theme immediately - CSS transitions handle the morphing
-    localStorage.setItem(storageKey, newTheme);
-    setTheme(newTheme);
-  }, [storageKey]);
-
   const value = {
     theme,
     setTheme: (newTheme: Theme) => {
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
     },
-    setThemeWithAnimation,
     resolvedTheme,
   };
 
