@@ -1956,17 +1956,20 @@ export async function registerRoutes(
 
       res.json(enriched);
     } catch (error) {
+      console.error("Error fetching lab cases:", error);
       res.status(500).json({ message: "Failed to fetch lab cases" });
     }
   });
 
   app.post("/api/lab-cases", requireRole("admin", "doctor"), async (req, res) => {
     try {
+      console.log("Creating lab case with body:", JSON.stringify(req.body, null, 2));
       const parsed = insertLabCaseSchema.safeParse({
         ...req.body,
         doctorId: (req.user as any).role === 'doctor' ? (req.user as any).id : req.body.doctorId,
       });
       if (!parsed.success) {
+        console.error("Validation failed for lab case:", parsed.error.flatten());
         return res.status(400).json({ message: parsed.error.message });
       }
 
@@ -1997,6 +2000,7 @@ export async function registerRoutes(
 
       res.status(201).json(labCase);
     } catch (error) {
+      console.error("Critical error in POST /api/lab-cases:", error);
       res.status(500).json({ message: "Failed to create lab case" });
     }
   });

@@ -193,6 +193,7 @@ function AddLabCaseDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lab-cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-labs"] });
       toast({
         title: "Lab case created",
         description: "The lab case has been sent to the lab.",
