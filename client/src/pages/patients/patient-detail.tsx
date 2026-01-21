@@ -614,7 +614,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="font-medium">{pt.treatment?.name}</span>
                   {pt.toothNumber && (
                     <Badge variant="outline" className="text-xs">
