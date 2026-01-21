@@ -164,22 +164,27 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
   
-  /* Dark mode transition animations - snappy and smooth */
-  html {
-    transition: background-color 0.15s ease-out;
+  /* View Transition API styles for circular theme animation */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
   }
   
-  html.dark-transition,
-  html.dark-transition *,
-  html.dark-transition *::before,
-  html.dark-transition *::after {
-    transition: 
-      background-color 0.15s ease-out,
-      border-color 0.15s ease-out,
-      color 0.1s ease-out,
-      fill 0.1s ease-out,
-      stroke 0.1s ease-out,
-      box-shadow 0.15s ease-out !important;
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+  
+  ::view-transition-new(root) {
+    z-index: 9999;
+  }
+  
+  .dark::view-transition-old(root) {
+    z-index: 9999;
+  }
+  
+  .dark::view-transition-new(root) {
+    z-index: 1;
   }
 }
 

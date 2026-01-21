@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type Theme = "dark" | "light" | "system";
 
 type ThemeProviderContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  setThemeWithAnimation: (theme: Theme, x: number, y: number) => void;
   resolvedTheme: "dark" | "light";
 };
 
@@ -58,19 +59,59 @@ export function ThemeProvider({
     }
   }, [theme]);
 
+  const setThemeWithAnimation = useCallback((newTheme: Theme, x: number, y: number) => {
+    const root = document.documentElement;
+    
+    // Check if View Transitions API is supported
+    if (!document.startViewTransition) {
+      // Fallback: just change theme without animation
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
+      return;
+    }
+
+    // Calculate the maximum radius needed to cover the entire screen
+    const maxRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    // Set CSS custom properties for the animation origin
+    root.style.setProperty('--theme-transition-x', `${x}px`);
+    root.style.setProperty('--theme-transition-y', `${y}px`);
+    root.style.setProperty('--theme-transition-radius', `${maxRadius}px`);
+
+    const transition = document.startViewTransition(() => {
+      localStorage.setItem(storageKey, newTheme);
+      setTheme(newTheme);
+    });
+
+    transition.ready.then(() => {
+      const isDark = newTheme === 'dark' || (newTheme === 'system' && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      
+      // Animate the clip-path from a small circle to covering the whole screen
+      document.documentElement.animate(
+        {
+          clipPath: isDark
+            ? [`circle(0px at ${x}px ${y}px)`, `circle(${maxRadius}px at ${x}px ${y}px)`]
+            : [`circle(${maxRadius}px at ${x}px ${y}px)`, `circle(0px at ${x}px ${y}px)`],
+        },
+        {
+          duration: 400,
+          easing: 'ease-out',
+          pseudoElement: isDark ? '::view-transition-new(root)' : '::view-transition-old(root)',
+        }
+      );
+    });
+  }, [storageKey]);
+
   const value = {
     theme,
     setTheme: (newTheme: Theme) => {
-      const root = window.document.documentElement;
-      root.classList.add("dark-transition");
-      
       localStorage.setItem(storageKey, newTheme);
       setTheme(newTheme);
-      
-      setTimeout(() => {
-        root.classList.remove("dark-transition");
-      }, 600);
     },
+    setThemeWithAnimation,
     resolvedTheme,
   };
 
