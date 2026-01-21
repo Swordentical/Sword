@@ -79,42 +79,51 @@ function TodayAppointmentCard({
 
   return (
     <div 
-      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover-elevate cursor-pointer"
+      className="group relative flex items-center gap-4 p-4 rounded-xl border border-transparent bg-card/50 hover:bg-card hover:border-primary/20 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden"
       onClick={() => onClick(appointment)}
       data-testid={`card-appointment-${appointment.id}`}
     >
-      <div className="text-center min-w-[60px]">
-        <div className="text-lg font-bold text-foreground">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div className="text-center min-w-[70px] space-y-1">
+        <div className="text-xl font-black tracking-tighter text-foreground">
           {format(startTime, "HH:mm")}
         </div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
           {format(startTime, "a")}
         </div>
       </div>
-      <Avatar className="h-10 w-10">
-        <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+      <Avatar className="h-12 w-12 border-2 border-background shadow-sm group-hover:scale-105 transition-transform">
+        <AvatarFallback className="bg-primary/10 text-primary text-base font-bold">
           {initials}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">
+        <div className="text-base font-bold tracking-tight truncate group-hover:text-primary transition-colors">
           {appointment.patient.firstName} {appointment.patient.lastName}
         </div>
-        <div className="flex flex-col gap-0.5 mt-0.5">
-          <div className="text-sm text-muted-foreground truncate">
+        <div className="flex flex-col gap-1 mt-1">
+          <div className="text-sm font-medium text-muted-foreground/80 truncate">
             {appointment.title}
           </div>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+          <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tight">
             {appointment.doctor && (
-              <span className="truncate">Dr. {appointment.doctor.firstName} {appointment.doctor.lastName}</span>
+              <span className="flex items-center gap-1 truncate">
+                <User className="h-3 w-3" />
+                Dr. {appointment.doctor.firstName.charAt(0)}. {appointment.doctor.lastName}
+              </span>
             )}
             {appointment.roomNumber && (
-              <span>Room {appointment.roomNumber}</span>
+              <span className="flex items-center gap-1 shrink-0">
+                <Settings2 className="h-3 w-3" />
+                Room {appointment.roomNumber}
+              </span>
             )}
           </div>
         </div>
       </div>
-      <AppointmentStatusBadge status={appointment.status || "pending"} />
+      <div className="transition-transform group-hover:scale-105">
+        <AppointmentStatusBadge status={appointment.status || "pending"} />
+      </div>
     </div>
   );
 }
@@ -216,18 +225,18 @@ function LiveClock() {
   }, []);
 
   return (
-    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="rounded-full bg-primary/10 p-3">
-            <Clock className="h-6 w-6 text-primary" />
+    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20 shadow-sm hover:shadow-md transition-shadow">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="rounded-2xl bg-primary/10 p-4 shadow-inner">
+            <Clock className="h-8 w-8 text-primary animate-pulse" />
           </div>
           <div>
-            <div className="text-3xl font-bold tabular-nums tracking-tight">
+            <div className="text-4xl font-black tabular-nums tracking-tighter text-foreground/90">
               {format(time, "HH:mm:ss")}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <CalendarDays className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground/80 mt-1">
+              <CalendarDays className="h-4 w-4 text-primary/60" />
               <span>{format(time, "EEEE, MMMM d, yyyy")}</span>
             </div>
           </div>
@@ -415,31 +424,31 @@ function StatCard({
   };
 
   return (
-    <Card>
+    <Card className="group overflow-hidden border-none bg-gradient-to-br from-card to-muted/30 shadow-sm hover:shadow-md transition-all duration-300">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
           {title}
         </CardTitle>
-        <div className={`rounded-lg p-2 ${colorClasses[color]}`}>
+        <div className={`rounded-xl p-2.5 shadow-sm transition-transform duration-300 group-hover:scale-110 ${colorClasses[color]}`}>
           <Icon className="h-4 w-4" />
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-3xl font-black tracking-tight">{value}</div>
         {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          <p className="text-xs font-medium text-muted-foreground/70 mt-1">{description}</p>
         )}
         {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            <TrendingUp
-              className={`h-3 w-3 ${trend.isPositive ? "text-emerald-500" : "text-destructive rotate-180"}`}
-            />
-            <span
-              className={`text-xs font-medium ${trend.isPositive ? "text-emerald-500" : "text-destructive"}`}
-            >
+          <div className="flex items-center gap-1.5 mt-3">
+            <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              trend.isPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"
+            }`}>
+              <TrendingUp
+                className={`h-3 w-3 ${trend.isPositive ? "" : "rotate-180"}`}
+              />
               {trend.isPositive ? "+" : "-"}{trend.value}%
-            </span>
-            <span className="text-xs text-muted-foreground">from last month</span>
+            </div>
+            <span className="text-[10px] font-medium text-muted-foreground/60 italic">vs last month</span>
           </div>
         )}
       </CardContent>
@@ -462,11 +471,14 @@ function QuickActionButton({
     <Link href={href}>
       <Button
         variant="outline"
-        className="flex flex-col items-center gap-2 h-auto py-4 px-6 w-full"
+        className="group relative flex flex-col items-center gap-3 h-auto py-6 px-4 w-full border-none bg-gradient-to-b from-card to-muted/50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
         data-testid={testId}
       >
-        <Icon className="h-5 w-5" />
-        <span className="text-sm">{label}</span>
+        <div className="rounded-2xl bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+          <Icon className="h-6 w-6" />
+        </div>
+        <span className="text-sm font-bold tracking-tight">{label}</span>
+        <div className="absolute inset-x-0 bottom-0 h-1 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-b-lg" />
       </Button>
     </Link>
   );
@@ -837,23 +849,23 @@ export default function Dashboard() {
   );
 
   const renderAppointmentsWidget = () => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
+    <Card className="border-none bg-gradient-to-br from-card to-muted/20 shadow-lg ring-1 ring-primary/5">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-card/50 pb-6">
         <div>
-          <CardTitle>Upcoming Appointments</CardTitle>
-          <CardDescription>
-            View and manage scheduled visits
+          <CardTitle className="text-xl font-black tracking-tight">Upcoming Appointments</CardTitle>
+          <CardDescription className="text-sm font-medium">
+            Stay on top of your schedule
           </CardDescription>
         </div>
         <Link href="/appointments">
-          <Button variant="outline" size="sm" data-testid="button-view-appointments">
+          <Button variant="secondary" size="sm" className="font-bold shadow-sm" data-testid="button-view-appointments">
             View All
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </Link>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[500px] pr-4">
+      <CardContent className="pt-6">
+        <ScrollArea className="h-[600px] pr-4 -mr-4">
           {renderAppointments()}
         </ScrollArea>
       </CardContent>
@@ -987,27 +999,27 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div className="flex flex-col gap-2">
+    <div className="p-4 sm:p-8 space-y-8 max-w-[1600px] mx-auto overflow-x-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground" data-testid="text-greeting">
-              {greeting()}, {user?.firstName}!
+            <h1 className="text-4xl font-black tracking-tight text-foreground" data-testid="text-greeting">
+              {greeting()}, <span className="text-primary">{user?.firstName}</span>!
             </h1>
             <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-customize-dashboard">
-                  <Settings2 className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" data-testid="button-customize-dashboard">
+                  <Settings2 className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Customize Dashboard</SheetTitle>
-                  <SheetDescription>
-                    Show, hide, or reorder widgets to customize your dashboard
+              <SheetContent className="sm:max-w-md">
+                <SheetHeader className="pb-6 border-b">
+                  <SheetTitle className="text-2xl font-bold">Dashboard Layout</SheetTitle>
+                  <SheetDescription className="text-base">
+                    Personalize your workspace by arranging and toggling widgets.
                   </SheetDescription>
                 </SheetHeader>
-                <div className="mt-6">
+                <div className="mt-8">
                   <WidgetSettingsPanel
                     widgets={widgets}
                     onToggle={toggleWidget}
@@ -1019,20 +1031,20 @@ export default function Dashboard() {
               </SheetContent>
             </Sheet>
           </div>
-          <p className="text-muted-foreground">
-            Here's what's happening at your clinic today.
+          <p className="text-lg font-medium text-muted-foreground/80">
+            Welcome back! Here is a summary of today's activities.
           </p>
-          <div className="mt-2">
+          <div className="mt-4 max-w-md">
             <GlobalSearch />
           </div>
         </div>
         {headerWidgets.map(w => (
-          <div key={w.id} className="lg:w-auto">{renderWidgetById(w.id)}</div>
+          <div key={w.id} className="lg:w-auto transform hover:scale-[1.02] transition-transform">{renderWidgetById(w.id)}</div>
         ))}
       </div>
 
       {fullWidthWidgets.map(w => (
-        <div key={w.id}>{renderWidgetById(w.id)}</div>
+        <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
       ))}
 
       <EditAppointmentDialog 
@@ -1042,18 +1054,18 @@ export default function Dashboard() {
       />
 
       {(mainWidgets.length > 0 || sidebarWidgets.length > 0) && (
-        <div className={`grid gap-6 ${sidebarWidgets.length > 0 ? 'lg:grid-cols-3' : ''}`}>
+        <div className={`grid gap-8 ${sidebarWidgets.length > 0 ? 'lg:grid-cols-12' : 'grid-cols-1'}`}>
           {mainWidgets.length > 0 && (
-            <div className={`${sidebarWidgets.length > 0 ? 'lg:col-span-2' : ''} space-y-6`}>
+            <div className={`${sidebarWidgets.length > 0 ? 'lg:col-span-8' : ''} space-y-8`}>
               {mainWidgets.map(w => (
-                <div key={w.id}>{renderWidgetById(w.id)}</div>
+                <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
               ))}
             </div>
           )}
           {sidebarWidgets.length > 0 && (
-            <div className="space-y-6">
+            <div className="lg:col-span-4 space-y-8">
               {sidebarWidgets.map(w => (
-                <div key={w.id}>{renderWidgetById(w.id)}</div>
+                <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
               ))}
             </div>
           )}
