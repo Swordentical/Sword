@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Card, 
@@ -339,9 +339,8 @@ export default function AuditLogsPage() {
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
-                      <>
+                      <Fragment key={log.id}>
                         <TableRow 
-                          key={log.id}
                           className="cursor-pointer hover:bg-muted/30 transition-colors"
                           onClick={() => toggleRow(log.id)}
                           data-testid={`row-audit-${log.id}`}
@@ -403,7 +402,7 @@ export default function AuditLogsPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>

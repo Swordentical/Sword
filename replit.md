@@ -166,13 +166,31 @@ The system supports four user roles with different permission levels:
   - PATCH /api/insurance-claims/:id - update claim
   - DELETE /api/insurance-claims/:id - delete claim (admin only)
 
-### Audit Logs Page (January 2026)
-- Dedicated admin-only Audit Logs page (`/audit-logs`) for centralized activity monitoring
-- Removed Activity Log widget from dashboard to isolate audit functionality
-- Displays timestamp, user, action type, and entity details in table format
-- Activity logging for patient create/update/delete, invoice creation, and appointment scheduling
-- Protected by admin role check with redirect for non-admin users
-- API endpoint: GET /api/activity/all (admin only)
+### Audit Logs System (January 2026)
+- **Immutable, Append-Only Audit Trail** - Uses dedicated `audit_logs` table (not activity_log)
+  - Tamper-proof design: logs cannot be modified or deleted via API
+  - Captures user role at time of action for historical accuracy
+  - Records IP address for security tracking
+  - JSON diff storage: previousValue and newValue for full change history
+- **Admin-Only Audit Logs Page** (`/audit-logs`)
+  - Advanced filtering: user, action type (CREATE/UPDATE/DELETE), entity type, date range
+  - Expandable rows showing full JSON diff of changes
+  - CSV export and print functionality
+  - Summary statistics with entry count
+- **Comprehensive Audit Logging** across all major operations:
+  - Patients: create, update, delete
+  - Appointments: create, update
+  - Inventory: create, update
+  - Lab Cases: create, update
+  - Invoices: create
+  - Payments: create
+  - Expenses: create
+- **API Endpoints** (admin only):
+  - GET /api/audit-logs - list with filters (userId, actionType, entityType, startDate, endDate)
+  - GET /api/audit-logs/users - get users for filter dropdown
+- **Database Schema** (`audit_logs` table):
+  - id, userId, userRole, actionType, entityType, entityId
+  - previousValue (JSONB), newValue (JSONB), description, ipAddress, timestamp
 
 ### Clinic Settings & Room Management (January 2026)
 - **Clinic Settings** (Settings > Clinic tab)
