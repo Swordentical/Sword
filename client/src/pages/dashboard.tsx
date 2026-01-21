@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -205,6 +205,64 @@ function EditAppointmentDialog({
 }
 
 const CLOCK_STORAGE_KEY = "dashboard-clock-style";
+
+function LiveWallpaper() {
+  const particles = useMemo(() => 
+    Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      size: Math.random() * 60 + 20,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      duration: Math.random() * 20 + 15,
+      delay: Math.random() * -20,
+    })), []
+  );
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-muted/20 dark:to-muted/10" />
+      <div className="absolute inset-0 opacity-30 dark:opacity-20">
+        {particles.map((p) => (
+          <div
+            key={p.id}
+            className="absolute rounded-full bg-gradient-to-br from-primary/20 to-primary/5 dark:from-primary/15 dark:to-primary/5 blur-xl"
+            style={{
+              width: p.size,
+              height: p.size,
+              left: `${p.x}%`,
+              top: `${p.y}%`,
+              animation: `float-particle ${p.duration}s ease-in-out infinite`,
+              animationDelay: `${p.delay}s`,
+            }}
+          />
+        ))}
+      </div>
+      <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-radial from-primary/10 to-transparent dark:from-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-0 right-0 w-80 h-80 bg-gradient-radial from-primary/8 to-transparent dark:from-primary/4 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+      <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-gradient-radial from-muted/30 to-transparent dark:from-muted/15 rounded-full blur-2xl" />
+      <style>{`
+        @keyframes float-particle {
+          0%, 100% {
+            transform: translate(0, 0) scale(1);
+            opacity: 0.6;
+          }
+          25% {
+            transform: translate(30px, -40px) scale(1.1);
+            opacity: 0.8;
+          }
+          50% {
+            transform: translate(-20px, -60px) scale(0.9);
+            opacity: 0.5;
+          }
+          75% {
+            transform: translate(40px, -30px) scale(1.05);
+            opacity: 0.7;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -1119,8 +1177,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="shrink-0 border-b bg-card/50 p-3 sm:p-4">
+    <div className="h-full flex flex-col overflow-hidden relative">
+      <LiveWallpaper />
+      <div className="shrink-0 border-b bg-card/50 backdrop-blur-sm p-3 sm:p-4">
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3 min-w-0">
