@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -51,6 +51,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -71,9 +80,11 @@ const HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
 function DraggableAppointment({
   appointment,
   isDragging,
+  onClick,
 }: {
   appointment: AppointmentWithPatient;
   isDragging?: boolean;
+  onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging: isCurrentlyDragging } = useDraggable({
     id: appointment.id,
@@ -100,6 +111,7 @@ function DraggableAppointment({
       data-testid={`appointment-${appointment.id}`}
       {...attributes}
       {...listeners}
+      onClick={onClick}
     >
       <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
       <div
@@ -141,10 +153,12 @@ function DroppableTimeSlot({
   hour,
   selectedDate,
   appointments,
+  onAppointmentClick,
 }: {
   hour: number;
   selectedDate: Date;
   appointments: AppointmentWithPatient[];
+  onAppointmentClick: (apt: AppointmentWithPatient) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `hour-${hour}`,
@@ -167,7 +181,11 @@ function DroppableTimeSlot({
         data-testid={`timeslot-${hour}`}
       >
         {appointments.map((apt) => (
-          <DraggableAppointment key={apt.id} appointment={apt} />
+          <DraggableAppointment 
+            key={apt.id} 
+            appointment={apt} 
+            onClick={() => onAppointmentClick(apt)}
+          />
         ))}
       </div>
     </div>
@@ -297,10 +315,12 @@ function DayView({
   selectedDate,
   appointments,
   activeId,
+  onAppointmentClick,
 }: {
   selectedDate: Date;
   appointments: AppointmentWithPatient[];
   activeId: string | null;
+  onAppointmentClick: (apt: AppointmentWithPatient) => void;
 }) {
   const dayAppointments = appointments.filter((apt) =>
     isSameDay(new Date(apt.startTime), selectedDate)
@@ -309,7 +329,7 @@ function DayView({
   return (
     <div className="flex flex-col">
       <div className="mb-3 p-2 bg-muted/50 rounded-lg text-center">
-        <p className="text-xs text-muted-foreground">Drag appointments to reschedule or change status</p>
+        <p className="text-xs text-muted-foreground">Drag appointments to reschedule or click to edit</p>
       </div>
       <div className="grid grid-cols-[60px_1fr] sm:grid-cols-[80px_1fr] gap-2">
         {HOURS.map((hour) => {
@@ -324,6 +344,7 @@ function DayView({
               hour={hour}
               selectedDate={selectedDate}
               appointments={hourAppointments}
+              onAppointmentClick={onAppointmentClick}
             />
           );
         })}
@@ -377,6 +398,7 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(showNewDialog);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingAppointment, setEditingAppointment] = useState<AppointmentWithPatient | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -605,6 +627,7 @@ export default function AppointmentsPage() {
                       selectedDate={selectedDate}
                       appointments={filteredAppointments}
                       activeId={activeId}
+                      onAppointmentClick={(apt) => setEditingAppointment(apt)}
                     />
                   </ScrollArea>
                 )}
@@ -654,7 +677,8 @@ export default function AppointmentsPage() {
                     return (
                       <div
                         key={apt.id}
-                        className="flex items-center gap-3 py-2 border-b last:border-0"
+                        className="flex items-center gap-3 py-2 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded-md px-2"
+                        onClick={() => setEditingAppointment(apt)}
                       >
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
@@ -695,7 +719,124 @@ export default function AppointmentsPage() {
       </div>
 
       <AddAppointmentDialog open={dialogOpen} onOpenChange={handleCloseDialog} />
+
+      <EditAppointmentDialog
+        appointment={editingAppointment}
+        onOpenChange={(open) => !open && setEditingAppointment(null)}
+      />
     </div>
     </DndContext>
+  );
+}
+
+function EditAppointmentDialog({
+  appointment,
+  onOpenChange,
+}: {
+  appointment: AppointmentWithPatient | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [newTime, setNewTime] = useState("");
+  
+  useEffect(() => {
+    if (appointment) {
+      setNewTime(format(new Date(appointment.startTime), "HH:mm"));
+    }
+  }, [appointment]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment?.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({ title: "Appointment updated" });
+      onOpenChange(false);
+    },
+  });
+
+  if (!appointment) return null;
+
+  const handleUpdateStatus = (status: string) => {
+    updateMutation.mutate({ status });
+  };
+
+  const handleUpdateTime = () => {
+    const [hours, minutes] = newTime.split(":").map(Number);
+    const startTime = new Date(appointment.startTime);
+    startTime.setHours(hours, minutes, 0, 0);
+    updateMutation.mutate({ startTime: startTime.toISOString() });
+  };
+
+  return (
+    <Dialog open={!!appointment} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Appointment</DialogTitle>
+          <DialogDescription>
+            Manage appointment for {appointment.patient.firstName} {appointment.patient.lastName}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <Label>Update Time</Label>
+            <div className="flex gap-2">
+              <Input 
+                type="time" 
+                value={newTime} 
+                onChange={(e) => setNewTime(e.target.value)}
+                data-testid="input-edit-time"
+              />
+              <Button onClick={handleUpdateTime} disabled={updateMutation.isPending}>
+                Update Time
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Change Status</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                variant="outline" 
+                className="border-emerald-500 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                onClick={() => handleUpdateStatus("confirmed")}
+                disabled={updateMutation.isPending}
+                data-testid="button-confirm"
+              >
+                Confirm
+              </Button>
+              <Button 
+                variant="outline"
+                className="border-amber-500 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                onClick={() => handleUpdateStatus("pending")}
+                disabled={updateMutation.isPending}
+                data-testid="button-pending"
+              >
+                Pending
+              </Button>
+              <Button 
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary/5"
+                onClick={() => handleUpdateStatus("completed")}
+                disabled={updateMutation.isPending}
+                data-testid="button-complete"
+              >
+                Complete
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={() => handleUpdateStatus("canceled")}
+                disabled={updateMutation.isPending}
+                data-testid="button-cancel"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
