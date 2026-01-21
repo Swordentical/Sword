@@ -61,6 +61,7 @@ export const users = pgTable("users", {
 // Patients table
 export const patients = pgTable("patients", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  fileNumber: text("file_number"), // Custom patient file number
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email"),

@@ -44,7 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Patient, PatientTreatmentWithDetails, Invoice, Document as PatientDocument, AppointmentWithDetails } from "@shared/schema";
+import type { Patient, PatientTreatmentWithDetails, Invoice, Document as PatientDocument, AppointmentWithDetails, User as UserType } from "@shared/schema";
 
 const PRESET_ALLERGIES = ["Penicillin", "Latex", "Local Anesthetic", "NSAIDs", "Aspirin"];
 const PRESET_CONDITIONS = ["Diabetes", "Hypertension", "Heart Disease", "Asthma", "Epilepsy"];
@@ -1376,10 +1376,329 @@ function AppointmentsSection({ patientId }: { patientId: string }) {
   );
 }
 
+interface QuickPaymentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  patientId: string;
+  patientName: string;
+}
+
+function QuickPaymentDialog({ open, onOpenChange, patientId, patientName }: QuickPaymentDialogProps) {
+  const { toast } = useToast();
+  const [amount, setAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [notes, setNotes] = useState("");
+  const [invoiceId, setInvoiceId] = useState<string>("");
+
+  const { data: invoices = [] } = useQuery<Invoice[]>({
+    queryKey: ["/api/patients", patientId, "invoices"],
+    enabled: open && !!patientId,
+  });
+
+  const unpaidInvoices = invoices.filter(inv => 
+    inv.status !== "paid" && inv.status !== "canceled"
+  );
+
+  const paymentMutation = useMutation({
+    mutationFn: async (data: { amount: string; paymentMethod: string; notes: string; invoiceId: string }) => {
+      const res = await apiRequest("POST", "/api/payments", {
+        invoiceId: data.invoiceId,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        paymentDate: new Date().toISOString().split("T")[0],
+        notes: data.notes || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Payment recorded", description: `Payment of $${amount} recorded successfully.` });
+      setAmount("");
+      setPaymentMethod("cash");
+      setNotes("");
+      setInvoiceId("");
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to record payment", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!amount || !invoiceId) {
+      toast({ title: "Missing information", description: "Please select an invoice and enter an amount", variant: "destructive" });
+      return;
+    }
+    paymentMutation.mutate({ amount, paymentMethod, notes, invoiceId });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Record Payment for {patientName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Invoice *</Label>
+            <Select value={invoiceId} onValueChange={setInvoiceId}>
+              <SelectTrigger data-testid="select-quick-invoice">
+                <SelectValue placeholder="Select an invoice" />
+              </SelectTrigger>
+              <SelectContent>
+                {unpaidInvoices.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">No unpaid invoices</div>
+                ) : (
+                  unpaidInvoices.map((inv) => (
+                    <SelectItem key={inv.id} value={inv.id}>
+                      {inv.invoiceNumber} - ${inv.finalAmount} ({inv.status})
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Amount *</Label>
+            <Input
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              data-testid="input-quick-payment-amount"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger data-testid="select-quick-payment-method">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="card">Card</SelectItem>
+                <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                <SelectItem value="check">Check</SelectItem>
+                <SelectItem value="insurance">Insurance</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              placeholder="Optional notes..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              data-testid="input-quick-payment-notes"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={paymentMutation.isPending} data-testid="button-submit-quick-payment">
+            {paymentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Record Payment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface QuickAppointmentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  patientId: string;
+  patientName: string;
+  doctorId?: string;
+}
+
+function QuickAppointmentDialog({ open, onOpenChange, patientId, patientName, doctorId }: QuickAppointmentDialogProps) {
+  const { toast } = useToast();
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState("09:00");
+  const [duration, setDuration] = useState(30);
+  const [category, setCategory] = useState("follow_up");
+  const [notes, setNotes] = useState("");
+
+  const { data: doctors = [] } = useQuery<UserType[]>({
+    queryKey: ["/api/users", { role: "doctor" }],
+    enabled: open,
+  });
+
+  const [selectedDoctorId, setSelectedDoctorId] = useState(doctorId || "");
+
+  const appointmentMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const dateStr = data.date.toISOString().split("T")[0];
+      const startDateTime = new Date(`${dateStr}T${data.startTime}:00`);
+      const endDateTime = new Date(startDateTime.getTime() + data.duration * 60 * 1000);
+      
+      const res = await apiRequest("POST", "/api/appointments", {
+        patientId: data.patientId,
+        doctorId: data.doctorId || null,
+        title: data.title,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        category: data.category,
+        status: "pending",
+        notes: data.notes || null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "appointments"] });
+      toast({ title: "Appointment created", description: "Appointment scheduled successfully." });
+      setTitle("");
+      setDate(undefined);
+      setStartTime("09:00");
+      setDuration(30);
+      setCategory("follow_up");
+      setNotes("");
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to create appointment", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!title || !date) {
+      toast({ title: "Missing information", description: "Please enter a title and select a date", variant: "destructive" });
+      return;
+    }
+    appointmentMutation.mutate({ 
+      patientId, 
+      doctorId: selectedDoctorId, 
+      title, 
+      date, 
+      startTime, 
+      duration, 
+      category, 
+      notes 
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>New Appointment for {patientName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Title *</Label>
+            <Input
+              placeholder="e.g., Follow-up checkup"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              data-testid="input-quick-appointment-title"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Doctor</Label>
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+              <SelectTrigger data-testid="select-quick-appointment-doctor">
+                <SelectValue placeholder="Select a doctor" />
+              </SelectTrigger>
+              <SelectContent>
+                {doctors.map((doc) => (
+                  <SelectItem key={doc.id} value={doc.id}>
+                    {doc.firstName} {doc.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Date *</Label>
+              <Input
+                type="date"
+                value={date ? date.toISOString().split("T")[0] : ""}
+                onChange={(e) => setDate(e.target.value ? new Date(e.target.value) : undefined)}
+                data-testid="input-quick-appointment-date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Time *</Label>
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                data-testid="input-quick-appointment-time"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Duration</Label>
+              <Select value={duration.toString()} onValueChange={(v) => setDuration(parseInt(v))}>
+                <SelectTrigger data-testid="select-quick-appointment-duration">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 min</SelectItem>
+                  <SelectItem value="30">30 min</SelectItem>
+                  <SelectItem value="45">45 min</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="90">1.5 hours</SelectItem>
+                  <SelectItem value="120">2 hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger data-testid="select-quick-appointment-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new_visit">New Visit</SelectItem>
+                  <SelectItem value="follow_up">Follow Up</SelectItem>
+                  <SelectItem value="discussion">Discussion</SelectItem>
+                  <SelectItem value="surgery">Surgery</SelectItem>
+                  <SelectItem value="checkup">Checkup</SelectItem>
+                  <SelectItem value="cleaning">Cleaning</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              placeholder="Optional notes..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              data-testid="input-quick-appointment-notes"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={appointmentMutation.isPending} data-testid="button-submit-quick-appointment">
+            {appointmentMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Create Appointment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PatientDetail() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("personal");
+  const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
+  const [quickAppointmentOpen, setQuickAppointmentOpen] = useState(false);
   const { user } = useAuth();
 
   const canEditMedicalHistory = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
@@ -1428,11 +1747,35 @@ export default function PatientDetail() {
           <h1 className="text-2xl font-bold text-foreground">Patient Profile</h1>
           <p className="text-muted-foreground">View and manage patient information</p>
         </div>
-        <Button variant="outline" data-testid="button-edit-patient">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setQuickAppointmentOpen(true)} data-testid="button-quick-appointment">
+            <Calendar className="h-4 w-4 mr-2" />
+            Add Appointment
+          </Button>
+          <Button variant="outline" onClick={() => setQuickPaymentOpen(true)} data-testid="button-quick-payment">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Record Payment
+          </Button>
+          <Button variant="outline" data-testid="button-edit-patient">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        </div>
       </div>
+
+      <QuickPaymentDialog 
+        open={quickPaymentOpen} 
+        onOpenChange={setQuickPaymentOpen} 
+        patientId={patient?.id || ""} 
+        patientName={patient ? `${patient.firstName} ${patient.lastName}` : ""}
+      />
+      <QuickAppointmentDialog 
+        open={quickAppointmentOpen} 
+        onOpenChange={setQuickAppointmentOpen} 
+        patientId={patient?.id || ""}
+        patientName={patient ? `${patient.firstName} ${patient.lastName}` : ""}
+        doctorId={patient?.assignedDoctorId || undefined}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">

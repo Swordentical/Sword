@@ -52,6 +52,7 @@ export interface IStorage {
 
   // Patient Treatments
   getPatientTreatments(patientId: string): Promise<PatientTreatment[]>;
+  getPatientTreatment(id: string): Promise<PatientTreatment | undefined>;
   createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
   updatePatientTreatment(id: string, data: Partial<InsertPatientTreatment>): Promise<PatientTreatment | undefined>;
 
@@ -301,6 +302,11 @@ export class DatabaseStorage implements IStorage {
   // Patient Treatments
   async getPatientTreatments(patientId: string): Promise<PatientTreatment[]> {
     return db.select().from(patientTreatments).where(eq(patientTreatments.patientId, patientId)).orderBy(desc(patientTreatments.createdAt));
+  }
+
+  async getPatientTreatment(id: string): Promise<PatientTreatment | undefined> {
+    const result = await db.select().from(patientTreatments).where(eq(patientTreatments.id, id)).limit(1);
+    return result[0];
   }
 
   async createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment> {

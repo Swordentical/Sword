@@ -529,9 +529,105 @@ export async function registerRoutes(
       }
 
       const treatment = await storage.createPatientTreatment(parsed.data);
+      
+      // Auto-create invoice when treatment is marked as in_progress
+      if (parsed.data.status === "in_progress" && parsed.data.price) {
+        const treatmentDetails = await storage.getTreatment(parsed.data.treatmentId);
+        const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+        const totalAmount = parsed.data.price;
+        
+        const invoice = await storage.createInvoice({
+          patientId: req.params.id,
+          invoiceNumber,
+          totalAmount,
+          discountType: "none",
+          discountValue: "0",
+          finalAmount: totalAmount,
+          paidAmount: "0",
+          status: "sent",
+          issuedDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          createdById: (req.user as any).id,
+        });
+        
+        // Add invoice item for the treatment
+        await storage.createInvoiceItem({
+          invoiceId: invoice.id,
+          description: treatmentDetails?.name || "Treatment",
+          quantity: 1,
+          unitPrice: totalAmount,
+          totalPrice: totalAmount,
+        });
+        
+        await storage.logActivity({
+          userId: (req.user as any).id,
+          action: "created",
+          entityType: "invoice",
+          entityId: invoice.id,
+          details: `Auto-created invoice ${invoiceNumber} for in-progress treatment`,
+        });
+      }
+      
       res.status(201).json(treatment);
     } catch (error) {
       res.status(500).json({ message: "Failed to add treatment" });
+    }
+  });
+
+  // Update patient treatment status
+  app.patch("/api/patients/:id/treatments/:treatmentId", requireRole("admin", "doctor", "staff"), async (req, res) => {
+    try {
+      const { status, notes } = req.body;
+      const existingTreatment = await storage.getPatientTreatment(req.params.treatmentId);
+      
+      if (!existingTreatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      const updated = await storage.updatePatientTreatment(req.params.treatmentId, { status, notes });
+      
+      // Auto-create invoice when status changes to in_progress (if not already in_progress)
+      if (status === "in_progress" && existingTreatment.status !== "in_progress" && existingTreatment.price) {
+        const treatmentDetails = await storage.getTreatment(existingTreatment.treatmentId);
+        const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
+        const totalAmount = existingTreatment.price;
+        
+        const invoice = await storage.createInvoice({
+          patientId: req.params.id,
+          invoiceNumber,
+          totalAmount,
+          discountType: "none",
+          discountValue: "0",
+          finalAmount: totalAmount,
+          paidAmount: "0",
+          status: "sent",
+          issuedDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          createdById: (req.user as any).id,
+        });
+        
+        // Add invoice item for the treatment
+        await storage.createInvoiceItem({
+          invoiceId: invoice.id,
+          description: treatmentDetails?.name || "Treatment",
+          quantity: 1,
+          unitPrice: totalAmount,
+          totalPrice: totalAmount,
+        });
+        
+        await storage.logActivity({
+          userId: (req.user as any).id,
+          action: "created",
+          entityType: "invoice",
+          entityId: invoice.id,
+          details: `Auto-created invoice ${invoiceNumber} for in-progress treatment`,
+        });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating treatment:", error);
+      res.status(500).json({ message: "Failed to update treatment" });
     }
   });
 

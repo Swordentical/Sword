@@ -34,6 +34,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 
 const addPatientSchema = z.object({
+  fileNumber: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   phone: z.string().min(1, "Phone number is required"),
@@ -45,7 +46,7 @@ const addPatientSchema = z.object({
   emergencyPhone: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
-  assignedDoctorId: z.string().optional(),
+  assignedDoctorId: z.string().min(1, "Assigned doctor is required"),
   notes: z.string().optional(),
 });
 
@@ -62,6 +63,7 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
   const form = useForm<AddPatientFormValues>({
     resolver: zodResolver(addPatientSchema),
     defaultValues: {
+      fileNumber: "",
       firstName: "",
       lastName: "",
       phone: "",
@@ -86,6 +88,7 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
     mutationFn: async (data: AddPatientFormValues) => {
       const res = await apiRequest("POST", "/api/patients", {
         ...data,
+        fileNumber: data.fileNumber || null,
         email: data.email || null,
         dateOfBirth: data.dateOfBirth || null,
         gender: data.gender || null,
@@ -94,7 +97,7 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
         emergencyPhone: data.emergencyPhone || null,
         insuranceProvider: data.insuranceProvider || null,
         insurancePolicyNumber: data.insurancePolicyNumber || null,
-        assignedDoctorId: data.assignedDoctorId || null,
+        assignedDoctorId: data.assignedDoctorId,
         notes: data.notes || null,
       });
       return res.json();
@@ -135,6 +138,19 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-muted-foreground">Personal Information</h3>
+              <FormField
+                control={form.control}
+                name="fileNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>File Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Custom patient file number (optional)" {...field} data-testid="input-patient-filenumber" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -320,11 +336,11 @@ export function AddPatientDialog({ open, onOpenChange }: AddPatientDialogProps) 
               name="assignedDoctorId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Doctor</FormLabel>
+                  <FormLabel>Assigned Doctor *</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-patient-doctor">
-                        <SelectValue placeholder="Select a doctor (optional)" />
+                        <SelectValue placeholder="Select a doctor" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
