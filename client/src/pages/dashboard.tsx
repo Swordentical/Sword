@@ -204,6 +204,246 @@ function EditAppointmentDialog({
 
 // ... rest of the file ...
 
+function LiveClock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-4">
+          <div className="rounded-full bg-primary/10 p-3">
+            <Clock className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <div className="text-3xl font-bold tabular-nums tracking-tight">
+              {format(time, "HH:mm:ss")}
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <CalendarDays className="h-3.5 w-3.5" />
+              <span>{format(time, "EEEE, MMMM d, yyyy")}</span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GlobalSearch() {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [, navigate] = useLocation();
+
+  const { data: patients } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+  });
+
+  const { data: appointments } = useQuery<Appointment[]>({
+    queryKey: ["/api/appointments"],
+  });
+
+  const { data: inventory } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory"],
+  });
+
+  const filteredPatients = patients?.filter((p) =>
+    `${p.firstName} ${p.lastName} ${p.phone || ""} ${p.email || ""}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  ).slice(0, 5) || [];
+
+  const filteredAppointments = appointments?.filter((a) =>
+    (a.title || "").toLowerCase().includes(search.toLowerCase())
+  ).slice(0, 5) || [];
+
+  const filteredInventory = inventory?.filter((item) =>
+    `${item.name} ${item.category || ""}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  ).slice(0, 5) || [];
+
+  const handleSelectPatient = (id: string) => {
+    setOpen(false);
+    setSearch("");
+    navigate(`/patients/${id}`);
+  };
+
+  const handleSelectAppointment = () => {
+    setOpen(false);
+    setSearch("");
+    navigate("/appointments");
+  };
+
+  const handleSelectInventory = () => {
+    setOpen(false);
+    setSearch("");
+    navigate("/inventory");
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="outline" 
+          className="w-full md:w-[400px] justify-start text-muted-foreground gap-2"
+          data-testid="button-global-search"
+        >
+          <Search className="h-4 w-4" />
+          <span>Search patients, appointments, inventory...</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full md:w-[400px] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput 
+            placeholder="Search by name, phone, email, or item..." 
+            value={search}
+            onValueChange={setSearch}
+            data-testid="input-global-search"
+          />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            {filteredPatients.length > 0 && (
+              <CommandGroup heading="Patients">
+                {filteredPatients.map((patient) => (
+                  <CommandItem
+                    key={patient.id}
+                    onSelect={() => handleSelectPatient(patient.id)}
+                    className="gap-3 cursor-pointer"
+                    data-testid={`search-result-patient-${patient.id}`}
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                        {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {patient.firstName} {patient.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {patient.phone || patient.email || "No contact info"}
+                      </div>
+                    </div>
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {filteredAppointments.length > 0 && (
+              <CommandGroup heading="Appointments">
+                {filteredAppointments.map((appointment) => (
+                  <CommandItem
+                    key={appointment.id}
+                    onSelect={handleSelectAppointment}
+                    className="gap-3 cursor-pointer"
+                    data-testid={`search-result-appointment-${appointment.id}`}
+                  >
+                    <div className="rounded-full bg-emerald-500/10 p-1.5">
+                      <Calendar className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {appointment.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(appointment.startTime), "MMM d, h:mm a")}
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {filteredInventory.length > 0 && (
+              <CommandGroup heading="Inventory">
+                {filteredInventory.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    onSelect={handleSelectInventory}
+                    className="gap-3 cursor-pointer"
+                    data-testid={`search-result-inventory-${item.id}`}
+                  >
+                    <div className="rounded-full bg-amber-500/10 p-1.5">
+                      <Package className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {item.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {item.category || "Uncategorized"} - Qty: {item.currentQuantity}
+                      </div>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  trend,
+  color = "primary",
+}: {
+  title: string;
+  value: string | number;
+  description?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  trend?: { value: number; isPositive: boolean };
+  color?: "primary" | "success" | "warning" | "destructive";
+}) {
+  const colorClasses = {
+    primary: "bg-primary/10 text-primary",
+    success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    destructive: "bg-destructive/10 text-destructive",
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <div className={`rounded-lg p-2 ${colorClasses[color]}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+        {trend && (
+          <div className="flex items-center gap-1 mt-2">
+            <TrendingUp
+              className={`h-3 w-3 ${trend.isPositive ? "text-emerald-500" : "text-destructive rotate-180"}`}
+            />
+            <span
+              className={`text-xs font-medium ${trend.isPositive ? "text-emerald-500" : "text-destructive"}`}
+            >
+              {trend.isPositive ? "+" : "-"}{trend.value}%
+            </span>
+            <span className="text-xs text-muted-foreground">from last month</span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function QuickActionButton({
   icon: Icon,
   label,
