@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -26,6 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -78,6 +88,7 @@ const serviceSchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
   description: z.string().optional(),
+  cost: z.string().min(1, "Cost is required"),
   defaultPrice: z.string().min(1, "Price is required"),
   durationMinutes: z.number().min(5, "Minimum duration is 5 minutes"),
 });
@@ -99,6 +110,7 @@ function AddServiceDialog({
       name: "",
       category: "",
       description: "",
+      cost: "0",
       defaultPrice: "",
       durationMinutes: 30,
     },
@@ -110,6 +122,7 @@ function AddServiceDialog({
         name: data.name,
         category: data.category,
         description: data.description || null,
+        cost: data.cost,
         defaultPrice: data.defaultPrice,
         durationMinutes: data.durationMinutes,
       });
@@ -195,6 +208,26 @@ function AddServiceDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
+                name="cost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        data-testid="input-service-cost"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="defaultPrice"
                 render={({ field }) => (
                   <FormItem>
@@ -212,26 +245,26 @@ function AddServiceDialog({
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="durationMinutes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Duration (min)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
-                        data-testid="input-service-duration"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            <FormField
+              control={form.control}
+              name="durationMinutes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Duration (min)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      data-testid="input-service-duration"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -278,10 +311,415 @@ function AddServiceDialog({
   );
 }
 
+function EditServiceDialog({
+  service,
+  open,
+  onOpenChange,
+}: {
+  service: Treatment | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<ServiceFormValues>({
+    resolver: zodResolver(serviceSchema),
+    values: service
+      ? {
+          name: service.name,
+          category: service.category,
+          description: service.description || "",
+          cost: service.cost || "0",
+          defaultPrice: service.defaultPrice,
+          durationMinutes: service.durationMinutes || 30,
+        }
+      : {
+          name: "",
+          category: "",
+          description: "",
+          cost: "0",
+          defaultPrice: "",
+          durationMinutes: 30,
+        },
+  });
+
+  const updateServiceMutation = useMutation({
+    mutationFn: async (data: ServiceFormValues) => {
+      const res = await apiRequest("PATCH", `/api/treatments/${service?.id}`, {
+        name: data.name,
+        category: data.category,
+        description: data.description || null,
+        cost: data.cost,
+        defaultPrice: data.defaultPrice,
+        durationMinutes: data.durationMinutes,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments"] });
+      toast({
+        title: "Service updated",
+        description: "The service has been updated successfully.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update service",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ServiceFormValues) => {
+    updateServiceMutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Service</DialogTitle>
+          <DialogDescription>
+            Update this dental service in your catalog.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Service Name *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., Root Canal Treatment"
+                      {...field}
+                      data-testid="input-edit-service-name"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-edit-service-category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="cost"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        data-testid="input-edit-service-cost"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Price ($) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        data-testid="input-edit-service-price"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="durationMinutes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Duration (min)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(e) => field.onChange(Number(e.target.value))}
+                      data-testid="input-edit-service-duration"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Service description..."
+                      className="resize-none"
+                      {...field}
+                      data-testid="input-edit-service-description"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updateServiceMutation.isPending}
+                data-testid="button-update-service"
+              >
+                {updateServiceMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Update Service"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteServiceDialog({
+  service,
+  open,
+  onOpenChange,
+}: {
+  service: Treatment | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/treatments/${service?.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments"] });
+      toast({
+        title: "Service deleted",
+        description: "The service has been removed from your catalog.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete service",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Service</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{service?.name}"? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => deleteServiceMutation.mutate()}
+            className="bg-destructive text-destructive-foreground"
+            data-testid="button-confirm-delete-service"
+          >
+            {deleteServiceMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              "Delete"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function calculateProfit(price: string | null, cost: string | null): number {
+  const priceNum = parseFloat(price || "0");
+  const costNum = parseFloat(cost || "0");
+  return priceNum - costNum;
+}
+
+function printServices(services: Treatment[]) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const grouped = CATEGORIES.reduce((acc, cat) => {
+    const categoryServices = services.filter((s) => s.category === cat.value);
+    if (categoryServices.length > 0) {
+      acc[cat.label] = categoryServices;
+    }
+    return acc;
+  }, {} as Record<string, Treatment[]>);
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Services Price List</title>
+      <style>
+        body {
+          font-family: system-ui, -apple-system, sans-serif;
+          padding: 20px;
+          max-width: 900px;
+          margin: 0 auto;
+        }
+        h1 { text-align: center; margin-bottom: 30px; }
+        h2 { 
+          margin-top: 30px; 
+          padding-bottom: 8px;
+          border-bottom: 2px solid #333;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
+        th, td {
+          padding: 10px 8px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        th { 
+          background: #f5f5f5;
+          font-weight: 600;
+        }
+        .text-right { text-align: right; }
+        .code { 
+          font-family: monospace;
+          font-size: 0.85em;
+          color: #666;
+        }
+        .profit-positive { color: #16a34a; }
+        .profit-negative { color: #dc2626; }
+        @media print {
+          body { padding: 0; }
+          h2 { page-break-after: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Services Price List</h1>
+      <p style="text-align: center; color: #666;">Generated on ${new Date().toLocaleDateString()}</p>
+      ${Object.entries(grouped)
+        .map(
+          ([category, categoryServices]) => `
+        <h2>${category}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Service</th>
+              <th>Duration</th>
+              <th class="text-right">Cost</th>
+              <th class="text-right">Price</th>
+              <th class="text-right">Profit</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${categoryServices
+              .map((s) => {
+                const profit = calculateProfit(s.defaultPrice, s.cost);
+                const profitClass = profit >= 0 ? "profit-positive" : "profit-negative";
+                return `
+              <tr>
+                <td class="code">${s.code}</td>
+                <td>${s.name}</td>
+                <td>${s.durationMinutes} min</td>
+                <td class="text-right">$${parseFloat(s.cost || "0").toFixed(2)}</td>
+                <td class="text-right">$${parseFloat(s.defaultPrice).toFixed(2)}</td>
+                <td class="text-right ${profitClass}">$${profit.toFixed(2)}</td>
+              </tr>
+            `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      `
+        )
+        .join("")}
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.print();
+}
+
 export default function ServicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<Treatment | null>(null);
 
   const { data: services = [], isLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments"],
@@ -296,10 +734,15 @@ export default function ServicesPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const groupedServices = CATEGORIES.reduce((acc, cat) => {
-    acc[cat.value] = filteredServices.filter((s) => s.category === cat.value);
-    return acc;
-  }, {} as Record<string, Treatment[]>);
+  const handleEdit = (service: Treatment) => {
+    setSelectedService(service);
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (service: Treatment) => {
+    setSelectedService(service);
+    setDeleteDialogOpen(true);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -311,7 +754,11 @@ export default function ServicesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" data-testid="button-print-services">
+          <Button
+            variant="outline"
+            onClick={() => printServices(filteredServices)}
+            data-testid="button-print-services"
+          >
             <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
@@ -365,58 +812,84 @@ export default function ServicesPage() {
                     <TableHead>Service Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Duration</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
                     <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Profit</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServices.map((service) => (
-                    <TableRow key={service.id} data-testid={`row-service-${service.id}`}>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono text-xs">
-                          {service.code}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{service.name}</p>
-                          {service.description && (
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                              {service.description}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="capitalize">
-                          {service.category?.replace(/_/g, " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{service.durationMinutes} min</TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${Number(service.defaultPrice).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredServices.map((service) => {
+                    const profit = calculateProfit(service.defaultPrice, service.cost);
+                    return (
+                      <TableRow key={service.id} data-testid={`row-service-${service.id}`}>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {service.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{service.name}</p>
+                            {service.description && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {service.description}
+                              </p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="capitalize">
+                            {service.category?.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{service.durationMinutes} min</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          ${Number(service.cost || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${Number(service.defaultPrice).toFixed(2)}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right font-medium ${
+                            profit >= 0 ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          ${profit.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                data-testid={`button-service-menu-${service.id}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleEdit(service)}
+                                data-testid={`button-edit-service-${service.id}`}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(service)}
+                                className="text-destructive"
+                                data-testid={`button-delete-service-${service.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -441,6 +914,16 @@ export default function ServicesPage() {
       </Card>
 
       <AddServiceDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <EditServiceDialog
+        service={selectedService}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+      />
+      <DeleteServiceDialog
+        service={selectedService}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
     </div>
   );
 }

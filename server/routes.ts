@@ -722,16 +722,13 @@ export async function registerRoutes(
         return res.status(404).json({ message: "Treatment not found" });
       }
 
-      const updateData: Record<string, unknown> = {};
-      if (req.body.name !== undefined) updateData.name = req.body.name;
-      if (req.body.category !== undefined) updateData.category = req.body.category;
-      if (req.body.description !== undefined) updateData.description = req.body.description;
-      if (req.body.cost !== undefined) updateData.cost = req.body.cost;
-      if (req.body.defaultPrice !== undefined) updateData.defaultPrice = req.body.defaultPrice;
-      if (req.body.durationMinutes !== undefined) updateData.durationMinutes = req.body.durationMinutes;
-      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+      const updateSchema = insertTreatmentSchema.partial();
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
 
-      const updated = await storage.updateTreatment(id, updateData);
+      const updated = await storage.updateTreatment(id, parsed.data);
       res.json(updated);
     } catch (error) {
       console.error("Error updating treatment:", error);
