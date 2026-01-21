@@ -134,9 +134,11 @@ const CASE_TYPES = [
 function AddLabCaseDialog({
   open,
   onOpenChange,
+  editCase,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editCase?: LabCaseWithPatient | null;
 }) {
   const { toast } = useToast();
 
@@ -153,6 +155,35 @@ function AddLabCaseDialog({
       notes: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      if (editCase) {
+        form.reset({
+          patientId: editCase.patientId,
+          externalLabId: editCase.externalLabId || "",
+          labServiceId: editCase.labServiceId || "",
+          caseType: editCase.caseType,
+          sentDate: editCase.sentDate ? new Date(editCase.sentDate) : new Date(),
+          expectedReturnDate: editCase.expectedReturnDate ? new Date(editCase.expectedReturnDate) : undefined,
+          cost: editCase.cost || "",
+          description: editCase.description || "",
+          notes: editCase.notes || "",
+        });
+      } else {
+        form.reset({
+          patientId: "",
+          externalLabId: "",
+          labServiceId: "",
+          caseType: "",
+          sentDate: new Date(),
+          cost: "",
+          description: "",
+          notes: "",
+        });
+      }
+    }
+  }, [open, editCase, form]);
 
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
@@ -177,7 +208,7 @@ function AddLabCaseDialog({
   const createLabCaseMutation = useMutation({
     mutationFn: async (data: LabCaseFormValues) => {
       const selectedLab = labs.find(l => l.id === data.externalLabId);
-      const res = await apiRequest("POST", "/api/lab-cases", {
+      const payload = {
         patientId: data.patientId,
         externalLabId: data.externalLabId,
         labServiceId: data.labServiceId || null,
@@ -188,22 +219,29 @@ function AddLabCaseDialog({
         cost: data.cost || null,
         description: data.description || null,
         notes: data.notes || null,
-      });
-      return res.json();
+      };
+
+      if (editCase) {
+        const res = await apiRequest("PATCH", `/api/lab-cases/${editCase.id}`, payload);
+        return res.json();
+      } else {
+        const res = await apiRequest("POST", "/api/lab-cases", payload);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lab-cases"] });
       queryClient.invalidateQueries({ queryKey: ["/api/external-labs"] });
       toast({
-        title: "Lab case created",
-        description: "The lab case has been sent to the lab.",
+        title: editCase ? "Lab case updated" : "Lab case created",
+        description: editCase ? "The lab case has been updated." : "The lab case has been sent to the lab.",
       });
       form.reset();
       onOpenChange(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to create lab case",
+        title: editCase ? "Failed to update lab case" : "Failed to create lab case",
         description: error.message,
         variant: "destructive",
       });
@@ -1072,11 +1110,17 @@ export default function LabWorkPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editCase, setEditCase] = useState<LabCaseWithPatient | null>(null);
   const [activeTab, setActiveTab] = useState("cases");
 
   const { data: cases = [], isLoading } = useQuery<LabCaseWithPatient[]>({
     queryKey: ["/api/lab-cases"],
   });
+
+  const handleEditCase = (labCase: LabCaseWithPatient) => {
+    setEditCase(labCase);
+    setDialogOpen(true);
+  };
 
   const filteredCases = cases.filter((labCase) => {
     const matchesSearch =
@@ -1242,7 +1286,7 @@ export default function LabWorkPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditCase(labCase)}>
                                   <Edit className="h-4 w-4 mr-2" />
                                   Edit
                                 </DropdownMenuItem>
@@ -1278,7 +1322,14 @@ export default function LabWorkPage() {
         </TabsContent>
       </Tabs>
 
-      <AddLabCaseDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <AddLabCaseDialog 
+        open={dialogOpen} 
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditCase(null);
+        }} 
+        editCase={editCase}
+      />
     </div>
   );
 }
