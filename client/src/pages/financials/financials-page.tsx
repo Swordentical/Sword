@@ -874,18 +874,13 @@ function InvoiceDetailsDialog({
                 </div>
               )}
 
-              <DialogFooter className="flex flex-wrap gap-2">
-                {invoice.status === "draft" && (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => setVoidDialogOpen(true)}
-                      disabled={voidInvoiceMutation.isPending}
-                      data-testid="button-void-invoice"
-                    >
-                      <Ban className="h-4 w-4 mr-2" />
-                      Void Invoice
-                    </Button>
+              <DialogFooter className="flex items-center justify-between gap-2">
+                <Button variant="outline" size="sm" onClick={() => handlePrintInvoice(invoice)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Print Invoice
+                </Button>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  {invoice.status === "draft" && (
                     <Button
                       onClick={() => sendInvoiceMutation.mutate()}
                       disabled={sendInvoiceMutation.isPending}
@@ -898,10 +893,22 @@ function InvoiceDetailsDialog({
                       )}
                       Send Invoice
                     </Button>
-                  </>
-                )}
-                {(invoice.status === "sent" || invoice.status === "partial") && (
-                  <>
+                  )}
+                  {(invoice.status === "sent" || invoice.status === "partial") && (
+                    <>
+                      {onAddAdjustment && balance > 0 && (
+                        <Button
+                          variant="outline"
+                          onClick={() => onAddAdjustment(invoice.id, balance)}
+                          data-testid="button-add-adjustment"
+                        >
+                          <AlertTriangle className="h-4 w-4 mr-2" />
+                          Adjust
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  {invoice.status !== "paid" && invoice.status !== "canceled" && (
                     <Button
                       variant="outline"
                       onClick={() => setVoidDialogOpen(true)}
@@ -911,21 +918,11 @@ function InvoiceDetailsDialog({
                       <Ban className="h-4 w-4 mr-2" />
                       Void Invoice
                     </Button>
-                    {onAddAdjustment && balance > 0 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => onAddAdjustment(invoice.id, balance)}
-                        data-testid="button-add-adjustment"
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Adjust
-                      </Button>
-                    )}
-                  </>
-                )}
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Close
-                </Button>
+                  )}
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                    Close
+                  </Button>
+                </div>
               </DialogFooter>
             </>
           ) : (
