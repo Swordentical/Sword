@@ -164,9 +164,9 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
   
-  /* Dark mode transition animations */
+  /* Dark mode transition animations - snappy and smooth */
   html {
-    transition: background-color 0.5s ease-in-out;
+    transition: background-color 0.15s ease-out;
   }
   
   html.dark-transition,
@@ -174,12 +174,12 @@
   html.dark-transition *::before,
   html.dark-transition *::after {
     transition: 
-      background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-      border-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
-      color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      fill 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      stroke 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      background-color 0.15s ease-out,
+      border-color 0.15s ease-out,
+      color 0.1s ease-out,
+      fill 0.1s ease-out,
+      stroke 0.1s ease-out,
+      box-shadow 0.15s ease-out !important;
   }
 }
 
