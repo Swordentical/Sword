@@ -25,6 +25,7 @@ import ReportsPage from "@/pages/financials/reports-page";
 import ExpensesPage from "@/pages/financials/expenses-page";
 import InsuranceClaimsPage from "@/pages/financials/insurance-claims-page";
 import SettingsPage from "@/pages/settings/settings-page";
+import UserManagement from "@/pages/admin/user-management";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -146,6 +147,14 @@ function SettingsPageWrapper() {
   );
 }
 
+function UserManagementPageWrapper() {
+  return (
+    <MainLayout>
+      <UserManagement />
+    </MainLayout>
+  );
+}
+
 function DoctorsPageWrapper() {
   return (
     <MainLayout>
@@ -170,6 +179,7 @@ function Router() {
       <ProtectedRoute path="/expenses" component={ExpensesPageWrapper} />
       <ProtectedRoute path="/insurance-claims" component={InsuranceClaimsPageWrapper} />
       <ProtectedRoute path="/settings" component={SettingsPageWrapper} />
+      <ProtectedRoute path="/admin/users" component={UserManagementPageWrapper} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
