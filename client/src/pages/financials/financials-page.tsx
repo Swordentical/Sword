@@ -732,9 +732,9 @@ function InvoiceDetailsDialog({
               <DialogHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <DialogTitle className="text-xl">{invoice.invoiceNumber}</DialogTitle>
+                    <DialogTitle className="text-xl">{invoice.patient?.firstName} {invoice.patient?.lastName}</DialogTitle>
                     <DialogDescription>
-                      {invoice.patient?.firstName} {invoice.patient?.lastName}
+                      {invoice.invoiceNumber}
                     </DialogDescription>
                   </div>
                   <Badge variant={statusConfig.variant} className="ml-2">
@@ -1056,7 +1056,7 @@ function RecordPaymentDialog({
                     <SelectContent>
                       {unpaidInvoices.map((invoice) => (
                         <SelectItem key={invoice.id} value={invoice.id}>
-                          {invoice.invoiceNumber} - {invoice.patient?.firstName} {invoice.patient?.lastName} (${invoice.finalAmount})
+                          {invoice.patient?.firstName} {invoice.patient?.lastName} - {invoice.invoiceNumber} (${invoice.finalAmount})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1383,7 +1383,7 @@ function CreatePaymentPlanDialog({
                         const balance = Number(invoice.finalAmount || 0) - Number(invoice.paidAmount || 0);
                         return (
                           <SelectItem key={invoice.id} value={invoice.id}>
-                            {invoice.invoiceNumber} - {invoice.patient?.firstName} {invoice.patient?.lastName} (${balance.toFixed(2)} due)
+                            {invoice.patient?.firstName} {invoice.patient?.lastName} - {invoice.invoiceNumber} (${balance.toFixed(2)} due)
                           </SelectItem>
                         );
                       })}
@@ -1906,11 +1906,11 @@ export default function FinancialsPage() {
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium">{invoice.invoiceNumber}</p>
+                            <p className="font-medium">{invoice.patient?.firstName} {invoice.patient?.lastName}</p>
                             <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            {invoice.patient?.firstName} {invoice.patient?.lastName}
+                            {invoice.invoiceNumber}
                             <span className="hidden sm:inline">
                               {" "}• {invoice.issuedDate && format(new Date(invoice.issuedDate), "MMM d, yyyy")}
                             </span>
