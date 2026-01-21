@@ -64,7 +64,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { AddAppointmentDialog } from "./add-appointment-dialog";
-import type { AppointmentWithPatient } from "@shared/schema";
+import type { AppointmentWithDetails as AppointmentWithPatient } from "@shared/schema";
 
 type ViewMode = "month" | "day";
 
@@ -129,9 +129,19 @@ function DraggableAppointment({
         <p className="text-sm font-medium truncate">
           {appointment.patient.firstName} {appointment.patient.lastName}
         </p>
-        <p className="text-xs text-muted-foreground truncate">
-          {appointment.title} - {format(new Date(appointment.startTime), "h:mm a")}
-        </p>
+        <div className="flex flex-col gap-0.5 mt-0.5">
+          <p className="text-xs text-muted-foreground truncate">
+            {appointment.title} - {format(new Date(appointment.startTime), "h:mm a")}
+          </p>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+            {appointment.doctor && (
+              <span className="truncate">Dr. {appointment.doctor.firstName} {appointment.doctor.lastName}</span>
+            )}
+            {appointment.roomNumber && (
+              <span>Room {appointment.roomNumber}</span>
+            )}
+          </div>
+        </div>
       </div>
       <Badge
         variant={
@@ -685,14 +695,24 @@ export default function AppointmentsPage() {
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {apt.patient.firstName} {apt.patient.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(apt.startTime), "h:mm a")}
-                          </p>
-                        </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {apt.patient.firstName} {apt.patient.lastName}
+                              </p>
+                              <div className="flex flex-col gap-0.5">
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(apt.startTime), "h:mm a")}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-muted-foreground/70">
+                                  {apt.doctor && (
+                                    <span className="truncate">Dr. {apt.doctor.firstName} {apt.doctor.lastName}</span>
+                                  )}
+                                  {apt.roomNumber && (
+                                    <span>Room {apt.roomNumber}</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                         <div
                           className={cn(
                             "w-2 h-2 rounded-full",
