@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -166,6 +166,11 @@ function AddLabCaseDialog({
 
   const { data: labServices = [] } = useQuery<LabService[]>({
     queryKey: ["/api/external-labs", selectedLabId, "services"],
+    queryFn: async () => {
+      const res = await fetch(`/api/external-labs/${selectedLabId}/services`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch services");
+      return res.json();
+    },
     enabled: !!selectedLabId,
   });
 
@@ -477,13 +482,25 @@ function AddLabDialog({
   const form = useForm<ExternalLabFormValues>({
     resolver: zodResolver(externalLabSchema),
     defaultValues: {
-      name: editLab?.name || "",
-      phone: editLab?.phone || "",
-      email: editLab?.email || "",
-      address: editLab?.address || "",
-      contactPerson: editLab?.contactPerson || "",
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      contactPerson: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        name: editLab?.name || "",
+        phone: editLab?.phone || "",
+        email: editLab?.email || "",
+        address: editLab?.address || "",
+        contactPerson: editLab?.contactPerson || "",
+      });
+    }
+  }, [open, editLab, form]);
 
   const createLabMutation = useMutation({
     mutationFn: async (data: ExternalLabFormValues) => {
@@ -636,12 +653,23 @@ function AddServiceDialog({
   const form = useForm<LabServiceFormValues>({
     resolver: zodResolver(labServiceSchema),
     defaultValues: {
-      labId: editService?.labId || preselectedLabId || "",
-      name: editService?.name || "",
-      description: editService?.description || "",
-      price: editService?.price || "",
+      labId: "",
+      name: "",
+      description: "",
+      price: "",
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset({
+        labId: editService?.labId || preselectedLabId || "",
+        name: editService?.name || "",
+        description: editService?.description || "",
+        price: editService?.price || "",
+      });
+    }
+  }, [open, editService, preselectedLabId, form]);
 
   const createServiceMutation = useMutation({
     mutationFn: async (data: LabServiceFormValues) => {
@@ -837,7 +865,7 @@ function ManageLabsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-4 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold">External Labs</h2>
           <p className="text-sm text-muted-foreground">Manage your dental labs and their services</p>
@@ -921,7 +949,7 @@ function ManageLabsTab() {
                   )}
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <h4 className="text-sm font-medium">Services ({labServices.length})</h4>
                       <Button 
                         variant="ghost" 
@@ -938,7 +966,7 @@ function ManageLabsTab() {
                         {labServices.map((service) => (
                           <div 
                             key={service.id} 
-                            className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover-elevate"
+                            className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50 hover-elevate"
                             data-testid={`service-${service.id}`}
                           >
                             <div className="flex items-center gap-2">
@@ -949,7 +977,7 @@ function ManageLabsTab() {
                               <Badge variant="secondary">${service.price}</Badge>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Button variant="ghost" size="sm">
                                     <MoreVertical className="h-3 w-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1008,7 +1036,7 @@ function ManageLabsTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteLabDialog && deleteLabMutation.mutate(deleteLabDialog)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground"
             >
               {deleteLabMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
@@ -1028,7 +1056,7 @@ function ManageLabsTab() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteServiceDialog && deleteServiceMutation.mutate(deleteServiceDialog)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground"
             >
               {deleteServiceMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
