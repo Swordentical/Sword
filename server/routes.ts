@@ -555,14 +555,25 @@ export async function registerRoutes(
       const patientsList = await storage.getPatients({});
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
+      // Enrich with doctor data
+      let doctorMap = new Map();
+      try {
+        const doctorsList = await storage.getUsers({ role: "doctor" });
+        doctorMap = new Map(doctorsList.map(d => [d.id, d]));
+      } catch (docError) {
+        console.error("Error fetching doctors for enrichment:", docError);
+      }
+
       const enriched = appointmentsList.map(apt => ({
         ...apt,
         patient: patientMap.get(apt.patientId),
+        doctor: apt.doctorId ? doctorMap.get(apt.doctorId) : null,
       }));
 
       res.json(enriched);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch appointments" });
+    } catch (error: any) {
+      console.error("Error fetching appointments:", error);
+      res.status(500).json({ message: "Failed to fetch appointments", error: error.message });
     }
   });
 
@@ -574,14 +585,25 @@ export async function registerRoutes(
       const patientsList = await storage.getPatients({});
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
+      // Enrich with doctor data
+      let doctorMap = new Map();
+      try {
+        const doctorsList = await storage.getUsers({ role: "doctor" });
+        doctorMap = new Map(doctorsList.map(d => [d.id, d]));
+      } catch (docError) {
+        console.error("Error fetching doctors for enrichment:", docError);
+      }
+
       const enriched = appointmentsList.map(apt => ({
         ...apt,
         patient: patientMap.get(apt.patientId),
+        doctor: apt.doctorId ? doctorMap.get(apt.doctorId) : null,
       }));
 
       res.json(enriched);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch today's appointments" });
+    } catch (error: any) {
+      console.error("Error fetching today's appointments:", error);
+      res.status(500).json({ message: "Failed to fetch today's appointments", error: error.message });
     }
   });
 
@@ -612,17 +634,23 @@ export async function registerRoutes(
       // Get patient for activity log
       const patient = await storage.getPatient(parsed.data.patientId);
 
-      await storage.logActivity({
-        userId: (req.user as any).id,
-        action: "created",
-        entityType: "appointment",
-        entityId: appointment.id,
-        details: `Scheduled appointment for ${patient?.firstName} ${patient?.lastName}`,
-      });
+      // Log activity
+      try {
+        await storage.logActivity({
+          userId: (req.user as any).id,
+          action: "created",
+          entityType: "appointment",
+          entityId: appointment.id,
+          details: `Scheduled appointment for ${patient?.firstName || "Unknown"} ${patient?.lastName || "Patient"}`,
+        });
+      } catch (logError) {
+        console.error("Failed to log activity for appointment creation:", logError);
+      }
 
       res.status(201).json(appointment);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create appointment" });
+    } catch (error: any) {
+      console.error("Error creating appointment:", error);
+      res.status(500).json({ message: "Failed to create appointment", error: error.message });
     }
   });
 
