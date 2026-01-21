@@ -1113,8 +1113,8 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-bold truncate" data-testid="text-greeting">
-                    {greeting()}, {user?.firstName}
+                  <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
+                    {greeting()}, <span className="text-primary">{user?.firstName}</span>
                   </h1>
                   <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <SheetTrigger asChild>
@@ -1141,7 +1141,7 @@ export default function Dashboard() {
                     </SheetContent>
                   </Sheet>
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden sm:block">
                   Here's your clinic overview
                 </p>
               </div>
