@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { format } from "date-fns";
+import { format, isAfter, startOfDay } from "date-fns";
 import {
   Users,
   Calendar,
@@ -21,8 +21,6 @@ import {
   CalendarDays,
   User,
   Settings2,
-  Eye,
-  EyeOff,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -38,267 +36,53 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
-function LiveClock() {
-  const [time, setTime] = useState(new Date());
+const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  confirmed: "default",
+  pending: "secondary",
+  canceled: "destructive",
+  completed: "outline",
+};
 
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  return (
-    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="rounded-full bg-primary/10 p-3">
-            <Clock className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <div className="text-3xl font-bold tabular-nums tracking-tight">
-              {format(time, "HH:mm:ss")}
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <CalendarDays className="h-3.5 w-3.5" />
-              <span>{format(time, "EEEE, MMMM d, yyyy")}</span>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function GlobalSearch() {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [, navigate] = useLocation();
-
-  const { data: patients } = useQuery<Patient[]>({
-    queryKey: ["/api/patients"],
-  });
-
-  const { data: appointments } = useQuery<Appointment[]>({
-    queryKey: ["/api/appointments"],
-  });
-
-  const { data: inventory } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory"],
-  });
-
-  const filteredPatients = patients?.filter((p) =>
-    `${p.firstName} ${p.lastName} ${p.phone || ""} ${p.email || ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  ).slice(0, 5) || [];
-
-  const filteredAppointments = appointments?.filter((a) =>
-    (a.title || "").toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 5) || [];
-
-  const filteredInventory = inventory?.filter((item) =>
-    `${item.name} ${item.category || ""}`
-      .toLowerCase()
-      .includes(search.toLowerCase())
-  ).slice(0, 5) || [];
-
-  const handleSelectPatient = (id: string) => {
-    setOpen(false);
-    setSearch("");
-    navigate(`/patients/${id}`);
-  };
-
-  const handleSelectAppointment = () => {
-    setOpen(false);
-    setSearch("");
-    navigate("/appointments");
-  };
-
-  const handleSelectInventory = () => {
-    setOpen(false);
-    setSearch("");
-    navigate("/inventory");
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          className="w-full md:w-[400px] justify-start text-muted-foreground gap-2"
-          data-testid="button-global-search"
-        >
-          <Search className="h-4 w-4" />
-          <span>Search patients, appointments, inventory...</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-full md:w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder="Search by name, phone, email, or item..." 
-            value={search}
-            onValueChange={setSearch}
-            data-testid="input-global-search"
-          />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {filteredPatients.length > 0 && (
-              <CommandGroup heading="Patients">
-                {filteredPatients.map((patient) => (
-                  <CommandItem
-                    key={patient.id}
-                    onSelect={() => handleSelectPatient(patient.id)}
-                    className="gap-3 cursor-pointer"
-                    data-testid={`search-result-patient-${patient.id}`}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                        {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {patient.firstName} {patient.lastName}
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {patient.phone || patient.email || "No contact info"}
-                      </div>
-                    </div>
-                    <User className="h-4 w-4 text-muted-foreground" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {filteredAppointments.length > 0 && (
-              <CommandGroup heading="Appointments">
-                {filteredAppointments.map((appointment) => (
-                  <CommandItem
-                    key={appointment.id}
-                    onSelect={handleSelectAppointment}
-                    className="gap-3 cursor-pointer"
-                    data-testid={`search-result-appointment-${appointment.id}`}
-                  >
-                    <div className="rounded-full bg-emerald-500/10 p-1.5">
-                      <Calendar className="h-4 w-4 text-emerald-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {appointment.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(appointment.startTime), "MMM d, h:mm a")}
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-            {filteredInventory.length > 0 && (
-              <CommandGroup heading="Inventory">
-                {filteredInventory.map((item) => (
-                  <CommandItem
-                    key={item.id}
-                    onSelect={handleSelectInventory}
-                    className="gap-3 cursor-pointer"
-                    data-testid={`search-result-inventory-${item.id}`}
-                  >
-                    <div className="rounded-full bg-amber-500/10 p-1.5">
-                      <Package className="h-4 w-4 text-amber-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {item.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {item.category || "Uncategorized"} - Qty: {item.currentQuantity}
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function StatCard({
-  title,
-  value,
-  description,
-  icon: Icon,
-  trend,
-  color = "primary",
-}: {
-  title: string;
-  value: string | number;
-  description?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  trend?: { value: number; isPositive: boolean };
-  color?: "primary" | "success" | "warning" | "destructive";
-}) {
-  const colorClasses = {
-    primary: "bg-primary/10 text-primary",
-    success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-    warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    destructive: "bg-destructive/10 text-destructive",
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <div className={`rounded-lg p-2 ${colorClasses[color]}`}>
-          <Icon className="h-4 w-4" />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {trend && (
-          <div className="flex items-center gap-1 mt-2">
-            <TrendingUp
-              className={`h-3 w-3 ${trend.isPositive ? "text-emerald-500" : "text-destructive rotate-180"}`}
-            />
-            <span
-              className={`text-xs font-medium ${trend.isPositive ? "text-emerald-500" : "text-destructive"}`}
-            >
-              {trend.isPositive ? "+" : "-"}{trend.value}%
-            </span>
-            <span className="text-xs text-muted-foreground">from last month</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+const STATUS_LABELS: Record<string, string> = {
+  confirmed: "Confirmed",
+  pending: "Pending",
+  canceled: "Canceled",
+  completed: "Completed",
+};
 
 function AppointmentStatusBadge({ status }: { status: string }) {
-  const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-    confirmed: { variant: "default", label: "Confirmed" },
-    pending: { variant: "secondary", label: "Pending" },
-    canceled: { variant: "destructive", label: "Canceled" },
-    completed: { variant: "outline", label: "Completed" },
-  };
-
-  const { variant, label } = variants[status] || variants.pending;
+  const variant = STATUS_VARIANTS[status] || "secondary";
+  const label = STATUS_LABELS[status] || "Pending";
   return <Badge variant={variant}>{label}</Badge>;
 }
 
-function TodayAppointmentCard({ appointment }: { appointment: AppointmentWithPatient }) {
+function TodayAppointmentCard({ 
+  appointment, 
+  onClick 
+}: { 
+  appointment: AppointmentWithPatient;
+  onClick: (apt: AppointmentWithPatient) => void;
+}) {
   const startTime = new Date(appointment.startTime);
   const initials = `${appointment.patient.firstName.charAt(0)}${appointment.patient.lastName.charAt(0)}`;
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg border bg-card hover-elevate">
-      <div className="text-center">
+    <div 
+      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover-elevate cursor-pointer transition-colors hover:bg-accent/50"
+      onClick={() => onClick(appointment)}
+    >
+      <div className="text-center min-w-[60px]">
         <div className="text-lg font-bold text-foreground">
           {format(startTime, "HH:mm")}
         </div>
@@ -333,6 +117,92 @@ function TodayAppointmentCard({ appointment }: { appointment: AppointmentWithPat
     </div>
   );
 }
+
+function EditAppointmentDialog({
+  appointment,
+  open,
+  onOpenChange,
+}: {
+  appointment: AppointmentWithPatient | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { toast } = useToast();
+  const [newTime, setNewTime] = useState("");
+
+  useEffect(() => {
+    if (appointment) {
+      setNewTime(format(new Date(appointment.startTime), "yyyy-MM-dd'T'HH:mm"));
+    }
+  }, [appointment]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { startTime?: string; status?: string }) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment?.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments/today"] });
+      toast({ title: "Appointment updated successfully" });
+      onOpenChange(false);
+    },
+  });
+
+  if (!appointment) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Update Appointment</DialogTitle>
+          <DialogDescription>
+            Reschedule or update status for {appointment.patient.firstName} {appointment.patient.lastName}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="time">Date & Time</Label>
+            <Input
+              id="time"
+              type="datetime-local"
+              value={newTime}
+              onChange={(e) => setNewTime(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <Button
+              className="w-full"
+              variant="default"
+              onClick={() => updateMutation.mutate({ status: "confirmed", startTime: new Date(newTime).toISOString() })}
+              disabled={updateMutation.isPending}
+            >
+              Confirm
+            </Button>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => updateMutation.mutate({ status: "completed", startTime: new Date(newTime).toISOString() })}
+              disabled={updateMutation.isPending}
+            >
+              Complete
+            </Button>
+            <Button
+              className="w-full col-span-2"
+              variant="destructive"
+              onClick={() => updateMutation.mutate({ status: "canceled", startTime: new Date(newTime).toISOString() })}
+              disabled={updateMutation.isPending}
+            >
+              Cancel Appointment
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ... rest of the file ...
 
 function QuickActionButton({
   icon: Icon,
@@ -533,8 +403,16 @@ export default function Dashboard() {
   });
 
   const { data: todayAppointments, isLoading: appointmentsLoading } = useQuery<AppointmentWithPatient[]>({
-    queryKey: ["/api/appointments/today"],
+    queryKey: ["/api/appointments", { start: startOfDay(new Date()).toISOString() }],
   });
+
+  const [selectedApt, setSelectedApt] = useState<AppointmentWithPatient | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  const handleAptClick = (apt: AppointmentWithPatient) => {
+    setSelectedApt(apt);
+    setIsEditDialogOpen(true);
+  };
 
   const { data: recentActivity, isLoading: activityLoading } = useQuery<ActivityLog[]>({
     queryKey: ["/api/activity/recent"],
@@ -659,32 +537,37 @@ export default function Dashboard() {
         </Link>
       </CardHeader>
       <CardContent>
-        {appointmentsLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : todayAppointments && todayAppointments.length > 0 ? (
-          <ScrollArea className="h-[300px] pr-4">
-            <div className="space-y-2">
-              {todayAppointments.map((appointment) => (
-                <TodayAppointmentCard
-                  key={appointment.id}
-                  appointment={appointment}
-                />
-              ))}
+        <ScrollArea className="h-[350px] pr-4">
+          {appointmentsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          </ScrollArea>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mb-3 opacity-50" />
-            <p>No appointments scheduled for today</p>
-            <Link href="/appointments">
-              <Button variant="ghost" className="mt-2" data-testid="button-schedule-appointment">
-                Schedule an appointment
-              </Button>
-            </Link>
-          </div>
-        )}
+          ) : todayAppointments && todayAppointments.length > 0 ? (
+            <div className="space-y-4">
+              {todayAppointments
+                .filter(apt => apt.status !== "canceled" || isAfter(new Date(apt.startTime), startOfDay(new Date())))
+                .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+                .map((apt) => (
+                  <TodayAppointmentCard key={apt.id} appointment={apt} onClick={handleAptClick} />
+                ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-3 mb-4">
+                <Calendar className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">No upcoming appointments</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Enjoy your clear schedule or create a new one
+              </p>
+              <Link href="/appointments?action=new">
+                <Button variant="outline" size="sm" className="mt-4">
+                  Schedule Now
+                </Button>
+              </Link>
+            </div>
+          )}
+        </ScrollArea>
       </CardContent>
     </Card>
   );
@@ -863,6 +746,12 @@ export default function Dashboard() {
       {fullWidthWidgets.map(w => (
         <div key={w.id}>{renderWidgetById(w.id)}</div>
       ))}
+
+      <EditAppointmentDialog 
+        appointment={selectedApt}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
 
       {(mainWidgets.length > 0 || sidebarWidgets.length > 0) && (
         <div className={`grid gap-6 ${sidebarWidgets.length > 0 ? 'lg:grid-cols-3' : ''}`}>
