@@ -788,7 +788,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function FinancialsSection({ patientId }: { patientId: string }) {
+function FinancialsSection({ patientId, patientName }: { patientId: string; patientName: string }) {
   const { data: financials, isLoading } = useQuery<PatientFinancials>({
     queryKey: ["/api/patients", patientId, "financials"],
   });
@@ -818,6 +818,11 @@ function FinancialsSection({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-6">
+      <div className="hidden print:block border-b pb-4 mb-6">
+        <h1 className="text-2xl font-bold">Financial Statement</h1>
+        <p className="text-lg font-medium text-primary">{patientName}</p>
+        <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP")}</p>
+      </div>
       <div className="flex justify-end print:hidden">
         <Button variant="outline" size="sm" onClick={handlePrintFinancials}>
           <FileText className="h-4 w-4 mr-2" />
@@ -2033,7 +2038,10 @@ export default function PatientDetail() {
                 </TabsContent>
 
                 <TabsContent value="financials" className="m-0">
-                  <FinancialsSection patientId={patient.id} />
+                  <FinancialsSection 
+                    patientId={patient.id} 
+                    patientName={`${patient.firstName} ${patient.lastName}`} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="documents" className="m-0">
