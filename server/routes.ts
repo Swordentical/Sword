@@ -76,18 +76,32 @@ export async function registerRoutes(
   });
 
   // Audit logs - admin only, immutable records for financial integrity
+  // These logs are append-only and cannot be modified or deleted
   app.get("/api/audit-logs", requireRole("admin"), async (req, res) => {
     try {
-      const { entityType, entityId, userId, limit } = req.query;
+      const { entityType, entityId, userId, actionType, startDate, endDate, limit } = req.query;
       const auditLogs = await storage.getAuditLogs({
         entityType: entityType as string,
         entityId: entityId as string,
         userId: userId as string,
-        limit: limit ? parseInt(limit as string) : 100,
+        actionType: actionType as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+        limit: limit ? parseInt(limit as string) : 200,
       });
       res.json(auditLogs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Get list of users for audit log filtering
+  app.get("/api/audit-logs/users", requireRole("admin"), async (req, res) => {
+    try {
+      const usersList = await storage.getUsers({});
+      res.json(usersList.map(u => ({ id: u.id, firstName: u.firstName, lastName: u.lastName, role: u.role })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users list" });
     }
   });
 

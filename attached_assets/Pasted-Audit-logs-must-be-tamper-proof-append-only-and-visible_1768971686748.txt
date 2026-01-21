@@ -1,0 +1,249 @@
+Audit logs must be tamper-proof, append-only, and visible ONLY to Admin users.
+
+🧱 Core Rules (NON-NEGOTIABLE)
+
+Audit logs are WRITE-ONLY
+
+Audit logs:
+
+❌ Cannot be edited
+
+❌ Cannot be deleted
+
+❌ Cannot be hidden
+
+Logs are created automatically
+
+Logging is enforced server-side / database-side
+
+Frontend must NEVER be trusted for logging
+
+🗄️ Audit Log Table (PostgreSQL – Supabase)
+
+Create a table named audit_logs:
+
+CREATE TABLE audit_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  user_id uuid NOT NULL,
+  user_role text NOT NULL,
+
+  action_type text NOT NULL CHECK (
+    action_type IN ('CREATE', 'UPDATE', 'DELETE')
+  ),
+
+  entity_type text NOT NULL,
+  entity_id uuid NOT NULL,
+
+  previous_value jsonb,
+  new_value jsonb,
+
+  description text NOT NULL,
+
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+🔒 Security Policies (Supabase RLS)
+Enable RLS
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+Admin Read Only
+CREATE POLICY "Admin can read audit logs"
+ON audit_logs
+FOR SELECT
+USING (
+  auth.role() = 'authenticated'
+  AND EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.id = auth.uid()
+    AND profiles.role = 'admin'
+  )
+);
+
+❌ Block Updates & Deletes (Everyone)
+CREATE POLICY "No updates allowed"
+ON audit_logs
+FOR UPDATE
+USING (false);
+
+CREATE POLICY "No deletes allowed"
+ON audit_logs
+FOR DELETE
+USING (false);
+
+❌ Prevent Manual Inserts
+
+No direct insert policy for users.
+
+All inserts must be done via:
+
+Database triggers
+
+Supabase Edge Functions
+
+Backend middleware
+
+⚙️ Trigger-Based Logging (MANDATORY)
+Example: Payments Table Trigger
+CREATE OR REPLACE FUNCTION log_payment_changes()
+RETURNS trigger AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO audit_logs (
+      user_id,
+      user_role,
+      action_type,
+      entity_type,
+      entity_id,
+      new_value,
+      description
+    ) VALUES (
+      auth.uid(),
+      (SELECT role FROM profiles WHERE id = auth.uid()),
+      'CREATE',
+      'payment',
+      NEW.id,
+      to_jsonb(NEW),
+      'Payment created'
+    );
+
+  ELSIF TG_OP = 'UPDATE' THEN
+    INSERT INTO audit_logs (
+      user_id,
+      user_role,
+      action_type,
+      entity_type,
+      entity_id,
+      previous_value,
+      new_value,
+      description
+    ) VALUES (
+      auth.uid(),
+      (SELECT role FROM profiles WHERE id = auth.uid()),
+      'UPDATE',
+      'payment',
+      NEW.id,
+      to_jsonb(OLD),
+      to_jsonb(NEW),
+      'Payment updated'
+    );
+
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO audit_logs (
+      user_id,
+      user_role,
+      action_type,
+      entity_type,
+      entity_id,
+      previous_value,
+      description
+    ) VALUES (
+      auth.uid(),
+      (SELECT role FROM profiles WHERE id = auth.uid()),
+      'DELETE',
+      'payment',
+      OLD.id,
+      to_jsonb(OLD),
+      'Payment deleted'
+    );
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+Attach Trigger
+CREATE TRIGGER payments_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE
+ON payments
+FOR EACH ROW
+EXECUTE FUNCTION log_payment_changes();
+
+📌 Tables That MUST Have Audit Triggers
+
+payments
+
+invoices
+
+invoice_items
+
+patients (doctor assignment changes)
+
+appointments
+
+lab_cases
+
+inventory_items
+
+expenses
+
+services (price changes)
+
+🧾 Logging Content Rules
+
+Each log must include:
+
+Who did it
+
+What role they had
+
+What changed
+
+Old vs new values
+
+Exact timestamp
+
+Human-readable description
+
+🖥️ Admin Audit Log UI Requirements
+
+Admin-only screen:
+
+Filter by:
+
+User
+
+Role
+
+Action type
+
+Entity type
+
+Date range
+
+Expandable rows to view JSON diff
+
+Read-only
+
+Print/export support
+
+🚫 Forbidden Behaviors
+
+❌ Frontend-only logging
+
+❌ Editable logs
+
+❌ “Delete log” button
+
+❌ Silent financial changes
+
+❌ Logs without user identity
+
+🧠 Design Philosophy
+
+If it affects money, patients, or responsibility — it must be logged.
+If it’s logged — it must live forever.
+
+🧪 Acceptance Criteria
+
+Audit system is complete ONLY IF:
+
+Staff actions appear in logs
+
+Doctor actions appear in logs
+
+Admin actions appear in logs
+
+Logs cannot be modified by SQL, UI, or API
+
+Admin can see full history chronologically

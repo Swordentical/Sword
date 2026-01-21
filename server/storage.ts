@@ -1028,7 +1028,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Audit Logs - Immutable logging for financial integrity
-  async getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]> {
+  async getAuditLogs(filters?: { 
+    entityType?: string; 
+    entityId?: string; 
+    userId?: string; 
+    actionType?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number 
+  }): Promise<(AuditLog & { user?: User })[]> {
     const conditions = [];
     if (filters?.entityType) {
       conditions.push(eq(auditLogs.entityType, filters.entityType as any));
@@ -1039,19 +1047,40 @@ export class DatabaseStorage implements IStorage {
     if (filters?.userId) {
       conditions.push(eq(auditLogs.userId, filters.userId));
     }
-    
-    const query = db.select().from(auditLogs);
-    
-    if (conditions.length > 0) {
-      return query
-        .where(and(...conditions))
-        .orderBy(desc(auditLogs.timestamp))
-        .limit(filters?.limit || 100);
+    if (filters?.actionType) {
+      conditions.push(eq(auditLogs.actionType, filters.actionType as any));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(auditLogs.timestamp, new Date(filters.startDate)));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(auditLogs.timestamp, new Date(filters.endDate)));
     }
     
-    return query
-      .orderBy(desc(auditLogs.timestamp))
-      .limit(filters?.limit || 100);
+    let logs: AuditLog[];
+    
+    if (conditions.length > 0) {
+      logs = await db.select().from(auditLogs)
+        .where(and(...conditions))
+        .orderBy(desc(auditLogs.timestamp))
+        .limit(filters?.limit || 200);
+    } else {
+      logs = await db.select().from(auditLogs)
+        .orderBy(desc(auditLogs.timestamp))
+        .limit(filters?.limit || 200);
+    }
+    
+    // Fetch users for enrichment
+    const userIds = Array.from(new Set(logs.map(l => l.userId)));
+    const usersList = await db.select().from(users).where(
+      userIds.length > 0 ? or(...userIds.map(id => eq(users.id, id))) : sql`false`
+    );
+    const userMap = new Map(usersList.map(u => [u.id, u]));
+    
+    return logs.map(log => ({
+      ...log,
+      user: userMap.get(log.userId),
+    }));
   }
 
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
