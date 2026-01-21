@@ -283,9 +283,9 @@ function AddLabCaseDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Lab Case</DialogTitle>
+          <DialogTitle>{editCase ? "Edit Lab Case" : "Create Lab Case"}</DialogTitle>
           <DialogDescription>
-            Send a new case to an external dental lab.
+            {editCase ? "Update the lab case details." : "Send a new case to an external dental lab."}
           </DialogDescription>
         </DialogHeader>
 
@@ -551,14 +551,14 @@ function AddLabCaseDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createLabCaseMutation.isPending} data-testid="button-create-case">
+              <Button type="submit" disabled={createLabCaseMutation.isPending} data-testid="button-save-case">
                 {createLabCaseMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
+                    {editCase ? "Updating..." : "Creating..."}
                   </>
                 ) : (
-                  "Create Case"
+                  editCase ? "Update Case" : "Create Case"
                 )}
               </Button>
             </DialogFooter>

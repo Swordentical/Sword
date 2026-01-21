@@ -2013,16 +2013,21 @@ export async function registerRoutes(
       const previousLabCase = await storage.getLabCase(req.params.id);
 
       const updateSchema = insertLabCaseSchema.pick({
+        patientId: true,
+        externalLabId: true,
+        labServiceId: true,
         labName: true,
         caseType: true,
         status: true,
+        isPaid: true,
         sentDate: true,
         expectedReturnDate: true,
         actualReturnDate: true,
         cost: true,
+        description: true,
         notes: true,
         toothNumbers: true,
-      }).partial().strict();
+      }).partial();
       
       const parsed = updateSchema.safeParse(req.body);
       if (!parsed.success) {
