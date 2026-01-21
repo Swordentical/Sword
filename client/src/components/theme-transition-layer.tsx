@@ -45,7 +45,7 @@ export function ThemeTransitionLayer() {
     setTimeout(() => {
       document.documentElement.classList.remove('theme-transitioning');
       setTransition(prev => ({ ...prev, isActive: false }));
-    }, 800);
+    }, 400);
   }, []);
 
   useEffect(() => {
