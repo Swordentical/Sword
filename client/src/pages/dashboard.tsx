@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { format, isAfter, startOfDay } from "date-fns";
+import { format, isAfter, startOfDay, isToday, isTomorrow } from "date-fns";
 import {
   Users,
   Calendar,
@@ -506,7 +506,7 @@ type WidgetConfig = {
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "clock", label: "Clock & Date", slot: "header", enabled: true, order: 0 },
   { id: "stats", label: "Statistics Cards", slot: "fullWidth", enabled: true, order: 0 },
-  { id: "appointments", label: "Today's Appointments", slot: "main", enabled: true, order: 0 },
+  { id: "appointments", label: "Upcoming Appointments", slot: "main", enabled: true, order: 0 },
   { id: "quickActions", label: "Quick Actions", slot: "main", enabled: true, order: 1 },
   { id: "activity", label: "Recent Activity", slot: "sidebar", enabled: true, order: 0 },
   { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 1 },
@@ -645,7 +645,7 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
-  const { data: todayAppointments, isLoading: appointmentsLoading } = useQuery<AppointmentWithPatient[]>({
+  const { data: upcomingAppointments, isLoading: appointmentsLoading } = useQuery<AppointmentWithPatient[]>({
     queryKey: ["/api/appointments", { start: startOfDay(new Date()).toISOString() }],
   });
 
@@ -655,6 +655,79 @@ export default function Dashboard() {
   const handleAptClick = (apt: AppointmentWithPatient) => {
     setSelectedApt(apt);
     setIsEditDialogOpen(true);
+  };
+
+  // Group appointments by date
+  const groupedAppointments = upcomingAppointments?.reduce((groups: Record<string, AppointmentWithPatient[]>, apt) => {
+    const date = startOfDay(new Date(apt.startTime)).toISOString();
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(apt);
+    return groups;
+  }, {});
+
+  const sortedDates = groupedAppointments ? Object.keys(groupedAppointments).sort() : [];
+
+  const getDateLabel = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return "Today";
+    if (isTomorrow(date)) return "Tomorrow";
+    return format(date, "d / M / yyyy");
+  };
+
+  const renderAppointments = () => {
+    if (appointmentsLoading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (!upcomingAppointments || upcomingAppointments.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="rounded-full bg-muted p-3 mb-4">
+            <Calendar className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No upcoming appointments</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Enjoy your clear schedule or create a new one
+          </p>
+          <Link href="/appointments?action=new">
+            <Button variant="outline" size="sm" className="mt-4">
+              Schedule Now
+            </Button>
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {sortedDates.map((dateStr) => (
+          <div key={dateStr} className="space-y-3">
+            <div className="flex items-center gap-4">
+              <Separator className="flex-1" />
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {getDateLabel(dateStr)}
+              </span>
+              <Separator className="flex-1" />
+            </div>
+            <div className="grid gap-3">
+              {groupedAppointments![dateStr].map((apt) => (
+                <TodayAppointmentCard 
+                  key={apt.id} 
+                  appointment={apt} 
+                  onClick={handleAptClick}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   const { data: recentActivity, isLoading: activityLoading } = useQuery<ActivityLog[]>({
@@ -767,9 +840,9 @@ export default function Dashboard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <div>
-          <CardTitle>Today's Appointments</CardTitle>
+          <CardTitle>Upcoming Appointments</CardTitle>
           <CardDescription>
-            {todayAppointments?.length || 0} appointments scheduled
+            View and manage scheduled visits
           </CardDescription>
         </div>
         <Link href="/appointments">
@@ -780,36 +853,8 @@ export default function Dashboard() {
         </Link>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[350px] pr-4">
-          {appointmentsLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : todayAppointments && todayAppointments.length > 0 ? (
-            <div className="space-y-4">
-              {todayAppointments
-                .filter(apt => apt.status !== "canceled" || isAfter(new Date(apt.startTime), startOfDay(new Date())))
-                .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
-                .map((apt) => (
-                  <TodayAppointmentCard key={apt.id} appointment={apt} onClick={handleAptClick} />
-                ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="rounded-full bg-muted p-3 mb-4">
-                <Calendar className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium">No upcoming appointments</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Enjoy your clear schedule or create a new one
-              </p>
-              <Link href="/appointments?action=new">
-                <Button variant="outline" size="sm" className="mt-4">
-                  Schedule Now
-                </Button>
-              </Link>
-            </div>
-          )}
+        <ScrollArea className="h-[500px] pr-4">
+          {renderAppointments()}
         </ScrollArea>
       </CardContent>
     </Card>
