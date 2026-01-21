@@ -552,8 +552,42 @@ function MedicalHistorySection({ patient, canEdit }: { patient: Patient; canEdit
 }
 
 function TreatmentHistorySection({ patientId }: { patientId: string }) {
+  const { toast } = useToast();
+  const [editingTreatment, setEditingTreatment] = useState<PatientTreatmentWithDetails | null>(null);
+  const [deletingTreatmentId, setDeletingTreatmentId] = useState<string | null>(null);
+
   const { data: treatments, isLoading } = useQuery<PatientTreatmentWithDetails[]>({
     queryKey: ["/api/patients", patientId, "treatments"],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, status, notes }: { id: string; status: string; notes?: string | null }) => {
+      const res = await apiRequest("PATCH", `/api/patients/${patientId}/treatments/${id}`, { status, notes });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({ title: "Treatment updated", description: "The treatment status has been updated." });
+      setEditingTreatment(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/patients/${patientId}/treatments/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      toast({ title: "Treatment removed", description: "The treatment has been deleted from history." });
+      setDeletingTreatmentId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    },
   });
 
   if (isLoading) {
@@ -575,44 +609,136 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-3">
-      {treatments.map((treatment) => (
-        <Card key={treatment.id}>
+      {treatments.map((pt) => (
+        <Card key={pt.id} className="hover-elevate">
           <CardContent className="p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">{treatment.treatment?.name}</span>
-                  {treatment.toothNumber && (
+                  <span className="font-medium">{pt.treatment?.name}</span>
+                  {pt.toothNumber && (
                     <Badge variant="outline" className="text-xs">
-                      Tooth #{treatment.toothNumber}
+                      Tooth #{pt.toothNumber}
                     </Badge>
                   )}
+                  <Badge
+                    variant={
+                      pt.status === "completed"
+                        ? "default"
+                        : pt.status === "in_progress"
+                        ? "secondary"
+                        : "outline"
+                    }
+                  >
+                    {pt.status?.replace(/_/g, " ")}
+                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {treatment.treatment?.category?.replace(/_/g, " ")}
+                  {pt.treatment?.category?.replace(/_/g, " ")}
                 </p>
-                {treatment.notes && (
-                  <p className="text-sm text-muted-foreground">{treatment.notes}</p>
+                {pt.notes && (
+                  <p className="text-sm text-muted-foreground">{pt.notes}</p>
                 )}
+                <p className="text-sm font-medium mt-2">${pt.price}</p>
               </div>
-              <div className="text-right">
-                <Badge
-                  variant={
-                    treatment.status === "completed"
-                      ? "default"
-                      : treatment.status === "in_progress"
-                      ? "secondary"
-                      : "outline"
-                  }
+              <div className="flex gap-1">
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-8 w-8" 
+                  onClick={() => setEditingTreatment(pt)}
+                  data-testid={`button-edit-treatment-${pt.id}`}
                 >
-                  {treatment.status?.replace(/_/g, " ")}
-                </Badge>
-                <p className="text-sm font-medium mt-2">${treatment.price}</p>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  className="h-8 w-8 text-destructive hover:text-destructive" 
+                  onClick={() => setDeletingTreatmentId(pt.id)}
+                  data-testid={`button-delete-treatment-${pt.id}`}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
       ))}
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingTreatment} onOpenChange={(open) => !open && setEditingTreatment(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Treatment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select 
+                value={editingTreatment?.status} 
+                onValueChange={(status) => setEditingTreatment(prev => prev ? { ...prev, status: status as any } : null)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="planned">Planned</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea
+                placeholder="Add notes about this treatment..."
+                value={editingTreatment?.notes || ""}
+                onChange={(e) => setEditingTreatment(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTreatment(null)}>Cancel</Button>
+            <Button 
+              onClick={() => editingTreatment && updateMutation.mutate({ 
+                id: editingTreatment.id, 
+                status: editingTreatment.status, 
+                notes: editingTreatment.notes 
+              })}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <Dialog open={!!deletingTreatmentId} onOpenChange={(open) => !open && setDeletingTreatmentId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-muted-foreground">
+            Are you sure you want to remove this treatment from history? This action cannot be undone.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingTreatmentId(null)}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={() => deletingTreatmentId && deleteMutation.mutate(deletingTreatmentId)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

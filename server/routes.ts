@@ -631,6 +631,17 @@ export async function registerRoutes(
     }
   });
 
+  // Delete patient treatment
+  app.delete("/api/patients/:id/treatments/:treatmentId", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      await storage.deletePatientTreatment(req.params.treatmentId);
+      res.sendStatus(204);
+    } catch (error) {
+      console.error("Error deleting treatment:", error);
+      res.status(500).json({ message: "Failed to delete treatment" });
+    }
+  });
+
   // Patient invoices
   app.get("/api/patients/:id/invoices", requireAuth, async (req, res) => {
     try {

@@ -319,6 +319,10 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async deletePatientTreatment(id: string): Promise<void> {
+    await db.delete(patientTreatments).where(eq(patientTreatments.id, id));
+  }
+
   // Appointments
   async getAppointment(id: string): Promise<Appointment | undefined> {
     const result = await db.select().from(appointments).where(eq(appointments.id, id)).limit(1);
