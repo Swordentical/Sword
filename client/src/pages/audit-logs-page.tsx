@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { 
   Loader2, 
@@ -340,54 +339,53 @@ export default function AuditLogsPage() {
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
-                      <Collapsible key={log.id} open={expandedRows.has(log.id)}>
-                        <CollapsibleTrigger asChild>
-                          <TableRow 
-                            className="cursor-pointer hover:bg-muted/30 transition-colors"
-                            onClick={() => toggleRow(log.id)}
-                            data-testid={`row-audit-${log.id}`}
-                          >
-                            <TableCell className="w-10">
-                              {expandedRows.has(log.id) ? (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">
-                              {log.timestamp ? format(new Date(log.timestamp), "MMM d, yyyy HH:mm:ss") : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <User className="h-3 w-3 text-primary" />
-                                </div>
-                                <span className="text-sm font-medium truncate max-w-[100px]">
-                                  {log.user ? `${log.user.firstName} ${log.user.lastName}` : "Unknown"}
-                                </span>
+                      <>
+                        <TableRow 
+                          key={log.id}
+                          className="cursor-pointer hover:bg-muted/30 transition-colors"
+                          onClick={() => toggleRow(log.id)}
+                          data-testid={`row-audit-${log.id}`}
+                        >
+                          <TableCell className="w-10">
+                            {expandedRows.has(log.id) ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {log.timestamp ? format(new Date(log.timestamp), "MMM d, yyyy HH:mm:ss") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                <User className="h-3 w-3 text-primary" />
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-[10px] uppercase">
-                                {log.userRole}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={getActionBadgeVariant(log.actionType)}>
-                                {log.actionType}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm capitalize">{log.entityType.replace(/_/g, " ")}</span>
-                            </TableCell>
-                            <TableCell className="max-w-[300px]">
-                              <span className="text-sm truncate block">{log.description}</span>
-                            </TableCell>
-                          </TableRow>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent asChild>
-                          <tr>
-                            <td colSpan={7} className="p-0">
+                              <span className="text-sm font-medium truncate max-w-[100px]">
+                                {log.user ? `${log.user.firstName} ${log.user.lastName}` : "Unknown"}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] uppercase">
+                              {log.userRole}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={getActionBadgeVariant(log.actionType)}>
+                              {log.actionType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm capitalize">{log.entityType.replace(/_/g, " ")}</span>
+                          </TableCell>
+                          <TableCell className="max-w-[300px]">
+                            <span className="text-sm truncate block">{log.description}</span>
+                          </TableCell>
+                        </TableRow>
+                        {expandedRows.has(log.id) && (
+                          <TableRow key={`${log.id}-details`}>
+                            <TableCell colSpan={7} className="p-0">
                               <div className="bg-muted/20 p-4 border-t">
                                 <div className="space-y-4">
                                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
@@ -402,10 +400,10 @@ export default function AuditLogsPage() {
                                   />
                                 </div>
                               </div>
-                            </td>
-                          </tr>
-                        </CollapsibleContent>
-                      </Collapsible>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
                     ))}
                   </TableBody>
                 </Table>

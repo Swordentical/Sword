@@ -173,7 +173,15 @@ export interface IStorage {
   deleteClinicRoom(id: string): Promise<boolean>;
 
   // Audit Logs (Immutable - admin only access)
-  getAuditLogs(filters?: { entityType?: string; entityId?: string; userId?: string; limit?: number }): Promise<AuditLog[]>;
+  getAuditLogs(filters?: { 
+    entityType?: string; 
+    entityId?: string; 
+    userId?: string; 
+    actionType?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number 
+  }): Promise<(AuditLog & { user?: User })[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 
   // Dashboard stats
