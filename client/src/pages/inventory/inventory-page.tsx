@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +14,7 @@ import {
   Package,
   AlertTriangle,
   Printer,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +49,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -94,9 +106,11 @@ function getStockStatus(current: number, minimum: number) {
 function AddInventoryDialog({
   open,
   onOpenChange,
+  editItem,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editItem?: InventoryItem | null;
 }) {
   const { toast } = useToast();
 
@@ -115,9 +129,39 @@ function AddInventoryDialog({
     },
   });
 
-  const createItemMutation = useMutation({
+  useEffect(() => {
+    if (open) {
+      if (editItem) {
+        form.reset({
+          name: editItem.name,
+          category: editItem.category,
+          currentQuantity: editItem.currentQuantity,
+          minimumQuantity: editItem.minimumQuantity,
+          unit: editItem.unit,
+          unitCost: editItem.unitCost || "",
+          supplier: editItem.supplier || "",
+          location: editItem.location || "",
+          description: editItem.description || "",
+        });
+      } else {
+        form.reset({
+          name: "",
+          category: "",
+          currentQuantity: 0,
+          minimumQuantity: 5,
+          unit: "pcs",
+          unitCost: "",
+          supplier: "",
+          location: "",
+          description: "",
+        });
+      }
+    }
+  }, [open, editItem, form]);
+
+  const saveMutation = useMutation({
     mutationFn: async (data: InventoryFormValues) => {
-      const res = await apiRequest("POST", "/api/inventory", {
+      const payload = {
         name: data.name,
         category: data.category,
         currentQuantity: data.currentQuantity,
@@ -127,21 +171,29 @@ function AddInventoryDialog({
         supplier: data.supplier || null,
         location: data.location || null,
         description: data.description || null,
-      });
-      return res.json();
+      };
+
+      if (editItem) {
+        const res = await apiRequest("PATCH", `/api/inventory/${editItem.id}`, payload);
+        return res.json();
+      } else {
+        const res = await apiRequest("POST", "/api/inventory", payload);
+        return res.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/low-stock"] });
       toast({
-        title: "Item added",
-        description: "The inventory item has been added.",
+        title: editItem ? "Item updated" : "Item added",
+        description: editItem ? "The inventory item has been updated." : "The inventory item has been added.",
       });
       form.reset();
       onOpenChange(false);
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to add item",
+        title: editItem ? "Failed to update item" : "Failed to add item",
         description: error.message,
         variant: "destructive",
       });
@@ -149,16 +201,16 @@ function AddInventoryDialog({
   });
 
   const onSubmit = (data: InventoryFormValues) => {
-    createItemMutation.mutate(data);
+    saveMutation.mutate(data);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Inventory Item</DialogTitle>
+          <DialogTitle>{editItem ? "Edit Inventory Item" : "Add Inventory Item"}</DialogTitle>
           <DialogDescription>
-            Add a new item to your inventory.
+            {editItem ? "Update the inventory item details." : "Add a new item to your inventory."}
           </DialogDescription>
         </DialogHeader>
 
@@ -171,7 +223,7 @@ function AddInventoryDialog({
                 <FormItem>
                   <FormLabel>Item Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Dental Gloves" {...field} />
+                    <Input placeholder="e.g., Dental Gloves" {...field} data-testid="input-item-name" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,9 +237,9 @@ function AddInventoryDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="select-category">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -210,9 +262,9 @@ function AddInventoryDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Unit *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="select-unit">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
                       </FormControl>
@@ -241,6 +293,7 @@ function AddInventoryDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        data-testid="input-current-qty"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -259,6 +312,7 @@ function AddInventoryDialog({
                     <FormControl>
                       <Input
                         type="number"
+                        data-testid="input-min-qty"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
@@ -277,7 +331,7 @@ function AddInventoryDialog({
                   <FormItem>
                     <FormLabel>Unit Cost ($)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                      <Input type="number" step="0.01" placeholder="0.00" {...field} data-testid="input-unit-cost" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -291,7 +345,7 @@ function AddInventoryDialog({
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Cabinet A" {...field} />
+                      <Input placeholder="e.g., Cabinet A" {...field} data-testid="input-location" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -306,7 +360,7 @@ function AddInventoryDialog({
                 <FormItem>
                   <FormLabel>Supplier</FormLabel>
                   <FormControl>
-                    <Input placeholder="Supplier name" {...field} />
+                    <Input placeholder="Supplier name" {...field} data-testid="input-supplier" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -317,14 +371,14 @@ function AddInventoryDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createItemMutation.isPending}>
-                {createItemMutation.isPending ? (
+              <Button type="submit" disabled={saveMutation.isPending} data-testid="button-save-item">
+                {saveMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    {editItem ? "Updating..." : "Saving..."}
                   </>
                 ) : (
-                  "Add Item"
+                  editItem ? "Update Item" : "Add Item"
                 )}
               </Button>
             </DialogFooter>
@@ -335,15 +389,340 @@ function AddInventoryDialog({
   );
 }
 
+function UpdateQuantityDialog({
+  open,
+  onOpenChange,
+  item,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  item: InventoryItem | null;
+}) {
+  const { toast } = useToast();
+  const [quantity, setQuantity] = useState(0);
+  const [adjustment, setAdjustment] = useState<"add" | "subtract" | "set">("add");
+
+  useEffect(() => {
+    if (open && item) {
+      setQuantity(0);
+      setAdjustment("add");
+    }
+  }, [open, item]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!item) return;
+      
+      let newQuantity = item.currentQuantity;
+      if (adjustment === "add") {
+        newQuantity = item.currentQuantity + quantity;
+      } else if (adjustment === "subtract") {
+        newQuantity = Math.max(0, item.currentQuantity - quantity);
+      } else {
+        newQuantity = quantity;
+      }
+
+      const res = await apiRequest("PATCH", `/api/inventory/${item.id}`, {
+        currentQuantity: newQuantity,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/low-stock"] });
+      toast({
+        title: "Quantity updated",
+        description: "The inventory quantity has been updated.",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update quantity",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (!item) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Update Quantity</DialogTitle>
+          <DialogDescription>
+            Adjust the stock level for {item.name}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="text-center p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">Current Stock</p>
+            <p className="text-3xl font-bold">{item.currentQuantity} {item.unit}</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Button
+              variant={adjustment === "add" ? "default" : "outline"}
+              onClick={() => setAdjustment("add")}
+              data-testid="button-add-qty"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+            <Button
+              variant={adjustment === "subtract" ? "default" : "outline"}
+              onClick={() => setAdjustment("subtract")}
+              data-testid="button-subtract-qty"
+            >
+              <Minus className="h-4 w-4 mr-1" />
+              Remove
+            </Button>
+            <Button
+              variant={adjustment === "set" ? "default" : "outline"}
+              onClick={() => setAdjustment("set")}
+              data-testid="button-set-qty"
+            >
+              Set
+            </Button>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              {adjustment === "add" ? "Add Amount" : adjustment === "subtract" ? "Remove Amount" : "New Quantity"}
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              className="mt-1"
+              data-testid="input-qty-amount"
+            />
+          </div>
+
+          {adjustment !== "set" && quantity > 0 && (
+            <div className="text-center p-2 bg-primary/10 rounded-lg">
+              <p className="text-sm text-muted-foreground">New Stock Level</p>
+              <p className="text-xl font-bold">
+                {adjustment === "add" 
+                  ? item.currentQuantity + quantity 
+                  : Math.max(0, item.currentQuantity - quantity)} {item.unit}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => updateMutation.mutate()} 
+            disabled={updateMutation.isPending || (adjustment !== "set" && quantity === 0)}
+            data-testid="button-confirm-qty"
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Confirm"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PrintLowStockDialog({
+  open,
+  onOpenChange,
+  items,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  items: InventoryItem[];
+}) {
+  const lowStockItems = items.filter(
+    (item) => item.currentQuantity <= item.minimumQuantity
+  );
+
+  const handlePrint = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Low Stock Report</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+            .out-of-stock { background-color: #fee2e2; }
+            .low-stock { background-color: #fef3c7; }
+            .footer { margin-top: 20px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <h1>Low Stock & Out of Stock Items</h1>
+          <p>Report generated: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Current Qty</th>
+                <th>Min Qty</th>
+                <th>Unit</th>
+                <th>Status</th>
+                <th>Supplier</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lowStockItems.map(item => {
+                const isOutOfStock = item.currentQuantity === 0;
+                return `
+                  <tr class="${isOutOfStock ? 'out-of-stock' : 'low-stock'}">
+                    <td>${item.name}</td>
+                    <td>${item.category?.replace(/_/g, " ") || ""}</td>
+                    <td>${item.currentQuantity}</td>
+                    <td>${item.minimumQuantity}</td>
+                    <td>${item.unit}</td>
+                    <td>${isOutOfStock ? 'OUT OF STOCK' : 'Low Stock'}</td>
+                    <td>${item.supplier || "-"}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+          <div class="footer">
+            <p>Total items needing attention: ${lowStockItems.length}</p>
+            <p>Out of stock: ${lowStockItems.filter(i => i.currentQuantity === 0).length}</p>
+            <p>Low stock: ${lowStockItems.filter(i => i.currentQuantity > 0).length}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Print Low Stock Report</DialogTitle>
+          <DialogDescription>
+            Generate a printable report of items that need to be restocked.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-64 overflow-y-auto">
+          {lowStockItems.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Current</TableHead>
+                  <TableHead>Min</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lowStockItems.map((item) => {
+                  const stockStatus = getStockStatus(item.currentQuantity, item.minimumQuantity);
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.currentQuantity} {item.unit}</TableCell>
+                      <TableCell>{item.minimumQuantity} {item.unit}</TableCell>
+                      <TableCell>
+                        <Badge variant={stockStatus.color}>{stockStatus.label}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>All items are well stocked!</p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handlePrint} disabled={lowStockItems.length === 0} data-testid="button-print-report">
+            <Printer className="h-4 w-4 mr-2" />
+            Print Report ({lowStockItems.length} items)
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+  const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
+  const [quantityItem, setQuantityItem] = useState<InventoryItem | null>(null);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
+
+  const { toast } = useToast();
 
   const { data: items = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/inventory/${id}`);
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory/low-stock"] });
+      toast({
+        title: "Item deleted",
+        description: "The inventory item has been deleted.",
+      });
+      setDeleteDialogOpen(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete item",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditItem = (item: InventoryItem) => {
+    setEditItem(item);
+    setDialogOpen(true);
+  };
+
+  const handleUpdateQuantity = (item: InventoryItem) => {
+    setQuantityItem(item);
+    setQuantityDialogOpen(true);
+  };
 
   const filteredItems = items.filter((item) => {
     const matchesSearch =
@@ -371,11 +750,11 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setPrintDialogOpen(true)} data-testid="button-print-low-stock">
             <Printer className="h-4 w-4 mr-2" />
-            Print
+            Print Low Stock
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
+          <Button onClick={() => { setEditItem(null); setDialogOpen(true); }} data-testid="button-add-item">
             <Plus className="h-4 w-4 mr-2" />
             Add Item
           </Button>
@@ -396,7 +775,10 @@ export default function InventoryPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className={cn("cursor-pointer hover-elevate", statusFilter === "low_stock" && "ring-2 ring-amber-500")}
+          onClick={() => setStatusFilter(statusFilter === "low_stock" ? "all" : "low_stock")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-500/10">
@@ -409,7 +791,10 @@ export default function InventoryPage() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className={cn("cursor-pointer hover-elevate", statusFilter === "out_of_stock" && "ring-2 ring-destructive")}
+          onClick={() => setStatusFilter(statusFilter === "out_of_stock" ? "all" : "out_of_stock")}
+        >
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-destructive/10">
@@ -434,11 +819,12 @@ export default function InventoryPage() {
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                data-testid="input-search"
               />
             </div>
             <div className="flex gap-2">
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[150px]" data-testid="select-category-filter">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -451,7 +837,7 @@ export default function InventoryPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -487,7 +873,7 @@ export default function InventoryPage() {
                     const stockStatus = getStockStatus(item.currentQuantity, item.minimumQuantity);
                     const stockPercent = Math.min((item.currentQuantity / item.minimumQuantity) * 50, 100);
                     return (
-                      <TableRow key={item.id}>
+                      <TableRow key={item.id} data-testid={`row-item-${item.id}`}>
                         <TableCell>
                           <div>
                             <p className="font-medium">{item.name}</p>
@@ -526,16 +912,24 @@ export default function InventoryPage() {
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
+                              <Button variant="ghost" size="icon" data-testid={`button-item-menu-${item.id}`}>
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleUpdateQuantity(item)}>
+                                <Package className="h-4 w-4 mr-2" />
+                                Update Quantity
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditItem(item)}>
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => setDeleteDialogOpen(item.id)}
+                                className="text-destructive"
+                              >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
@@ -553,7 +947,7 @@ export default function InventoryPage() {
               <Package className="h-16 w-16 mb-4 opacity-50" />
               <h3 className="text-lg font-medium mb-1">No items found</h3>
               <p className="text-sm mb-4">Add inventory items to track your supplies</p>
-              <Button onClick={() => setDialogOpen(true)}>
+              <Button onClick={() => { setEditItem(null); setDialogOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
               </Button>
@@ -562,7 +956,46 @@ export default function InventoryPage() {
         </CardContent>
       </Card>
 
-      <AddInventoryDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <AddInventoryDialog 
+        open={dialogOpen} 
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditItem(null);
+        }}
+        editItem={editItem}
+      />
+
+      <UpdateQuantityDialog
+        open={quantityDialogOpen}
+        onOpenChange={setQuantityDialogOpen}
+        item={quantityItem}
+      />
+
+      <PrintLowStockDialog
+        open={printDialogOpen}
+        onOpenChange={setPrintDialogOpen}
+        items={items}
+      />
+
+      <AlertDialog open={!!deleteDialogOpen} onOpenChange={() => setDeleteDialogOpen(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this inventory item? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteDialogOpen && deleteMutation.mutate(deleteDialogOpen)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

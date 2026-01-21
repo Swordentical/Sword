@@ -1936,6 +1936,30 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/inventory/low-stock", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getInventoryItems({});
+      const lowStockItems = items.filter(item => 
+        item.currentQuantity <= item.minimumQuantity
+      );
+      res.json(lowStockItems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch low stock items" });
+    }
+  });
+
+  app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const deleted = await storage.deleteInventoryItem(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete inventory item" });
+    }
+  });
+
   // Lab Cases - restricted to admin and doctor (not students or staff)
   app.get("/api/lab-cases", requireRole("admin", "doctor"), async (req, res) => {
     try {
