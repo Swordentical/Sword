@@ -237,50 +237,58 @@ function LiveClock() {
 
   return (
     <div 
-      className="flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover-elevate transition-colors"
+      className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 p-3 sm:p-4 md:p-5 rounded-xl bg-gradient-to-br from-primary/8 via-primary/4 to-transparent border border-primary/15 cursor-pointer hover-elevate transition-all duration-300 backdrop-blur-sm"
       onClick={toggleClockStyle}
       title="Click to toggle clock style"
       data-testid="button-clock-toggle"
     >
       {isAnalog ? (
-        <div className="relative h-20 w-20 rounded-full border-2 border-primary/30 bg-card shadow-inner">
+        <div className="relative h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 rounded-full border-2 border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg">
+          <div className="absolute inset-1 rounded-full border border-primary/10" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-2 w-2 rounded-full bg-primary" />
+            <div className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-primary shadow-sm" />
           </div>
           <div 
-            className="absolute top-1/2 left-1/2 h-5 w-1 bg-foreground rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-4 sm:h-5 md:h-6 w-1 bg-foreground rounded-full origin-bottom shadow-sm"
             style={{ transform: `translate(-50%, -100%) rotate(${hourDeg}deg)` }}
           />
           <div 
-            className="absolute top-1/2 left-1/2 h-7 w-0.5 bg-foreground/70 rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-5 sm:h-7 md:h-8 w-0.5 bg-foreground/80 rounded-full origin-bottom"
             style={{ transform: `translate(-50%, -100%) rotate(${minuteDeg}deg)` }}
           />
           <div 
-            className="absolute top-1/2 left-1/2 h-7 w-px bg-primary rounded-full origin-bottom"
+            className="absolute top-1/2 left-1/2 h-5 sm:h-7 md:h-8 w-px bg-primary rounded-full origin-bottom"
             style={{ transform: `translate(-50%, -100%) rotate(${secondDeg}deg)` }}
           />
           {[...Array(12)].map((_, i) => (
             <div
               key={i}
-              className="absolute top-1.5 left-1/2 h-1.5 w-0.5 bg-muted-foreground/40"
-              style={{ transform: `translateX(-50%) rotate(${i * 30}deg)`, transformOrigin: '50% 36px' }}
+              className={`absolute left-1/2 ${i % 3 === 0 ? 'h-2 w-0.5 bg-foreground/60 top-1' : 'h-1 w-px bg-muted-foreground/40 top-1.5'}`}
+              style={{ 
+                transform: `translateX(-50%) rotate(${i * 30}deg)`, 
+                transformOrigin: i % 3 === 0 ? '50% 28px' : '50% 30px'
+              }}
             />
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-3">
-          <Clock className="h-7 w-7 text-foreground" />
-          <div className="text-3xl font-bold tabular-nums tracking-tight">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10">
+            <Clock className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-primary" />
+          </div>
+          <div className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight">
             {format(time, "HH:mm")}
-            <span className="text-xl text-muted-foreground">:{format(time, "ss")}</span>
+            <span className="text-lg sm:text-xl md:text-2xl text-muted-foreground animate-pulse">:</span>
+            <span className="text-lg sm:text-xl md:text-2xl text-muted-foreground">{format(time, "ss")}</span>
           </div>
         </div>
       )}
-      <div className="hidden sm:block text-right">
-        <div className="text-sm font-medium text-muted-foreground">
+      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-1 sm:gap-0.5 text-center sm:text-right">
+        <div className="text-xs sm:text-sm font-medium text-muted-foreground">
           {format(time, "EEEE")}
         </div>
-        <div className="text-base font-semibold">
+        <span className="text-muted-foreground/50 sm:hidden">-</span>
+        <div className="text-sm sm:text-base md:text-lg font-semibold">
           {format(time, "MMM d, yyyy")}
         </div>
       </div>
