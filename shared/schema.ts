@@ -288,6 +288,8 @@ export const labCases = pgTable("lab_cases", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   doctorId: varchar("doctor_id", { length: 36 }).references(() => users.id),
+  externalLabId: varchar("external_lab_id", { length: 36 }).references(() => externalLabs.id),
+  labServiceId: varchar("lab_service_id", { length: 36 }).references(() => labServices.id),
   caseType: text("case_type").notNull(),
   labName: text("lab_name").notNull(),
   toothNumbers: integer("tooth_numbers").array(),
@@ -299,6 +301,29 @@ export const labCases = pgTable("lab_cases", {
   isPaid: boolean("is_paid").default(false),
   description: text("description"),
   notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// External Labs
+export const externalLabs = pgTable("external_labs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  contactPerson: text("contact_person"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Lab Services
+export const labServices = pgTable("lab_services", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  labId: varchar("lab_id", { length: 36 }).notNull().references(() => externalLabs.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -524,6 +549,26 @@ export const labCasesRelations = relations(labCases, ({ one }) => ({
     fields: [labCases.doctorId],
     references: [users.id],
   }),
+  externalLab: one(externalLabs, {
+    fields: [labCases.externalLabId],
+    references: [externalLabs.id],
+  }),
+  labService: one(labServices, {
+    fields: [labCases.labServiceId],
+    references: [labServices.id],
+  }),
+}));
+
+export const externalLabsRelations = relations(externalLabs, ({ many }) => ({
+  services: many(labServices),
+  cases: many(labCases),
+}));
+
+export const labServicesRelations = relations(labServices, ({ one }) => ({
+  lab: one(externalLabs, {
+    fields: [labServices.labId],
+    references: [externalLabs.id],
+  }),
 }));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
@@ -559,7 +604,16 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true,
 export const insertInsuranceClaimSchema = createInsertSchema(insuranceClaims).omit({ id: true, createdAt: true });
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true, createdAt: true });
 export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
+export const insertExternalLabSchema = createInsertSchema(externalLabs).omit({ id: true, createdAt: true });
+export const insertLabServiceSchema = createInsertSchema(labServices).omit({ id: true, createdAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true });
+
+export type ExternalLab = typeof externalLabs.$inferSelect;
+export type InsertExternalLab = z.infer<typeof insertExternalLabSchema>;
+export type LabService = typeof labServices.$inferSelect;
+export type InsertLabService = z.infer<typeof insertLabServiceSchema>;
+export type LabCase = typeof labCases.$inferSelect;
+export type InsertLabCase = z.infer<typeof insertLabCaseSchema>;
 export const insertOrthodonticNoteSchema = createInsertSchema(orthodonticNotes).omit({ id: true, createdAt: true });
 export const insertActivityLogSchema = createInsertSchema(activityLog).omit({ id: true, createdAt: true });
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
