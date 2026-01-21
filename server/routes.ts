@@ -384,6 +384,15 @@ export async function registerRoutes(
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
+
+      await storage.logActivity({
+        userId: (req.user as any).id,
+        action: "updated",
+        entityType: "patient",
+        entityId: patient.id,
+        details: `Updated patient ${patient.firstName} ${patient.lastName}`,
+      });
+
       res.json(patient);
     } catch (error) {
       res.status(500).json({ message: "Failed to update patient" });

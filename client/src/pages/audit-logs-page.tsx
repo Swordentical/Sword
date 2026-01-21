@@ -16,7 +16,18 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import { Loader2, Clock, User, ShieldCheck } from "lucide-react";
-import { ActivityLog, User as UserType } from "@shared/schema";
+import type { User as UserType } from "@shared/schema";
+
+type AuditLogEntry = {
+  id: string;
+  createdAt: Date | null;
+  userId: string | null;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  details: string | null;
+  user?: UserType;
+};
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { Redirect } from "wouter";
@@ -24,7 +35,7 @@ import { Redirect } from "wouter";
 export default function AuditLogsPage() {
   const { user } = useAuth();
   
-  const { data: logs, isLoading: logsLoading } = useQuery<(ActivityLog & { user?: UserType })[]>({
+  const { data: logs, isLoading: logsLoading } = useQuery<AuditLogEntry[]>({
     queryKey: ["/api/activity/all"],
   });
 
@@ -72,8 +83,8 @@ export default function AuditLogsPage() {
                     <TableRow key={log.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="font-medium text-muted-foreground">
                         <div className="flex flex-col">
-                          <span>{format(new Date(log.timestamp), "MMM d, yyyy")}</span>
-                          <span className="text-[10px] uppercase tracking-wider">{format(new Date(log.timestamp), "HH:mm:ss")}</span>
+                          <span>{format(new Date(log.createdAt || new Date()), "MMM d, yyyy")}</span>
+                          <span className="text-[10px] uppercase tracking-wider">{format(new Date(log.createdAt || new Date()), "HH:mm:ss")}</span>
                         </div>
                       </TableCell>
                       <TableCell>

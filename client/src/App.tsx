@@ -26,6 +26,7 @@ import ExpensesPage from "@/pages/financials/expenses-page";
 import InsuranceClaimsPage from "@/pages/financials/insurance-claims-page";
 import SettingsPage from "@/pages/settings/settings-page";
 import UserManagement from "@/pages/admin/user-management";
+import AuditLogsPage from "@/pages/audit-logs-page";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {

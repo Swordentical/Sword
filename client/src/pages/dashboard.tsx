@@ -900,33 +900,6 @@ export default function Dashboard() {
     </div>
   );
 
-  const renderActivityWidget = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
-        <CardDescription>Latest updates in your clinic</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {activityLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : recentActivity && recentActivity.length > 0 ? (
-          <ScrollArea className="h-[250px]">
-            {recentActivity.map((activity) => (
-              <RecentActivityItem key={activity.id} activity={activity} />
-            ))}
-          </ScrollArea>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Clock className="h-10 w-10 mb-2 opacity-50" />
-            <p className="text-sm">No recent activity</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   const renderLowStockWidget = () => {
     if (isStudent) return null;
     return (
