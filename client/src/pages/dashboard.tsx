@@ -602,9 +602,9 @@ function InspirationalQuotes() {
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" data-testid="card-daily-inspiration">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold" data-testid="text-daily-inspiration-title">
           <FileText className="h-4 w-4 text-muted-foreground" />
           Daily Inspiration
         </CardTitle>
@@ -616,19 +616,19 @@ function InspirationalQuotes() {
             isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
           )}
         >
-          <blockquote className="text-sm italic text-foreground leading-relaxed mb-2">
+          <blockquote className="text-sm italic text-foreground leading-relaxed mb-2" data-testid="text-quote-content">
             "{quote.text}"
           </blockquote>
           <div className="flex items-center justify-between">
-            <cite className="text-xs text-muted-foreground not-italic font-medium">
+            <cite className="text-xs text-muted-foreground not-italic font-medium" data-testid="text-quote-author">
               — {quote.author}
             </cite>
-            <Badge variant="outline" className={cn("text-xs", categoryColors[quote.category])}>
+            <Badge variant="outline" className={cn("text-xs", categoryColors[quote.category])} data-testid="badge-quote-category">
               {quote.category}
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-1 mt-3">
+        <div className="flex items-center gap-1 mt-3" data-testid="indicator-quote-progress">
           {INSPIRATIONAL_QUOTES.slice(0, 5).map((_, i) => (
             <div 
               key={i} 
@@ -636,6 +636,7 @@ function InspirationalQuotes() {
                 "h-1 flex-1 rounded-full transition-colors",
                 i === currentIndex % 5 ? "bg-primary" : "bg-muted"
               )}
+              data-testid={`indicator-quote-dot-${i}`}
             />
           ))}
         </div>
