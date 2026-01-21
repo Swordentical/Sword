@@ -552,7 +552,15 @@ function MedicalHistorySection({ patient, canEdit }: { patient: Patient; canEdit
   );
 }
 
-function TreatmentHistorySection({ patientId }: { patientId: string }) {
+function TreatmentHistorySection({ 
+  patientId,
+  patientName,
+  financials
+}: { 
+  patientId: string;
+  patientName: string;
+  financials: PatientFinancials | undefined;
+}) {
   const { toast } = useToast();
   const [editingTreatment, setEditingTreatment] = useState<PatientTreatmentWithDetails | null>(null);
   const [deletingTreatmentId, setDeletingTreatmentId] = useState<string | null>(null);
@@ -600,7 +608,7 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
     if (!printWindow) return;
 
     // Filter payments for this specific invoice
-    const invoicePayments = payments?.filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded) || [];
+    const invoicePayments = (financials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
     const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
@@ -624,12 +632,11 @@ function TreatmentHistorySection({ patientId }: { patientId: string }) {
             .totals { margin-left: auto; width: 300px; }
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
             .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
+            .payment-row { color: #1e7e34; font-size: 13px; }
             .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
-            .payments-section { margin-top: 20px; }
-            .payment-row { color: #1e7e34; font-size: 13px; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
@@ -910,11 +917,15 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function FinancialsSection({ patientId, patientName }: { patientId: string; patientName: string }) {
-  const { data: financials, isLoading } = useQuery<PatientFinancials>({
-    queryKey: ["/api/patients", patientId, "financials"],
-  });
-
+function FinancialsSection({ 
+  patientId, 
+  patientName,
+  financials 
+}: { 
+  patientId: string; 
+  patientName: string;
+  financials: PatientFinancials | undefined;
+}) {
   const handlePrintFinancials = () => {
     window.print();
   };
@@ -924,7 +935,7 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
     if (!printWindow) return;
 
     // Filter payments for this specific invoice
-    const invoicePayments = payments?.filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded) || [];
+    const invoicePayments = (financials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
     const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
@@ -948,11 +959,6 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
             .totals { margin-left: auto; width: 300px; }
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
             .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
-            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-            .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
-            .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
-            .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
-            .payments-section { margin-top: 20px; }
             .payment-row { color: #1e7e34; font-size: 13px; }
             @media print { .no-print { display: none; } }
           </style>
@@ -1039,6 +1045,7 @@ function FinancialsSection({ patientId, patientName }: { patientId: string; pati
     printWindow.document.write(invoiceHtml);
     printWindow.document.close();
   };
+
 
   if (isLoading) {
     return (
@@ -2281,12 +2288,16 @@ export default function PatientDetail() {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-medium">Treatment History</h3>
-                        <Button size="sm">
+                        <Button size="sm" onClick={() => setIsTreatmentModalOpen(true)}>
                           <Plus className="h-4 w-4 mr-2" />
                           Add Treatment
                         </Button>
                       </div>
-                      <TreatmentHistorySection patientId={patient.id} />
+                      <TreatmentHistorySection 
+                        patientId={patient.id} 
+                        patientName={`${patient.firstName} ${patient.lastName}`}
+                        financials={financials}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -2295,6 +2306,7 @@ export default function PatientDetail() {
                   <FinancialsSection 
                     patientId={patient.id} 
                     patientName={`${patient.firstName} ${patient.lastName}`} 
+                    financials={financials}
                   />
                 </TabsContent>
 
