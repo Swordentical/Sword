@@ -168,6 +168,35 @@
   html {
     color-scheme: light dark;
   }
+  
+  /* Content-morphing theme transition - colors transition naturally */
+  html.theme-transitioning,
+  html.theme-transitioning * {
+    transition: 
+      background-color 700ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 650ms cubic-bezier(0.4, 0, 0.2, 1) 30ms,
+      color 600ms cubic-bezier(0.4, 0, 0.2, 1) 50ms,
+      fill 600ms cubic-bezier(0.4, 0, 0.2, 1) 50ms,
+      stroke 600ms cubic-bezier(0.4, 0, 0.2, 1) 50ms,
+      box-shadow 700ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  
+  /* Staggered transitions for depth - cards slightly delayed */
+  html.theme-transitioning .bg-card,
+  html.theme-transitioning [class*="Card"] {
+    transition-delay: 40ms !important;
+  }
+  
+  /* Text transitions last for smooth reading */
+  html.theme-transitioning p,
+  html.theme-transitioning span,
+  html.theme-transitioning h1,
+  html.theme-transitioning h2,
+  html.theme-transitioning h3,
+  html.theme-transitioning h4,
+  html.theme-transitioning label {
+    transition-delay: 60ms !important;
+  }
 }
 
 @layer utilities {

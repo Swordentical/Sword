@@ -66,14 +66,12 @@ export function ThemeProvider({
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : newTheme as "dark" | "light";
     
-    // Trigger the global overlay transition
+    // Trigger the ambient transition effect
     triggerThemeTransition(x, y, targetResolved);
     
-    // Small delay to let the overlay start, then change the actual theme
-    setTimeout(() => {
-      localStorage.setItem(storageKey, newTheme);
-      setTheme(newTheme);
-    }, 50);
+    // Change the theme immediately - CSS transitions handle the morphing
+    localStorage.setItem(storageKey, newTheme);
+    setTheme(newTheme);
   }, [storageKey]);
 
   const value = {
