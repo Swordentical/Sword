@@ -23,6 +23,13 @@ import {
   Settings2,
   ChevronUp,
   ChevronDown,
+  Stethoscope,
+  Receipt,
+  ClipboardList,
+  FlaskConical,
+  Bell,
+  Activity,
+  Target,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +52,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -79,51 +87,33 @@ function TodayAppointmentCard({
 
   return (
     <div 
-      className="group relative flex items-center gap-4 p-4 rounded-xl border border-transparent bg-card/50 hover:bg-card hover:border-primary/20 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer overflow-hidden"
+      className="group relative flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover:bg-card hover:border-primary/20 shadow-sm hover:shadow transition-all cursor-pointer"
       onClick={() => onClick(appointment)}
       data-testid={`card-appointment-${appointment.id}`}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="text-center min-w-[70px] space-y-1">
-        <div className="text-xl font-black tracking-tighter text-foreground">
+      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary opacity-0 group-hover:opacity-100 transition-opacity rounded-l-lg" />
+      <div className="text-center min-w-[50px]">
+        <div className="text-lg font-bold text-foreground">
           {format(startTime, "HH:mm")}
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+        <div className="text-[10px] uppercase text-muted-foreground">
           {format(startTime, "a")}
         </div>
       </div>
-      <Avatar className="h-12 w-12 border-2 border-background shadow-sm group-hover:scale-105 transition-transform">
-        <AvatarFallback className="bg-primary/10 text-primary text-base font-bold">
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
           {initials}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <div className="text-base font-bold tracking-tight truncate group-hover:text-primary transition-colors">
+        <p className="font-medium text-sm truncate">
           {appointment.patient.firstName} {appointment.patient.lastName}
-        </div>
-        <div className="flex flex-col gap-1 mt-1">
-          <div className="text-sm font-medium text-muted-foreground/80 truncate">
-            {appointment.title}
-          </div>
-          <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tight">
-            {appointment.doctor && (
-              <span className="flex items-center gap-1 truncate">
-                <User className="h-3 w-3" />
-                Dr. {appointment.doctor.firstName.charAt(0)}. {appointment.doctor.lastName}
-              </span>
-            )}
-            {appointment.roomNumber && (
-              <span className="flex items-center gap-1 shrink-0">
-                <Settings2 className="h-3 w-3" />
-                Room {appointment.roomNumber}
-              </span>
-            )}
-          </div>
-        </div>
+        </p>
+        <p className="text-xs text-muted-foreground truncate">
+          {appointment.title || appointment.category}
+        </p>
       </div>
-      <div className="transition-transform group-hover:scale-105">
-        <AppointmentStatusBadge status={appointment.status || "pending"} />
-      </div>
+      <AppointmentStatusBadge status={appointment.status || "pending"} />
     </div>
   );
 }
@@ -214,35 +204,86 @@ function EditAppointmentDialog({
   );
 }
 
-// ... rest of the file ...
+const CLOCK_STORAGE_KEY = "dashboard-clock-style";
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
+  const [isAnalog, setIsAnalog] = useState(() => {
+    try {
+      return localStorage.getItem(CLOCK_STORAGE_KEY) === "analog";
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const toggleClockStyle = () => {
+    const newStyle = !isAnalog;
+    setIsAnalog(newStyle);
+    localStorage.setItem(CLOCK_STORAGE_KEY, newStyle ? "analog" : "digital");
+  };
+
+  const hours = time.getHours() % 12;
+  const minutes = time.getMinutes();
+  const seconds = time.getSeconds();
+  
+  const hourDeg = (hours * 30) + (minutes * 0.5);
+  const minuteDeg = minutes * 6;
+  const secondDeg = seconds * 6;
+
   return (
-    <Card className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20 shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-4 sm:p-6">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="rounded-2xl bg-primary/10 p-4 shadow-inner">
-            <Clock className="h-8 w-8 text-primary animate-pulse" />
+    <div 
+      className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover:border-primary/20 transition-colors"
+      onClick={toggleClockStyle}
+      title="Click to toggle clock style"
+    >
+      {isAnalog ? (
+        <div className="relative h-14 w-14 rounded-full border-2 border-primary/30 bg-card shadow-inner">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
           </div>
-          <div>
-            <div className="text-4xl font-black tabular-nums tracking-tighter text-foreground/90">
-              {format(time, "HH:mm:ss")}
-            </div>
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground/80 mt-1">
-              <CalendarDays className="h-4 w-4 text-primary/60" />
-              <span>{format(time, "EEEE, MMMM d, yyyy")}</span>
-            </div>
+          <div 
+            className="absolute top-1/2 left-1/2 h-3.5 w-0.5 bg-foreground rounded-full origin-bottom"
+            style={{ transform: `translate(-50%, -100%) rotate(${hourDeg}deg)` }}
+          />
+          <div 
+            className="absolute top-1/2 left-1/2 h-5 w-0.5 bg-foreground/70 rounded-full origin-bottom"
+            style={{ transform: `translate(-50%, -100%) rotate(${minuteDeg}deg)` }}
+          />
+          <div 
+            className="absolute top-1/2 left-1/2 h-5 w-px bg-primary rounded-full origin-bottom"
+            style={{ transform: `translate(-50%, -100%) rotate(${secondDeg}deg)` }}
+          />
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute top-1 left-1/2 h-1 w-px bg-muted-foreground/30"
+              style={{ transform: `translateX(-50%) rotate(${i * 30}deg)`, transformOrigin: '50% 24px' }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-primary" />
+          <div className="text-2xl font-bold tabular-nums tracking-tight">
+            {format(time, "HH:mm")}
+            <span className="text-lg text-muted-foreground">:{format(time, "ss")}</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+      <div className="hidden sm:block text-right">
+        <div className="text-xs font-medium text-muted-foreground">
+          {format(time, "EEEE")}
+        </div>
+        <div className="text-sm font-semibold">
+          {format(time, "MMM d, yyyy")}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -302,14 +343,18 @@ function GlobalSearch() {
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
-          className="w-full md:w-[400px] justify-start text-muted-foreground gap-2"
+          className="w-full justify-start text-muted-foreground gap-2 h-9"
           data-testid="button-global-search"
         >
           <Search className="h-4 w-4" />
-          <span>Search patients, appointments, inventory...</span>
+          <span className="hidden sm:inline">Search patients, appointments...</span>
+          <span className="sm:hidden">Search...</span>
+          <kbd className="hidden md:inline-flex pointer-events-none ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">Ctrl</span>K
+          </kbd>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full md:w-[400px] p-0" align="start">
+      <PopoverContent className="w-[90vw] max-w-md p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput 
             placeholder="Search by name, phone, email, or item..." 
@@ -328,20 +373,19 @@ function GlobalSearch() {
                     className="gap-3 cursor-pointer"
                     data-testid={`search-result-patient-${patient.id}`}
                   >
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="h-7 w-7">
                       <AvatarFallback className="bg-primary/10 text-primary text-xs">
                         {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
+                      <div className="font-medium text-sm truncate">
                         {patient.firstName} {patient.lastName}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {patient.phone || patient.email || "No contact info"}
                       </div>
                     </div>
-                    <User className="h-4 w-4 text-muted-foreground" />
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -356,10 +400,10 @@ function GlobalSearch() {
                     data-testid={`search-result-appointment-${appointment.id}`}
                   >
                     <div className="rounded-full bg-emerald-500/10 p-1.5">
-                      <Calendar className="h-4 w-4 text-emerald-600" />
+                      <Calendar className="h-3.5 w-3.5 text-emerald-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
+                      <div className="font-medium text-sm truncate">
                         {appointment.title}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -380,14 +424,12 @@ function GlobalSearch() {
                     data-testid={`search-result-inventory-${item.id}`}
                   >
                     <div className="rounded-full bg-amber-500/10 p-1.5">
-                      <Package className="h-4 w-4 text-amber-600" />
+                      <Package className="h-3.5 w-3.5 text-amber-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {item.name}
-                      </div>
+                      <div className="font-medium text-sm truncate">{item.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {item.category || "Uncategorized"} - Qty: {item.currentQuantity}
+                        {item.currentQuantity} {item.unit} in stock
                       </div>
                     </div>
                   </CommandItem>
@@ -401,20 +443,18 @@ function GlobalSearch() {
   );
 }
 
-function StatCard({
+function MiniStatCard({
   title,
   value,
-  description,
   icon: Icon,
-  trend,
   color = "primary",
+  trend,
 }: {
   title: string;
   value: string | number;
-  description?: string;
   icon: React.ComponentType<{ className?: string }>;
-  trend?: { value: number; isPositive: boolean };
   color?: "primary" | "success" | "warning" | "destructive";
+  trend?: { value: number; isPositive: boolean };
 }) {
   const colorClasses = {
     primary: "bg-primary/10 text-primary",
@@ -424,35 +464,25 @@ function StatCard({
   };
 
   return (
-    <Card className="group overflow-hidden border-none bg-gradient-to-br from-card to-muted/30 shadow-sm hover:shadow-md transition-all duration-300">
-      <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-          {title}
-        </CardTitle>
-        <div className={`rounded-xl p-2.5 shadow-sm transition-transform duration-300 group-hover:scale-110 ${colorClasses[color]}`}>
-          <Icon className="h-4 w-4" />
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-card border shadow-sm hover:shadow transition-shadow">
+      <div className={cn("rounded-lg p-2", colorClasses[color])}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground truncate">{title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-lg font-bold">{value}</p>
+          {trend && (
+            <span className={cn(
+              "text-[10px] font-medium",
+              trend.isPositive ? "text-emerald-600" : "text-destructive"
+            )}>
+              {trend.isPositive ? "+" : ""}{trend.value}%
+            </span>
+          )}
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-black tracking-tight">{value}</div>
-        {description && (
-          <p className="text-xs font-medium text-muted-foreground/70 mt-1">{description}</p>
-        )}
-        {trend && (
-          <div className="flex items-center gap-1.5 mt-3">
-            <div className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-              trend.isPositive ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"
-            }`}>
-              <TrendingUp
-                className={`h-3 w-3 ${trend.isPositive ? "" : "rotate-180"}`}
-              />
-              {trend.isPositive ? "+" : "-"}{trend.value}%
-            </div>
-            <span className="text-[10px] font-medium text-muted-foreground/60 italic">vs last month</span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -470,38 +500,17 @@ function QuickActionButton({
   return (
     <Link href={href}>
       <Button
-        variant="outline"
-        className="group relative flex flex-col items-center gap-3 h-auto py-6 px-4 w-full border-none bg-gradient-to-b from-card to-muted/50 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+        variant="ghost"
+        size="sm"
+        className="h-auto flex-col gap-1.5 py-3 px-3 w-full hover:bg-primary/5"
         data-testid={testId}
       >
-        <div className="rounded-2xl bg-primary/10 p-3 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-          <Icon className="h-6 w-6" />
+        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+          <Icon className="h-4 w-4" />
         </div>
-        <span className="text-sm font-bold tracking-tight">{label}</span>
-        <div className="absolute inset-x-0 bottom-0 h-1 bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-b-lg" />
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
       </Button>
     </Link>
-  );
-}
-
-function RecentActivityItem({ activity }: { activity: ActivityLog }) {
-  const getActivityIcon = (action: string) => {
-    if (action.includes("created")) return <Plus className="h-4 w-4 text-emerald-500" />;
-    if (action.includes("completed")) return <CheckCircle2 className="h-4 w-4 text-primary" />;
-    if (action.includes("canceled")) return <XCircle className="h-4 w-4 text-destructive" />;
-    return <FileText className="h-4 w-4 text-muted-foreground" />;
-  };
-
-  return (
-    <div className="flex items-start gap-3 py-3 border-b last:border-0">
-      <div className="mt-0.5">{getActivityIcon(activity.action)}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-foreground">{activity.details}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {activity.createdAt && format(new Date(activity.createdAt), "MMM d, h:mm a")}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -519,8 +528,9 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "clock", label: "Clock & Date", slot: "header", enabled: true, order: 0 },
   { id: "stats", label: "Statistics Cards", slot: "fullWidth", enabled: true, order: 0 },
   { id: "appointments", label: "Upcoming Appointments", slot: "main", enabled: true, order: 0 },
-  { id: "quickActions", label: "Quick Actions", slot: "main", enabled: true, order: 1 },
+  { id: "quickActions", label: "Quick Actions", slot: "sidebar", enabled: true, order: 0 },
   { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 1 },
+  { id: "productivity", label: "Productivity", slot: "sidebar", enabled: true, order: 2 },
 ];
 
 const SLOT_LABELS: Record<WidgetSlot, string> = {
@@ -530,7 +540,7 @@ const SLOT_LABELS: Record<WidgetSlot, string> = {
   sidebar: "Sidebar",
 };
 
-const WIDGETS_STORAGE_KEY = "dashboard-widgets-config-v2";
+const WIDGETS_STORAGE_KEY = "dashboard-widgets-config-v3";
 
 function loadWidgetConfig(): WidgetConfig[] {
   try {
@@ -597,30 +607,26 @@ function WidgetSettingsPanel({
                       {widget.label}
                     </Label>
                   </div>
-                  {slotWidgets.length > 1 && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => onMoveUp(widget.id, slot)}
-                        disabled={index === 0}
-                        data-testid={`button-move-up-${widget.id}`}
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => onMoveDown(widget.id, slot)}
-                        disabled={index === slotWidgets.length - 1}
-                        data-testid={`button-move-down-${widget.id}`}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => onMoveUp(widget.id, slot)}
+                      disabled={index === 0}
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => onMoveDown(widget.id, slot)}
+                      disabled={index === slotWidgets.length - 1}
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -628,12 +634,7 @@ function WidgetSettingsPanel({
         );
       })}
       <Separator />
-      <Button 
-        variant="outline" 
-        onClick={onReset} 
-        className="w-full"
-        data-testid="button-reset-widgets"
-      >
+      <Button variant="outline" size="sm" onClick={onReset} className="w-full">
         Reset to Default
       </Button>
     </div>
@@ -642,109 +643,60 @@ function WidgetSettingsPanel({
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const isStudent = user?.role === "student";
-  const [widgets, setWidgets] = useState<WidgetConfig[]>(() => loadWidgetConfig());
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(loadWidgetConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedApt, setSelectedApt] = useState<AppointmentWithPatient | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const isStudent = user?.role === "student";
 
   const { data: stats, isLoading: statsLoading } = useQuery<{
     totalPatients: number;
     todayAppointments: number;
     monthlyRevenue: number;
-    outstandingBalance: number;
+    outstandingBalance?: number;
+    pendingPayments?: number;
     lowStockItems: number;
   }>({
     queryKey: ["/api/dashboard/stats"],
   });
 
   const { data: upcomingAppointments, isLoading: appointmentsLoading } = useQuery<AppointmentWithPatient[]>({
-    queryKey: ["/api/appointments", { start: startOfDay(new Date()).toISOString() }],
+    queryKey: ["/api/appointments"],
   });
 
-  const [selectedApt, setSelectedApt] = useState<AppointmentWithPatient | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const { data: lowStockItems, isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/inventory/low-stock"],
+    enabled: !isStudent,
+  });
 
   const handleAptClick = (apt: AppointmentWithPatient) => {
     setSelectedApt(apt);
     setIsEditDialogOpen(true);
   };
 
-  // Group appointments by date
-  const groupedAppointments = upcomingAppointments?.reduce((groups: Record<string, AppointmentWithPatient[]>, apt) => {
-    const date = startOfDay(new Date(apt.startTime)).toISOString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
-    groups[date].push(apt);
-    return groups;
-  }, {});
+  const filteredAppointments = upcomingAppointments?.filter((apt) => {
+    const now = new Date();
+    const aptDate = new Date(apt.startTime);
+    return apt.status !== "canceled" && apt.status !== "completed" && isAfter(aptDate, startOfDay(now));
+  }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()) || [];
 
-  const sortedDates = groupedAppointments ? Object.keys(groupedAppointments).sort() : [];
+  const groupedAppointments = filteredAppointments.reduce((acc, apt) => {
+    const dateKey = format(new Date(apt.startTime), "yyyy-MM-dd");
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(apt);
+    return acc;
+  }, {} as Record<string, AppointmentWithPatient[]>);
+
+  const sortedDates = Object.keys(groupedAppointments).sort();
 
   const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isToday(date)) return "Today";
     if (isTomorrow(date)) return "Tomorrow";
-    return format(date, "d / M / yyyy");
+    return format(date, "EEEE, MMM d");
   };
-
-  const renderAppointments = () => {
-    if (appointmentsLoading) {
-      return (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
-    }
-
-    if (!upcomingAppointments || upcomingAppointments.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-muted p-3 mb-4">
-            <Calendar className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <p className="text-sm font-medium">No upcoming appointments</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Enjoy your clear schedule or create a new one
-          </p>
-          <Link href="/appointments?action=new">
-            <Button variant="outline" size="sm" className="mt-4">
-              Schedule Now
-            </Button>
-          </Link>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        {sortedDates.map((dateStr) => (
-          <div key={dateStr} className="space-y-3">
-            <div className="flex items-center gap-4">
-              <Separator className="flex-1" />
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {getDateLabel(dateStr)}
-              </span>
-              <Separator className="flex-1" />
-            </div>
-            <div className="grid gap-3">
-              {groupedAppointments![dateStr].map((apt) => (
-                <TodayAppointmentCard 
-                  key={apt.id} 
-                  appointment={apt} 
-                  onClick={handleAptClick}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  const { data: lowStockItems, isLoading: inventoryLoading } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory/low-stock"],
-    enabled: !isStudent,
-  });
 
   const isWidgetEnabled = (id: string) => widgets.find(w => w.id === id)?.enabled ?? true;
 
@@ -797,45 +749,40 @@ export default function Dashboard() {
   };
 
   const renderStatsWidget = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <StatCard
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <MiniStatCard
         title="Total Patients"
         value={statsLoading ? "..." : stats?.totalPatients || 0}
-        description="All registered patients"
         icon={Users}
         color="primary"
       />
-      <StatCard
+      <MiniStatCard
         title="Today's Appointments"
         value={statsLoading ? "..." : stats?.todayAppointments || 0}
-        description="Scheduled for today"
         icon={Calendar}
         color="success"
       />
       {!isStudent && (
         <>
-          <StatCard
+          <MiniStatCard
             title="Monthly Revenue"
             value={statsLoading ? "..." : `$${(stats?.monthlyRevenue || 0).toLocaleString()}`}
-            description="This month's earnings"
             icon={DollarSign}
             color="success"
             trend={{ value: 12, isPositive: true }}
           />
-          <StatCard
-            title="Outstanding Balance"
-            value={statsLoading ? "..." : `$${(stats?.outstandingBalance || 0).toLocaleString()}`}
-            description="Pending payments"
+          <MiniStatCard
+            title="Outstanding"
+            value={statsLoading ? "..." : `$${(stats?.outstandingBalance || stats?.pendingPayments || 0).toLocaleString()}`}
             icon={AlertCircle}
             color="warning"
           />
         </>
       )}
       {isStudent && (
-        <StatCard
+        <MiniStatCard
           title="My Patients"
           value={statsLoading ? "..." : stats?.totalPatients || 0}
-          description="Assigned to you"
           icon={Users}
           color="success"
         />
@@ -844,103 +791,201 @@ export default function Dashboard() {
   );
 
   const renderAppointmentsWidget = () => (
-    <Card className="border-none bg-gradient-to-br from-card to-muted/20 shadow-lg ring-1 ring-primary/5">
-      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-card/50 pb-6">
+    <Card className="h-full flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-3 shrink-0">
         <div>
-          <CardTitle className="text-xl font-black tracking-tight">Upcoming Appointments</CardTitle>
-          <CardDescription className="text-sm font-medium">
-            Stay on top of your schedule
+          <CardTitle className="text-base font-semibold">Upcoming Appointments</CardTitle>
+          <CardDescription className="text-xs">
+            {filteredAppointments.length} scheduled
           </CardDescription>
         </div>
         <Link href="/appointments">
-          <Button variant="secondary" size="sm" className="font-bold shadow-sm" data-testid="button-view-appointments">
+          <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid="button-view-appointments">
             View All
-            <ArrowRight className="ml-2 h-4 w-4" />
+            <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
         </Link>
       </CardHeader>
-      <CardContent className="pt-6">
-        <ScrollArea className="h-[600px] pr-4 -mr-4">
-          {renderAppointments()}
+      <CardContent className="flex-1 overflow-hidden pt-0">
+        <ScrollArea className="h-[400px] lg:h-[500px] pr-3 -mr-3">
+          {appointmentsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : filteredAppointments.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="rounded-full bg-muted p-2 mb-3">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">No upcoming appointments</p>
+              <Link href="/appointments?action=new">
+                <Button variant="ghost" size="sm" className="mt-2 text-primary">
+                  Schedule Now
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {sortedDates.map((dateStr) => (
+                <div key={dateStr} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase">
+                      {getDateLabel(dateStr)}
+                    </span>
+                    <Separator className="flex-1" />
+                  </div>
+                  <div className="space-y-2">
+                    {groupedAppointments[dateStr].map((apt) => (
+                      <TodayAppointmentCard 
+                        key={apt.id} 
+                        appointment={apt} 
+                        onClick={handleAptClick}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>
   );
 
   const renderQuickActionsWidget = () => (
-    <div className="grid gap-4 md:grid-cols-4">
-      <QuickActionButton
-        icon={Plus}
-        label="Add Patient"
-        href="/patients?action=new"
-        testId="button-quick-add-patient"
-      />
-      <QuickActionButton
-        icon={Calendar}
-        label="New Appointment"
-        href="/appointments?action=new"
-        testId="button-quick-new-appointment"
-      />
-      {!isStudent && (
-        <>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-semibold">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent className="pb-3">
+        <div className="grid grid-cols-3 gap-1">
           <QuickActionButton
-            icon={FileText}
-            label="Create Invoice"
-            href="/financials?action=new-invoice"
-            testId="button-quick-create-invoice"
+            icon={Plus}
+            label="New Patient"
+            href="/patients?action=new"
+            testId="button-quick-add-patient"
           />
           <QuickActionButton
-            icon={Package}
-            label="Check Inventory"
-            href="/inventory"
-            testId="button-quick-inventory"
+            icon={Calendar}
+            label="Schedule"
+            href="/appointments?action=new"
+            testId="button-quick-new-appointment"
           />
-        </>
-      )}
-    </div>
+          <QuickActionButton
+            icon={Stethoscope}
+            label="Treatments"
+            href="/treatments"
+            testId="button-quick-treatments"
+          />
+          {!isStudent && (
+            <>
+              <QuickActionButton
+                icon={Receipt}
+                label="Invoice"
+                href="/financials?action=new-invoice"
+                testId="button-quick-create-invoice"
+              />
+              <QuickActionButton
+                icon={Package}
+                label="Inventory"
+                href="/inventory"
+                testId="button-quick-inventory"
+              />
+              <QuickActionButton
+                icon={FlaskConical}
+                label="Lab Work"
+                href="/lab-work"
+                testId="button-quick-lab"
+              />
+            </>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 
   const renderLowStockWidget = () => {
     if (isStudent) return null;
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <AlertCircle className="h-4 w-4 text-amber-500" />
             Low Stock Alerts
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-3">
           {inventoryLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
             </div>
           ) : lowStockItems && lowStockItems.length > 0 ? (
-            <div className="space-y-2">
-              {lowStockItems.slice(0, 5).map((item) => (
+            <div className="space-y-1.5">
+              {lowStockItems.slice(0, 4).map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
+                  className="flex items-center justify-between py-1.5 text-sm"
                 >
-                  <span className="text-sm font-medium truncate">{item.name}</span>
-                  <Badge variant="destructive" className="shrink-0">
+                  <span className="truncate text-muted-foreground">{item.name}</span>
+                  <Badge variant={item.currentQuantity === 0 ? "destructive" : "secondary"} className="shrink-0 ml-2">
                     {item.currentQuantity} left
                   </Badge>
                 </div>
               ))}
-              {lowStockItems.length > 5 && (
+              {lowStockItems.length > 4 && (
                 <Link href="/inventory?filter=low-stock">
-                  <Button variant="ghost" size="sm" className="p-0">
-                    View all {lowStockItems.length} items
+                  <Button variant="ghost" size="sm" className="p-0 h-auto text-xs text-primary">
+                    +{lowStockItems.length - 4} more items
                   </Button>
                 </Link>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              All items are well stocked
+            <p className="text-xs text-muted-foreground text-center py-3">
+              All items stocked
             </p>
           )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderProductivityWidget = () => {
+    const todayApts = stats?.todayAppointments || 0;
+    const completionRate = todayApts > 0 ? Math.round((todayApts / 10) * 100) : 0;
+    
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Target className="h-4 w-4 text-primary" />
+            Today's Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-3">
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-muted-foreground">Appointments</span>
+                <span className="font-medium">{todayApts}/10</span>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${Math.min(completionRate, 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="text-muted-foreground">Status</span>
+              </div>
+              <Badge variant="secondary" className="text-[10px]">
+                {completionRate >= 80 ? "Excellent" : completionRate >= 50 ? "On Track" : "Getting Started"}
+              </Badge>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -952,7 +997,7 @@ export default function Dashboard() {
   const headerWidgets = getSlotWidgets("header");
   const fullWidthWidgets = getSlotWidgets("fullWidth");
   const mainWidgets = getSlotWidgets("main");
-  const sidebarWidgets = getSlotWidgets("sidebar").filter(w => !(isStudent && w.id === "lowStock"));
+  const sidebarWidgets = getSlotWidgets("sidebar").filter(w => !(isStudent && (w.id === "lowStock" || w.id === "productivity")));
 
   const renderWidgetById = (id: string) => {
     switch (id) {
@@ -961,83 +1006,96 @@ export default function Dashboard() {
       case "appointments": return renderAppointmentsWidget();
       case "quickActions": return renderQuickActionsWidget();
       case "lowStock": return renderLowStockWidget();
+      case "productivity": return renderProductivityWidget();
       default: return null;
     }
   };
 
   return (
-    <div className="p-4 sm:p-8 space-y-8 max-w-[1600px] mx-auto overflow-x-hidden">
-      <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-4xl font-black tracking-tight text-foreground" data-testid="text-greeting">
-              {greeting()}, <span className="text-primary">{user?.firstName}</span>!
-            </h1>
-            <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" data-testid="button-customize-dashboard">
-                  <Settings2 className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="sm:max-w-md">
-                <SheetHeader className="pb-6 border-b">
-                  <SheetTitle className="text-2xl font-bold">Dashboard Layout</SheetTitle>
-                  <SheetDescription className="text-base">
-                    Personalize your workspace by arranging and toggling widgets.
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="mt-8">
-                  <WidgetSettingsPanel
-                    widgets={widgets}
-                    onToggle={toggleWidget}
-                    onMoveUp={moveWidgetUp}
-                    onMoveDown={moveWidgetDown}
-                    onReset={resetWidgets}
-                  />
+    <div className="h-full flex flex-col overflow-hidden">
+      <div className="shrink-0 border-b bg-card/50 p-3 sm:p-4">
+        <div className="max-w-[1400px] mx-auto">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-bold truncate" data-testid="text-greeting">
+                    {greeting()}, <span className="text-primary">{user?.firstName}</span>
+                  </h1>
+                  <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" data-testid="button-customize-dashboard">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent className="sm:max-w-md">
+                      <SheetHeader className="pb-4 border-b">
+                        <SheetTitle>Dashboard Layout</SheetTitle>
+                        <SheetDescription>
+                          Customize your workspace widgets.
+                        </SheetDescription>
+                      </SheetHeader>
+                      <div className="mt-6">
+                        <WidgetSettingsPanel
+                          widgets={widgets}
+                          onToggle={toggleWidget}
+                          onMoveUp={moveWidgetUp}
+                          onMoveDown={moveWidgetDown}
+                          onReset={resetWidgets}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <p className="text-lg font-medium text-muted-foreground/80">
-            Welcome back! Here is a summary of today's activities.
-          </p>
-          <div className="mt-4 max-w-md">
-            <GlobalSearch />
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                  Here's your clinic overview
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex-1 sm:flex-none sm:w-64">
+                <GlobalSearch />
+              </div>
+              {headerWidgets.map(w => (
+                <div key={w.id} className="hidden lg:block">{renderWidgetById(w.id)}</div>
+              ))}
+            </div>
           </div>
         </div>
-        {headerWidgets.map(w => (
-          <div key={w.id} className="lg:w-auto transform hover:scale-[1.02] transition-transform">{renderWidgetById(w.id)}</div>
-        ))}
       </div>
 
-      {fullWidthWidgets.map(w => (
-        <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
-      ))}
+      <div className="flex-1 overflow-auto p-3 sm:p-4">
+        <div className="max-w-[1400px] mx-auto space-y-4">
+          {fullWidthWidgets.map(w => (
+            <div key={w.id}>{renderWidgetById(w.id)}</div>
+          ))}
 
-      <EditAppointmentDialog 
-        appointment={selectedApt}
-        open={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-      />
+          <EditAppointmentDialog 
+            appointment={selectedApt}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+          />
 
-      {(mainWidgets.length > 0 || sidebarWidgets.length > 0) && (
-        <div className={`grid gap-8 ${sidebarWidgets.length > 0 ? 'lg:grid-cols-12' : 'grid-cols-1'}`}>
-          {mainWidgets.length > 0 && (
-            <div className={`${sidebarWidgets.length > 0 ? 'lg:col-span-8' : ''} space-y-8`}>
-              {mainWidgets.map(w => (
-                <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
-              ))}
-            </div>
-          )}
-          {sidebarWidgets.length > 0 && (
-            <div className="lg:col-span-4 space-y-8">
-              {sidebarWidgets.map(w => (
-                <div key={w.id} className="w-full">{renderWidgetById(w.id)}</div>
-              ))}
+          {(mainWidgets.length > 0 || sidebarWidgets.length > 0) && (
+            <div className="grid gap-4 lg:grid-cols-3">
+              {mainWidgets.length > 0 && (
+                <div className="lg:col-span-2 space-y-4">
+                  {mainWidgets.map(w => (
+                    <div key={w.id}>{renderWidgetById(w.id)}</div>
+                  ))}
+                </div>
+              )}
+              {sidebarWidgets.length > 0 && (
+                <div className="space-y-4">
+                  {sidebarWidgets.map(w => (
+                    <div key={w.id}>{renderWidgetById(w.id)}</div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
