@@ -87,7 +87,7 @@ function TodayAppointmentCard({
 
   return (
     <div 
-      className="group relative flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover:bg-card hover:border-primary/20 shadow-sm hover:shadow transition-all cursor-pointer"
+      className="group relative flex items-center gap-3 p-3 rounded-lg border bg-card/50 hover-elevate shadow-sm transition-all cursor-pointer"
       onClick={() => onClick(appointment)}
       data-testid={`card-appointment-${appointment.id}`}
     >
@@ -101,7 +101,7 @@ function TodayAppointmentCard({
         </div>
       </div>
       <Avatar className="h-9 w-9 shrink-0">
-        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+        <AvatarFallback className="bg-primary/10 text-foreground text-sm font-semibold">
           {initials}
         </AvatarFallback>
       </Avatar>
@@ -237,9 +237,10 @@ function LiveClock() {
 
   return (
     <div 
-      className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover:border-primary/20 transition-colors"
+      className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/5 to-transparent border border-primary/10 cursor-pointer hover-elevate transition-colors"
       onClick={toggleClockStyle}
       title="Click to toggle clock style"
+      data-testid="button-clock-toggle"
     >
       {isAnalog ? (
         <div className="relative h-14 w-14 rounded-full border-2 border-primary/30 bg-card shadow-inner">
@@ -268,7 +269,7 @@ function LiveClock() {
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-primary" />
+          <Clock className="h-5 w-5 text-foreground" />
           <div className="text-2xl font-bold tabular-nums tracking-tight">
             {format(time, "HH:mm")}
             <span className="text-lg text-muted-foreground">:{format(time, "ss")}</span>
@@ -343,14 +344,14 @@ function GlobalSearch() {
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
-          className="w-full justify-start text-muted-foreground gap-2 h-9"
+          className="w-full justify-start text-muted-foreground gap-2"
           data-testid="button-global-search"
         >
           <Search className="h-4 w-4" />
           <span className="hidden sm:inline">Search patients, appointments...</span>
           <span className="sm:hidden">Search...</span>
-          <kbd className="hidden md:inline-flex pointer-events-none ml-auto h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-            <span className="text-xs">Ctrl</span>K
+          <kbd className="hidden md:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground">
+            Ctrl+K
           </kbd>
         </Button>
       </PopoverTrigger>
@@ -374,7 +375,7 @@ function GlobalSearch() {
                     data-testid={`search-result-patient-${patient.id}`}
                   >
                     <Avatar className="h-7 w-7">
-                      <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      <AvatarFallback className="bg-primary/10 text-foreground text-xs">
                         {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
@@ -457,14 +458,14 @@ function MiniStatCard({
   trend?: { value: number; isPositive: boolean };
 }) {
   const colorClasses = {
-    primary: "bg-primary/10 text-primary",
+    primary: "bg-primary/10 text-foreground",
     success: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
     warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     destructive: "bg-destructive/10 text-destructive",
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-card border shadow-sm hover:shadow transition-shadow">
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-card border shadow-sm hover-elevate transition-shadow">
       <div className={cn("rounded-lg p-2", colorClasses[color])}>
         <Icon className="h-4 w-4" />
       </div>
@@ -502,13 +503,13 @@ function QuickActionButton({
       <Button
         variant="ghost"
         size="sm"
-        className="h-auto flex-col gap-1.5 py-3 px-3 w-full hover:bg-primary/5"
+        className="flex-col gap-1.5 w-full"
         data-testid={testId}
       >
-        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+        <div className="rounded-lg bg-primary/10 p-2 text-foreground">
           <Icon className="h-4 w-4" />
         </div>
-        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+        <span className="font-medium text-muted-foreground">{label}</span>
       </Button>
     </Link>
   );
@@ -611,20 +612,20 @@ function WidgetSettingsPanel({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
                       onClick={() => onMoveUp(widget.id, slot)}
                       disabled={index === 0}
+                      data-testid={`button-widget-move-up-${widget.id}`}
                     >
-                      <ChevronUp className="h-3.5 w-3.5" />
+                      <ChevronUp className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7"
                       onClick={() => onMoveDown(widget.id, slot)}
                       disabled={index === slotWidgets.length - 1}
+                      data-testid={`button-widget-move-down-${widget.id}`}
                     >
-                      <ChevronDown className="h-3.5 w-3.5" />
+                      <ChevronDown className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -634,7 +635,7 @@ function WidgetSettingsPanel({
         );
       })}
       <Separator />
-      <Button variant="outline" size="sm" onClick={onReset} className="w-full">
+      <Button variant="outline" size="sm" onClick={onReset} className="w-full" data-testid="button-reset-widgets">
         Reset to Default
       </Button>
     </div>
@@ -800,7 +801,7 @@ export default function Dashboard() {
           </CardDescription>
         </div>
         <Link href="/appointments">
-          <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid="button-view-appointments">
+          <Button variant="ghost" size="sm" data-testid="button-view-appointments">
             View All
             <ArrowRight className="ml-1 h-3 w-3" />
           </Button>
@@ -810,7 +811,7 @@ export default function Dashboard() {
         <ScrollArea className="h-[400px] lg:h-[500px] pr-3 -mr-3">
           {appointmentsLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredAppointments.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -819,7 +820,7 @@ export default function Dashboard() {
               </div>
               <p className="text-sm font-medium">No upcoming appointments</p>
               <Link href="/appointments?action=new">
-                <Button variant="ghost" size="sm" className="mt-2 text-primary">
+                <Button variant="ghost" size="sm" className="mt-2" data-testid="button-schedule-appointment">
                   Schedule Now
                 </Button>
               </Link>
@@ -917,7 +918,7 @@ export default function Dashboard() {
         <CardContent className="pb-3">
           {inventoryLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : lowStockItems && lowStockItems.length > 0 ? (
             <div className="space-y-1.5">
@@ -934,7 +935,7 @@ export default function Dashboard() {
               ))}
               {lowStockItems.length > 4 && (
                 <Link href="/inventory?filter=low-stock">
-                  <Button variant="ghost" size="sm" className="p-0 h-auto text-xs text-primary">
+                  <Button variant="ghost" size="sm" data-testid="link-more-low-stock">
                     +{lowStockItems.length - 4} more items
                   </Button>
                 </Link>
@@ -958,7 +959,7 @@ export default function Dashboard() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <Target className="h-4 w-4 text-primary" />
+            <Target className="h-4 w-4 text-muted-foreground" />
             Today's Progress
           </CardTitle>
         </CardHeader>
@@ -981,7 +982,7 @@ export default function Dashboard() {
                 <Activity className="h-3.5 w-3.5 text-emerald-500" />
                 <span className="text-muted-foreground">Status</span>
               </div>
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary">
                 {completionRate >= 80 ? "Excellent" : completionRate >= 50 ? "On Track" : "Getting Started"}
               </Badge>
             </div>
@@ -1020,11 +1021,11 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-lg sm:text-xl font-bold truncate" data-testid="text-greeting">
-                    {greeting()}, <span className="text-primary">{user?.firstName}</span>
+                    {greeting()}, {user?.firstName}
                   </h1>
                   <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" data-testid="button-customize-dashboard">
+                      <Button variant="ghost" size="icon" data-testid="button-customize-dashboard">
                         <Settings2 className="h-4 w-4" />
                       </Button>
                     </SheetTrigger>
