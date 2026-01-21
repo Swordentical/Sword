@@ -594,6 +594,128 @@ function InvoiceDetailsDialog({
 
   if (!invoiceId) return null;
 
+  const handlePrintInvoice = (invoice: InvoiceDetails) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    // Filter payments for this specific invoice
+    const invoicePayments = (invoice.payments || []).filter((p: any) => !p.isRefunded);
+    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
+
+    const invoiceHtml = `
+      <html>
+        <head>
+          <title>Invoice ${invoice.invoiceNumber}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.5; }
+            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; }
+            .clinic-info h1 { margin: 0; color: #19585d; font-size: 24px; }
+            .clinic-info p { margin: 5px 0 0; color: #666; }
+            .invoice-title { text-align: right; }
+            .invoice-title h2 { margin: 0; color: #333; font-size: 28px; letter-spacing: 1px; }
+            .invoice-title p { margin: 5px 0 0; color: #666; font-weight: bold; }
+            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
+            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #999; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 13px; color: #333; text-transform: uppercase; }
+            td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+            .totals { margin-left: auto; width: 300px; }
+            .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+            .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
+            .payment-row { color: #1e7e34; font-size: 13px; }
+            .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
+            .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
+            .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
+            .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="clinic-info">
+              <h1>Dental Clinic</h1>
+              <p>Professional Dental Care</p>
+            </div>
+            <div class="invoice-title">
+              <h2>INVOICE</h2>
+              <p># ${invoice.invoiceNumber}</p>
+            </div>
+          </div>
+          
+          <div class="details">
+            <div>
+              <div class="section-title">Bill To</div>
+              <div style="font-size: 18px; font-weight: bold; color: #000;">${invoice.patient?.firstName} ${invoice.patient?.lastName}</div>
+              <div style="color: #666; margin-top: 4px;">Patient ID: ${invoice.patientId}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="section-title">Invoice Details</div>
+              <div><strong>Date:</strong> ${invoice.issuedDate ? new Date(invoice.issuedDate).toLocaleDateString() : 'N/A'}</div>
+              <div><strong>Due Date:</strong> ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : 'N/A'}</div>
+              <div style="margin-top: 12px;">
+                <span class="status-badge status-${invoice.status}">${invoice.status}</span>
+              </div>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoice.items.map(item => `
+                <tr>
+                  <td>${item.description} (x${item.quantity})</td>
+                  <td style="text-align: right;">$${parseFloat(item.totalPrice).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              ${invoicePayments.map((p: any) => `
+                <tr class="payment-row">
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="totals">
+            <div class="total-row">
+              <span>Total Charges</span>
+              <span>$${parseFloat(invoice.totalAmount).toFixed(2)}</span>
+            </div>
+            <div class="total-row" style="color: #1e7e34;">
+              <span>Total Paid</span>
+              <span>-$${totalPaid.toFixed(2)}</span>
+            </div>
+            <div class="total-row grand-total">
+              <span>Balance Remaining</span>
+              <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
+            Please include the invoice number ${invoice.invoiceNumber} with your payment.<br>
+            Thank you for your business!
+          </div>
+
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(invoiceHtml);
+    printWindow.document.close();
+  };
+
   const statusConfig = invoice ? STATUS_BADGES[invoice.status || "draft"] : STATUS_BADGES.draft;
   const balance = invoice ? Number(invoice.finalAmount || 0) - Number(invoice.paidAmount || 0) : 0;
 
