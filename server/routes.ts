@@ -714,6 +714,47 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/treatments/:id", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const existingTreatment = await storage.getTreatment(id);
+      if (!existingTreatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+
+      const updateData: Record<string, unknown> = {};
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.category !== undefined) updateData.category = req.body.category;
+      if (req.body.description !== undefined) updateData.description = req.body.description;
+      if (req.body.cost !== undefined) updateData.cost = req.body.cost;
+      if (req.body.defaultPrice !== undefined) updateData.defaultPrice = req.body.defaultPrice;
+      if (req.body.durationMinutes !== undefined) updateData.durationMinutes = req.body.durationMinutes;
+      if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive;
+
+      const updated = await storage.updateTreatment(id, updateData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating treatment:", error);
+      res.status(500).json({ message: "Failed to update treatment" });
+    }
+  });
+
+  app.delete("/api/treatments/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const existingTreatment = await storage.getTreatment(id);
+      if (!existingTreatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+
+      await storage.deleteTreatment(id);
+      res.json({ message: "Treatment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting treatment:", error);
+      res.status(500).json({ message: "Failed to delete treatment" });
+    }
+  });
+
   // Appointments
   app.get("/api/appointments", requireAuth, async (req, res) => {
     try {

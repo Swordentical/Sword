@@ -99,6 +99,7 @@ export const treatments = pgTable("treatments", {
   name: text("name").notNull(),
   category: serviceCategoryEnum("category").notNull(),
   description: text("description"),
+  cost: decimal("cost", { precision: 10, scale: 2 }).default("0"),
   defaultPrice: decimal("default_price", { precision: 10, scale: 2 }).notNull(),
   durationMinutes: integer("duration_minutes").default(30),
   isActive: boolean("is_active").default(true),
