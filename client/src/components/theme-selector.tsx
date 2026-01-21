@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Check, Moon, Sun, Palette } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { themes, getStoredTheme, setStoredTheme, applyTheme } from "@/lib/themes";
@@ -12,13 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { triggerThemeTransition } from "./theme-transition-layer";
 
 export function ThemeSelector() {
-  const { theme: mode, setTheme: setMode, resolvedTheme } = useTheme();
+  const { theme: mode, setTheme: setMode } = useTheme();
   const [colorTheme, setColorTheme] = useState<string>("default");
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const originRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const stored = getStoredTheme();
@@ -36,33 +33,13 @@ export function ThemeSelector() {
     applyTheme(themeId, mode === "dark");
   };
 
-  const toggleMode = useCallback(() => {
-    // Step 1: Measure position FIRST (no state changes)
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      originRef.current = {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-      };
-    }
-
-    const nextTheme = resolvedTheme === "dark" ? "light" : "dark";
-
-    // Step 2: Start animation in next frame (before theme change)
-    requestAnimationFrame(() => {
-      triggerThemeTransition(originRef.current.x, originRef.current.y, nextTheme);
-      
-      // Step 3: Change theme AFTER animation has started (50ms delay)
-      setTimeout(() => {
-        setMode(nextTheme);
-      }, 50);
-    });
-  }, [resolvedTheme, setMode]);
+  const toggleMode = () => {
+    setMode(mode === "dark" ? "light" : "dark");
+  };
 
   return (
     <div className="flex items-center gap-1">
       <Button
-        ref={buttonRef}
         variant="ghost"
         size="icon"
         onClick={toggleMode}
