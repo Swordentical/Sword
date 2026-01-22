@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { triggerThemeTransition } from "./theme-transition-layer";
 
-type Theme = "dark" | "light" | "system";
+type Theme = "dark" | "light" | "dusk" | "system";
+type ResolvedTheme = "dark" | "light" | "dusk";
 
 type ThemeProviderContextType = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
   setThemeWithAnimation: (theme: Theme, x: number, y: number) => void;
-  resolvedTheme: "dark" | "light";
+  resolvedTheme: ResolvedTheme;
 };
 
 const ThemeProviderContext = createContext<ThemeProviderContextType | undefined>(undefined);
@@ -28,13 +29,13 @@ export function ThemeProvider({
     return defaultTheme;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<"dark" | "light">("light");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
+    root.classList.remove("light", "dark", "dusk");
 
-    let resolved: "dark" | "light";
+    let resolved: ResolvedTheme;
     if (theme === "system") {
       resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     } else {
@@ -50,7 +51,7 @@ export function ThemeProvider({
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       const handleChange = (e: MediaQueryListEvent) => {
         const root = window.document.documentElement;
-        root.classList.remove("light", "dark");
+        root.classList.remove("light", "dark", "dusk");
         const resolved = e.matches ? "dark" : "light";
         root.classList.add(resolved);
         setResolvedTheme(resolved);
@@ -62,9 +63,12 @@ export function ThemeProvider({
 
   const setThemeWithAnimation = useCallback((newTheme: Theme, x: number, y: number) => {
     // Determine the target resolved theme
-    const targetResolved = newTheme === 'system' 
-      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-      : newTheme as "dark" | "light";
+    let targetResolved: ResolvedTheme;
+    if (newTheme === 'system') {
+      targetResolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    } else {
+      targetResolved = newTheme;
+    }
     
     // Trigger the global overlay transition
     triggerThemeTransition(x, y, targetResolved);

@@ -7,20 +7,28 @@ interface AnimatedBackgroundProps {
   preset?: WallpaperPreset;
 }
 
+type ThemeMode = "light" | "dusk" | "dark";
+
 export function AnimatedBackground({ preset: propPreset }: AnimatedBackgroundProps) {
   const { resolvedTheme } = useTheme();
   const { settings } = useAppearanceSettings();
-  const isDark = resolvedTheme === "dark";
+  const themeMode = resolvedTheme as ThemeMode;
   const preset = propPreset ?? settings.wallpaperPreset;
+
+  const getBackgroundColor = () => {
+    switch (themeMode) {
+      case "dark": return 'hsl(215 25% 9%)';
+      case "dusk": return 'hsl(25 30% 12%)';
+      default: return 'hsl(210 20% 98%)';
+    }
+  };
 
   if (preset === "none") {
     return (
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div 
           className="absolute inset-0 transition-colors duration-500"
-          style={{
-            backgroundColor: isDark ? 'hsl(215 25% 9%)' : 'hsl(210 20% 98%)',
-          }}
+          style={{ backgroundColor: getBackgroundColor() }}
         />
       </div>
     );
@@ -30,15 +38,13 @@ export function AnimatedBackground({ preset: propPreset }: AnimatedBackgroundPro
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <div 
         className="absolute inset-0 transition-colors duration-500"
-        style={{
-          backgroundColor: isDark ? 'hsl(215 25% 9%)' : 'hsl(210 20% 98%)',
-        }}
+        style={{ backgroundColor: getBackgroundColor() }}
       />
       
-      {preset === "geometric" && <GeometricPattern isDark={isDark} />}
-      {preset === "waves" && <WavesPattern isDark={isDark} />}
-      {preset === "particles" && <ParticlesPattern isDark={isDark} />}
-      {preset === "gradient" && <GradientPattern isDark={isDark} />}
+      {preset === "geometric" && <GeometricPattern themeMode={themeMode} />}
+      {preset === "waves" && <WavesPattern themeMode={themeMode} />}
+      {preset === "particles" && <ParticlesPattern themeMode={themeMode} />}
+      {preset === "gradient" && <GradientPattern themeMode={themeMode} />}
 
       <style>{`
         @keyframes float-0 {
@@ -75,7 +81,15 @@ export function AnimatedBackground({ preset: propPreset }: AnimatedBackgroundPro
   );
 }
 
-function GeometricPattern({ isDark }: { isDark: boolean }) {
+function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
+  const getColor = (light: string, dusk: string, dark: string) => {
+    switch (themeMode) {
+      case "dark": return dark;
+      case "dusk": return dusk;
+      default: return light;
+    }
+  };
+
   return (
     <>
       <svg 
@@ -93,7 +107,7 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
               cx="20" 
               cy="20" 
               r="1.5" 
-              fill={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(14, 165, 233, 0.12)'}
+              fill={getColor('rgba(14, 165, 233, 0.12)', 'rgba(251, 146, 60, 0.12)', 'rgba(255,255,255,0.08)')}
             />
           </pattern>
           
@@ -107,30 +121,30 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
             <path 
               d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" 
               fill="none" 
-              stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(14, 165, 233, 0.10)'}
+              stroke={getColor('rgba(14, 165, 233, 0.10)', 'rgba(251, 146, 60, 0.10)', 'rgba(255,255,255,0.06)')}
               strokeWidth="1.5"
             />
             <path 
               d="M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34" 
               fill="none" 
-              stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(14, 165, 233, 0.08)'}
+              stroke={getColor('rgba(14, 165, 233, 0.08)', 'rgba(251, 146, 60, 0.08)', 'rgba(255,255,255,0.04)')}
               strokeWidth="1"
             />
           </pattern>
 
           <linearGradient id="fade-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={isDark ? 'rgba(59, 130, 246, 0.08)' : 'rgba(14, 165, 233, 0.08)'} />
+            <stop offset="0%" stopColor={getColor('rgba(14, 165, 233, 0.08)', 'rgba(251, 146, 60, 0.10)', 'rgba(59, 130, 246, 0.08)')} />
             <stop offset="50%" stopColor="transparent" />
-            <stop offset="100%" stopColor={isDark ? 'rgba(139, 92, 246, 0.08)' : 'rgba(6, 182, 212, 0.08)'} />
+            <stop offset="100%" stopColor={getColor('rgba(6, 182, 212, 0.08)', 'rgba(236, 72, 153, 0.10)', 'rgba(139, 92, 246, 0.08)')} />
           </linearGradient>
 
           <radialGradient id="glow-1" cx="20%" cy="30%" r="40%">
-            <stop offset="0%" stopColor={isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(14, 165, 233, 0.15)'} />
+            <stop offset="0%" stopColor={getColor('rgba(14, 165, 233, 0.15)', 'rgba(251, 146, 60, 0.15)', 'rgba(59, 130, 246, 0.12)')} />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
 
           <radialGradient id="glow-2" cx="80%" cy="70%" r="40%">
-            <stop offset="0%" stopColor={isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(6, 182, 212, 0.15)'} />
+            <stop offset="0%" stopColor={getColor('rgba(6, 182, 212, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(139, 92, 246, 0.12)')} />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
         </defs>
@@ -147,7 +161,7 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="glow-anim-1" cx="20%" cy="30%" r="40%">
-              <stop offset="0%" stopColor={isDark ? 'rgba(59, 130, 246, 0.12)' : 'rgba(14, 165, 233, 0.15)'} />
+              <stop offset="0%" stopColor={getColor('rgba(14, 165, 233, 0.15)', 'rgba(251, 146, 60, 0.15)', 'rgba(59, 130, 246, 0.12)')} />
               <stop offset="100%" stopColor="transparent" />
             </radialGradient>
           </defs>
@@ -162,7 +176,7 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="glow-anim-2" cx="80%" cy="70%" r="40%">
-              <stop offset="0%" stopColor={isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(6, 182, 212, 0.15)'} />
+              <stop offset="0%" stopColor={getColor('rgba(6, 182, 212, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(139, 92, 246, 0.12)')} />
               <stop offset="100%" stopColor="transparent" />
             </radialGradient>
           </defs>
@@ -176,7 +190,7 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
             key={i}
             className="absolute rounded-full transition-colors duration-500"
             style={{
-              backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(14, 165, 233, 0.06)',
+              backgroundColor: getColor('rgba(14, 165, 233, 0.06)', 'rgba(251, 146, 60, 0.06)', 'rgba(255,255,255,0.03)'),
               width: `${100 + i * 50}px`,
               height: `${100 + i * 50}px`,
               left: `${(i * 20) % 100}%`,
@@ -191,7 +205,31 @@ function GeometricPattern({ isDark }: { isDark: boolean }) {
   );
 }
 
-function WavesPattern({ isDark }: { isDark: boolean }) {
+function WavesPattern({ themeMode }: { themeMode: ThemeMode }) {
+  const getWaveColor = () => {
+    switch (themeMode) {
+      case "dark": return '%233b82f6';
+      case "dusk": return '%23fb923c';
+      default: return '%230ea5e9';
+    }
+  };
+
+  const getWaveColor2 = () => {
+    switch (themeMode) {
+      case "dark": return '%238b5cf6';
+      case "dusk": return '%23ec4899';
+      default: return '%2306b6d4';
+    }
+  };
+
+  const getGlowColor = () => {
+    switch (themeMode) {
+      case "dark": return 'rgba(59, 130, 246, 0.1)';
+      case "dusk": return 'rgba(251, 146, 60, 0.12)';
+      default: return 'rgba(14, 165, 233, 0.12)';
+    }
+  };
+
   return (
     <>
       <svg 
@@ -201,11 +239,7 @@ function WavesPattern({ isDark }: { isDark: boolean }) {
       >
         <defs>
           <linearGradient id="wave-gradient-1" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(14, 165, 233, 0.18)'} />
-            <stop offset="100%" stopColor="transparent" />
-          </linearGradient>
-          <linearGradient id="wave-gradient-2" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={isDark ? 'rgba(139, 92, 246, 0.12)' : 'rgba(6, 182, 212, 0.15)'} />
+            <stop offset="0%" stopColor={getGlowColor()} />
             <stop offset="100%" stopColor="transparent" />
           </linearGradient>
         </defs>
@@ -214,7 +248,7 @@ function WavesPattern({ isDark }: { isDark: boolean }) {
       <div 
         className="absolute bottom-0 left-0 w-[200%] h-48 opacity-60"
         style={{
-          background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='${isDark ? '%233b82f6' : '%230ea5e9'}' fill-opacity='0.2' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x`,
+          background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='${getWaveColor()}' fill-opacity='0.2' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x`,
           backgroundSize: '50% 100%',
           animation: 'wave-move 20s linear infinite',
         }}
@@ -223,7 +257,7 @@ function WavesPattern({ isDark }: { isDark: boolean }) {
       <div 
         className="absolute bottom-0 left-0 w-[200%] h-32 opacity-40"
         style={{
-          background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='${isDark ? '%238b5cf6' : '%2306b6d4'}' fill-opacity='0.25' d='M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x`,
+          background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='${getWaveColor2()}' fill-opacity='0.25' d='M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,138.7C672,128,768,160,864,181.3C960,203,1056,213,1152,197.3C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x`,
           backgroundSize: '50% 100%',
           animation: 'wave-move 15s linear infinite reverse',
         }}
@@ -236,7 +270,7 @@ function WavesPattern({ isDark }: { isDark: boolean }) {
         <div 
           className="absolute inset-0"
           style={{
-            background: `radial-gradient(ellipse at 30% 20%, ${isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(14, 165, 233, 0.12)'} 0%, transparent 50%)`,
+            background: `radial-gradient(ellipse at 30% 20%, ${getGlowColor()} 0%, transparent 50%)`,
           }}
         />
       </div>
@@ -244,7 +278,26 @@ function WavesPattern({ isDark }: { isDark: boolean }) {
   );
 }
 
-function ParticlesPattern({ isDark }: { isDark: boolean }) {
+function ParticlesPattern({ themeMode }: { themeMode: ThemeMode }) {
+  const getParticleColor = (i: number) => {
+    switch (themeMode) {
+      case "dark": 
+        return `rgba(${100 + (i * 17) % 155}, ${100 + (i * 23) % 155}, 255, ${0.1 + (i % 5) * 0.03})`;
+      case "dusk": 
+        return `rgba(${200 + (i * 13) % 55}, ${100 + (i * 19) % 100}, ${50 + (i * 7) % 100}, ${0.12 + (i % 5) * 0.03})`;
+      default: 
+        return `rgba(14, ${140 + (i * 11) % 60}, ${200 + (i * 7) % 55}, ${0.15 + (i % 5) * 0.04})`;
+    }
+  };
+
+  const getGlowColor = () => {
+    switch (themeMode) {
+      case "dark": return 'rgba(59, 130, 246, 0.08)';
+      case "dusk": return 'rgba(251, 146, 60, 0.10)';
+      default: return 'rgba(14, 165, 233, 0.1)';
+    }
+  };
+
   return (
     <>
       <div className="absolute inset-0">
@@ -253,15 +306,13 @@ function ParticlesPattern({ isDark }: { isDark: boolean }) {
             key={i}
             className="absolute rounded-full"
             style={{
-              backgroundColor: isDark 
-                ? `rgba(${100 + Math.random() * 155}, ${100 + Math.random() * 155}, 255, ${0.1 + Math.random() * 0.15})`
-                : `rgba(14, ${140 + Math.random() * 60}, ${200 + Math.random() * 55}, ${0.15 + Math.random() * 0.2})`,
-              width: `${4 + Math.random() * 8}px`,
-              height: `${4 + Math.random() * 8}px`,
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float-${i % 3} ${10 + Math.random() * 20}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 10}s`,
+              backgroundColor: getParticleColor(i),
+              width: `${4 + (i % 3) * 4}px`,
+              height: `${4 + (i % 3) * 4}px`,
+              left: `${(i * 37) % 100}%`,
+              top: `${(i * 29) % 100}%`,
+              animation: `float-${i % 3} ${10 + (i % 10) * 2}s ease-in-out infinite`,
+              animationDelay: `${(i % 10)}s`,
             }}
           />
         ))}
@@ -270,21 +321,30 @@ function ParticlesPattern({ isDark }: { isDark: boolean }) {
       <div 
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(ellipse at 50% 50%, ${isDark ? 'rgba(59, 130, 246, 0.08)' : 'rgba(14, 165, 233, 0.1)'} 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse at 50% 50%, ${getGlowColor()} 0%, transparent 70%)`,
         }}
       />
     </>
   );
 }
 
-function GradientPattern({ isDark }: { isDark: boolean }) {
+function GradientPattern({ themeMode }: { themeMode: ThemeMode }) {
+  const getGradient = () => {
+    switch (themeMode) {
+      case "dark": 
+        return 'linear-gradient(-45deg, rgba(30, 58, 138, 0.3), rgba(88, 28, 135, 0.2), rgba(15, 23, 42, 0.4), rgba(30, 64, 175, 0.25))';
+      case "dusk": 
+        return 'linear-gradient(-45deg, rgba(251, 146, 60, 0.25), rgba(236, 72, 153, 0.2), rgba(139, 92, 246, 0.15), rgba(249, 115, 22, 0.2))';
+      default: 
+        return 'linear-gradient(-45deg, rgba(14, 165, 233, 0.15), rgba(6, 182, 212, 0.12), rgba(255, 255, 255, 0.1), rgba(56, 189, 248, 0.18))';
+    }
+  };
+
   return (
     <div 
       className="absolute inset-0"
       style={{
-        background: isDark 
-          ? 'linear-gradient(-45deg, rgba(30, 58, 138, 0.3), rgba(88, 28, 135, 0.2), rgba(15, 23, 42, 0.4), rgba(30, 64, 175, 0.25))'
-          : 'linear-gradient(-45deg, rgba(14, 165, 233, 0.15), rgba(6, 182, 212, 0.12), rgba(255, 255, 255, 0.1), rgba(56, 189, 248, 0.18))',
+        background: getGradient(),
         backgroundSize: '400% 400%',
         animation: 'gradient-shift 15s ease infinite',
       }}

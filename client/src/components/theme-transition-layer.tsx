@@ -1,16 +1,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
+type ThemeMode = "dark" | "light" | "dusk";
+
 interface TransitionState {
   isAnimating: boolean;
   originX: number;
   originY: number;
-  targetTheme: "dark" | "light";
+  targetTheme: ThemeMode;
 }
 
-let transitionCallback: ((x: number, y: number, theme: "dark" | "light") => void) | null = null;
+let transitionCallback: ((x: number, y: number, theme: ThemeMode) => void) | null = null;
 
-export function triggerThemeTransition(x: number, y: number, theme: "dark" | "light") {
+export function triggerThemeTransition(x: number, y: number, theme: ThemeMode) {
   if (transitionCallback) {
     transitionCallback(x, y, theme);
   }
@@ -25,7 +27,7 @@ export function ThemeTransitionLayer() {
   });
   const [progress, setProgress] = useState(0);
 
-  const startTransition = useCallback((x: number, y: number, theme: "dark" | "light") => {
+  const startTransition = useCallback((x: number, y: number, theme: ThemeMode) => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return;
     }
@@ -77,7 +79,33 @@ export function ThemeTransitionLayer() {
   );
 
   const currentRadius = progress * maxRadius;
-  const isDarkTransition = transition.targetTheme === "dark";
+  const { targetTheme } = transition;
+
+  // Get theme-specific colors
+  const getRippleColors = () => {
+    switch (targetTheme) {
+      case "dark":
+        return {
+          shadow: `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(99, 102, 241, 0.3), 0 0 ${currentRadius * 0.05}px rgba(99, 102, 241, 0.2)`,
+          glow: "bg-indigo-500/20",
+          gradient: `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(30, 27, 75, 0.08) 0%, transparent 70%)`,
+        };
+      case "dusk":
+        return {
+          shadow: `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(251, 146, 60, 0.3), 0 0 ${currentRadius * 0.05}px rgba(236, 72, 153, 0.2)`,
+          glow: "bg-orange-400/25",
+          gradient: `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(251, 146, 60, 0.1) 0%, transparent 70%)`,
+        };
+      default:
+        return {
+          shadow: `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(251, 191, 36, 0.3), 0 0 ${currentRadius * 0.05}px rgba(251, 191, 36, 0.2)`,
+          glow: "bg-amber-400/30",
+          gradient: `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(254, 243, 199, 0.12) 0%, transparent 70%)`,
+        };
+    }
+  };
+
+  const colors = getRippleColors();
 
   // Only show during the middle of the animation for a subtle ripple effect
   const rippleOpacity = progress < 0.1 ? progress * 10 : progress > 0.7 ? (1 - progress) * 3.33 : 1;
@@ -97,19 +125,14 @@ export function ThemeTransitionLayer() {
           width: currentRadius * 2,
           height: currentRadius * 2,
           opacity: rippleOpacity * 0.4,
-          boxShadow: isDarkTransition
-            ? `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(99, 102, 241, 0.3), 0 0 ${currentRadius * 0.05}px rgba(99, 102, 241, 0.2)`
-            : `inset 0 0 ${currentRadius * 0.1}px ${currentRadius * 0.05}px rgba(251, 191, 36, 0.3), 0 0 ${currentRadius * 0.05}px rgba(251, 191, 36, 0.2)`,
+          boxShadow: colors.shadow,
         }}
       />
 
       {/* Soft glow at the origin point */}
       {progress > 0 && progress < 0.8 && (
         <div
-          className={cn(
-            "absolute rounded-full",
-            isDarkTransition ? "bg-indigo-500/20" : "bg-amber-400/30"
-          )}
+          className={cn("absolute rounded-full", colors.glow)}
           style={{
             left: transition.originX - 50,
             top: transition.originY - 50,
@@ -126,9 +149,7 @@ export function ThemeTransitionLayer() {
       <div
         className="absolute inset-0"
         style={{
-          background: isDarkTransition
-            ? `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(30, 27, 75, 0.08) 0%, transparent 70%)`
-            : `radial-gradient(circle ${currentRadius}px at ${transition.originX}px ${transition.originY}px, rgba(254, 243, 199, 0.12) 0%, transparent 70%)`,
+          background: colors.gradient,
           opacity: rippleOpacity,
         }}
       />

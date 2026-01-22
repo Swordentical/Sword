@@ -803,8 +803,8 @@ function AppearanceSettings() {
         <CardContent className="space-y-6">
           <div className="space-y-3">
             <Label>Theme Mode</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {(["light", "dark", "system"] as const).map((t) => (
+            <div className="grid grid-cols-4 gap-3">
+              {(["light", "dusk", "dark", "system"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTheme(t)}

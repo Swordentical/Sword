@@ -949,7 +949,15 @@ export default function Dashboard() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   
   useEffect(() => {
-    const newGreeting = resolvedTheme === "dark" ? "Good evening" : "Good morning";
+    let newGreeting: string;
+    if (resolvedTheme === "dark") {
+      newGreeting = "Good evening";
+    } else if (resolvedTheme === "dusk") {
+      newGreeting = "Good afternoon";
+    } else {
+      newGreeting = "Good morning";
+    }
+    
     if (newGreeting !== greetingText) {
       setIsTransitioning(true);
       const timer = setTimeout(() => {
