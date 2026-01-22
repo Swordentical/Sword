@@ -1,0 +1,20 @@
+The system and roles we are using now are for "clinic level" management, and now I am will to set up the business model of the system :
+And what I am planning for business model is a 3 types of services : 
+ -Clinic Level- which what we are already Including all services and users capabilities to sign up an admin  , many doctors , staff to manage the clinic  , students for internships and education .. pending for approval for new signed users in the same clinic 
+So I want this software to be usable by many users that db does not interfere with each other . 
+As the bussiness model I am thinking of is to have 3 types of services we provide : 
+Solution for full clinical management -clinci Level-
+Solution for Individual doctors that want to manage their cases and patients data -Doctor level-
+Solution for students still learning and in internship to have an ability to manage their patients and workflow in universities and 3rd party clinics as we do. -Student level- 
+each one of these levels should have different accessabilities .. 
+I am planning to make student level is only 1$ annually to confirm identity and discipline  
+And -doctor level- 5$ per month or 50$ for a year instead of 60$ as a discount if he did pay annually 
+-Clinic level- should be paid annually only with a fee trial for a 15days 150$ standard price 
+Add the ability for promo codes for special discounts 
+
+Clinic level: access to full ecosystem
+Doctor level :  -dashboard -patients: (limited to 200 patients) -appointments -financials -expenses -lab work -services - users: (limited to 2 users only doctor and assisstant to manage their appointments)
+Student level: -dashboard -patients (limited to 50 patient, the ability to upload documents in patient profiles should be locked) -appointments -financials -expenses. And in settings the clinic option should be locked and the users should be limited to only 1 user which is him.
+
+For UI -
+Sign-in page should enable the mode switch so you can go dark mode even without the necessary to sign in 
