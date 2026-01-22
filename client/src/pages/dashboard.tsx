@@ -53,6 +53,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/components/theme-provider";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -943,12 +944,21 @@ export default function Dashboard() {
     saveWidgetConfig([...DEFAULT_WIDGETS]);
   };
 
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
+  const { resolvedTheme } = useTheme();
+  const [greetingText, setGreetingText] = useState("Good morning");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  useEffect(() => {
+    const newGreeting = resolvedTheme === "dark" ? "Good evening" : "Good morning";
+    if (newGreeting !== greetingText) {
+      setIsTransitioning(true);
+      const timer = setTimeout(() => {
+        setGreetingText(newGreeting);
+        setTimeout(() => setIsTransitioning(false), 50);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [resolvedTheme, greetingText]);
 
   const renderStatsWidget = () => (
     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
@@ -1186,7 +1196,17 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
-                    {greeting()}, <span className="text-primary">{user?.firstName}</span>
+                    <span 
+                      className={cn(
+                        "inline-block transition-all duration-500 ease-out",
+                        isTransitioning 
+                          ? "opacity-0 blur-sm translate-y-2 scale-95" 
+                          : "opacity-100 blur-0 translate-y-0 scale-100"
+                      )}
+                    >
+                      {greetingText}
+                    </span>
+                    , <span className="text-primary">{user?.firstName}</span>
                   </h1>
                   <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <SheetTrigger asChild>
