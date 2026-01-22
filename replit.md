@@ -81,6 +81,20 @@ The repository is organized into `client/` (React frontend), `server/` (Express 
 
 ## Recent Changes
 
+### Appearance Customization System (January 2026)
+- **Animated Background Wallpapers**: 5 presets (Geometric, Waves, Particles, Gradient, None)
+- **Enhanced light mode visibility**: Increased contrast and opacity for wallpaper patterns
+- **Improved theme toggle**: Slightly larger (w-12 h-6) with better alignment
+- **Transparency & Blur Controls** in Settings > Appearance:
+  - Sidebar transparency slider (default: 20%)
+  - Sidebar blur effect slider (default: 50%)
+  - Elements transparency slider (default: 15%)
+  - Elements blur effect slider (default: 30%)
+  - Reset to recommended defaults button
+- **CSS Custom Properties**: Dynamic --sidebar-transparency, --sidebar-blur, --elements-transparency, --elements-blur
+- **Components Updated**: Card, Header, and Sidebar now use CSS variables for transparency/blur effects
+- **AppearanceSettingsProvider**: Context-based state management with localStorage persistence
+
 ### Services Cost Tracking & Management (January 2026)
 - **Cost field**: Added `cost` column to treatments table for calculating net profit
 - **Full CRUD for services**: Edit and delete functionality with Zod validation
