@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -98,7 +99,12 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Theme toggle in top right corner - accessible without login */}
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+      
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-8">

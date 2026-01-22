@@ -16,14 +16,17 @@ import {
   Receipt,
   Shield,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -36,13 +39,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import type { UserRole } from "@shared/schema";
+import type { UserRole, PlanFeatures } from "@shared/schema";
 
 type NavItem = {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: UserRole[];
+  feature?: keyof PlanFeatures;
 };
 
 const mainNavItems: NavItem[] = [
@@ -51,66 +55,77 @@ const mainNavItems: NavItem[] = [
     url: "/",
     icon: LayoutDashboard,
     roles: ["admin", "doctor", "staff", "student"],
+    feature: "dashboard",
   },
   {
     title: "Patients",
     url: "/patients",
     icon: Users,
     roles: ["admin", "doctor", "staff", "student"],
+    feature: "patients",
   },
   {
     title: "Appointments",
     url: "/appointments",
     icon: Calendar,
     roles: ["admin", "doctor", "staff", "student"],
+    feature: "appointments",
   },
   {
     title: "Doctors",
     url: "/doctors",
     icon: Stethoscope,
     roles: ["admin", "doctor", "staff"],
+    feature: "users",
   },
   {
     title: "Services",
     url: "/services",
     icon: ClipboardList,
     roles: ["admin", "doctor"],
+    feature: "services",
   },
   {
     title: "Inventory",
     url: "/inventory",
     icon: Package,
     roles: ["admin", "doctor"],
+    feature: "inventory",
   },
   {
     title: "Lab Work",
     url: "/lab-work",
     icon: FlaskConical,
     roles: ["admin", "doctor"],
+    feature: "labWork",
   },
   {
     title: "Financials",
     url: "/financials",
     icon: DollarSign,
     roles: ["admin", "doctor"],
+    feature: "financials",
   },
   {
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
     roles: ["admin"],
+    feature: "reports",
   },
   {
     title: "Expenses",
     url: "/expenses",
     icon: Receipt,
-    roles: ["admin"],
+    roles: ["admin", "doctor", "staff", "student"],
+    feature: "expenses",
   },
   {
     title: "Insurance Claims",
     url: "/insurance-claims",
     icon: Shield,
     roles: ["admin", "doctor", "staff"],
+    feature: "insuranceClaims",
   },
   {
     title: "Audit Logs",
@@ -123,6 +138,7 @@ const mainNavItems: NavItem[] = [
     url: "/admin/users",
     icon: ShieldCheck,
     roles: ["admin"],
+    feature: "users",
   },
 ];
 
@@ -132,6 +148,7 @@ const settingsNavItems: NavItem[] = [
     url: "/settings",
     icon: Settings,
     roles: ["admin"],
+    feature: "settings",
   },
 ];
 
@@ -155,16 +172,34 @@ function getRoleLabel(role: UserRole) {
 export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
+  const { hasFeature, subscriptionContext, getPlanType } = useSubscription();
 
   const userRole = (user?.role as UserRole) || "staff";
+  const planType = getPlanType();
   
-  const filteredMainItems = mainNavItems.filter((item) =>
-    item.roles.includes(userRole)
-  );
+  const filteredMainItems = mainNavItems.filter((item) => {
+    const hasRoleAccess = item.roles.includes(userRole);
+    if (!hasRoleAccess) return false;
+    
+    if (!user?.organizationId) return true;
+    
+    if (item.feature) {
+      return hasFeature(item.feature);
+    }
+    return true;
+  });
   
-  const filteredSettingsItems = settingsNavItems.filter((item) =>
-    item.roles.includes(userRole)
-  );
+  const filteredSettingsItems = settingsNavItems.filter((item) => {
+    const hasRoleAccess = item.roles.includes(userRole);
+    if (!hasRoleAccess) return false;
+    
+    if (!user?.organizationId) return true;
+    
+    if (item.feature) {
+      return hasFeature(item.feature);
+    }
+    return true;
+  });
 
   const initials = user
     ? `${user.firstName?.charAt(0) || ""}${user.lastName?.charAt(0) || ""}`
@@ -181,9 +216,25 @@ export function AppSidebar() {
             <span className="text-base font-semibold text-sidebar-foreground">
               DentalCare
             </span>
-            <span className="text-xs text-muted-foreground">
-              Clinic Management
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                Clinic Management
+              </span>
+              {planType && (
+                <Badge 
+                  variant="outline" 
+                  className={`text-[10px] px-1.5 py-0 h-4 ${
+                    planType === "clinic" 
+                      ? "border-primary text-primary" 
+                      : planType === "doctor" 
+                      ? "border-blue-500 text-blue-500"
+                      : "border-green-500 text-green-500"
+                  }`}
+                >
+                  {planType === "clinic" ? "Clinic" : planType === "doctor" ? "Doctor" : "Student"}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </SidebarHeader>
