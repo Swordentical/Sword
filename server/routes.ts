@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
+import { subscriptionService } from "./subscription";
 import {
   insertPatientSchema,
   insertTreatmentSchema,
@@ -29,6 +30,10 @@ import {
   users,
   externalLabs,
   labServices,
+  subscriptionPlans,
+  organizations,
+  promoCodes,
+  type PlanFeatures,
 } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
@@ -2681,6 +2686,171 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to restore backup" });
     }
   });
+
+  // ==================== SUBSCRIPTION & ORGANIZATION ROUTES ====================
+
+  // Get all subscription plans (public)
+  app.get("/api/subscription/plans", async (req, res) => {
+    try {
+      const plans = await subscriptionService.getAllPlans();
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  // Get current user's subscription context
+  app.get("/api/subscription/context", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const context = await subscriptionService.getSubscriptionContext(user.id);
+      res.json(context);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch subscription context" });
+    }
+  });
+
+  // Validate promo code
+  app.post("/api/subscription/validate-promo", async (req, res) => {
+    try {
+      const { code, planType } = req.body;
+      if (!code || !planType) {
+        return res.status(400).json({ message: "Code and plan type required" });
+      }
+      const result = await subscriptionService.validatePromoCode(code, planType);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to validate promo code" });
+    }
+  });
+
+  // Create organization (during signup)
+  app.post("/api/subscription/create-organization", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { name, planType, promoCodeId } = req.body;
+      
+      if (!name || !planType) {
+        return res.status(400).json({ message: "Name and plan type required" });
+      }
+
+      if (!["clinic", "doctor", "student"].includes(planType)) {
+        return res.status(400).json({ message: "Invalid plan type" });
+      }
+
+      // Check if user already has an organization
+      if (user.organizationId) {
+        return res.status(400).json({ message: "User already has an organization" });
+      }
+
+      const organization = await subscriptionService.createOrganization(
+        name,
+        user.id,
+        planType,
+        promoCodeId
+      );
+
+      res.json(organization);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || "Failed to create organization" });
+    }
+  });
+
+  // Check if can add patient
+  app.get("/api/subscription/can-add-patient", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.organizationId) {
+        return res.json({ allowed: false, message: "No organization" });
+      }
+      const result = await subscriptionService.canAddPatient(user.organizationId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check patient limit" });
+    }
+  });
+
+  // Check if can add user
+  app.get("/api/subscription/can-add-user", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.organizationId) {
+        return res.json({ allowed: false, message: "No organization" });
+      }
+      const result = await subscriptionService.canAddUser(user.organizationId);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check user limit" });
+    }
+  });
+
+  // Check feature access
+  app.get("/api/subscription/has-feature/:feature", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const feature = req.params.feature as keyof PlanFeatures;
+      
+      if (!user.organizationId) {
+        return res.json({ hasFeature: false });
+      }
+      
+      const hasFeature = await subscriptionService.hasFeature(user.organizationId, feature);
+      res.json({ hasFeature });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to check feature access" });
+    }
+  });
+
+  // Get organization details (admin/owner only)
+  app.get("/api/organization", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.organizationId) {
+        return res.status(404).json({ message: "No organization found" });
+      }
+
+      const org = await db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1);
+      if (!org[0]) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      // Include subscription plan details
+      let plan = null;
+      if (org[0].subscriptionPlanId) {
+        const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, org[0].subscriptionPlanId)).limit(1);
+        plan = planResult[0] || null;
+      }
+
+      res.json({ organization: org[0], plan });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch organization" });
+    }
+  });
+
+  // Update organization (owner only)
+  app.patch("/api/organization", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user.organizationId || !user.isOrganizationOwner) {
+        return res.status(403).json({ message: "Only organization owner can update" });
+      }
+
+      const { name } = req.body;
+      if (!name) {
+        return res.status(400).json({ message: "Name required" });
+      }
+
+      await db.update(organizations)
+        .set({ name, updatedAt: new Date() })
+        .where(eq(organizations.id, user.organizationId));
+
+      res.json({ message: "Organization updated" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update organization" });
+    }
+  });
+
+  // ==================== END SUBSCRIPTION ROUTES ====================
 
   return httpServer;
 }
