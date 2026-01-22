@@ -32,12 +32,97 @@ export const serviceCategoryEnum = pgEnum("service_category", [
   "cosmetic", "diagnostics", "pediatric"
 ]);
 
+// Subscription plan types
+export const subscriptionPlanTypeEnum = pgEnum("subscription_plan_type", ["clinic", "doctor", "student"]);
+
+// Subscription status
+export const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "trial", "expired", "canceled", "past_due"]);
+
+// Billing cycle
+export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
+
+// Promo code discount types
+export const discountTypeEnum = pgEnum("discount_type", ["percentage", "fixed"]);
+
 // Doctor specialties enum
 export const doctorSpecialtyEnum = pgEnum("doctor_specialty", [
   "general_dentistry", "orthodontics", "periodontics", "endodontics", 
   "prosthodontics", "oral_surgery", "pediatric_dentistry", "cosmetic_dentistry",
   "implantology", "oral_pathology"
 ]);
+
+// ==================== MULTI-TENANT & SUBSCRIPTION TABLES ====================
+
+// Subscription Plans - defines the available plans and their features
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // "Clinic Level", "Doctor Level", "Student Level"
+  type: subscriptionPlanTypeEnum("type").notNull(), // clinic, doctor, student
+  description: text("description"),
+  // Pricing
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }), // null for student (annual only)
+  annualPrice: decimal("annual_price", { precision: 10, scale: 2 }).notNull(),
+  // Feature limits
+  patientLimit: integer("patient_limit"), // null = unlimited, 200 for doctor, 50 for student
+  userLimit: integer("user_limit"), // null = unlimited, 2 for doctor, 1 for student
+  // Feature flags (stored as JSON for flexibility)
+  features: jsonb("features").notNull(), // { dashboard, patients, appointments, financials, expenses, labWork, services, inventory, insuranceClaims, users, settings, reports, documents }
+  // Trial settings
+  trialDays: integer("trial_days").default(0), // 15 for clinic
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Promo Codes
+export const promoCodes = pgTable("promo_codes", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  discountType: discountTypeEnum("discount_type").notNull(), // percentage or fixed
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  // Validity
+  validFrom: timestamp("valid_from"),
+  validUntil: timestamp("valid_until"),
+  maxUses: integer("max_uses"), // null = unlimited
+  currentUses: integer("current_uses").default(0),
+  // Restrictions
+  applicablePlans: text("applicable_plans").array(), // ["clinic", "doctor", "student"] or subset
+  minSubscriptionMonths: integer("min_subscription_months"), // minimum subscription length to apply
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Organizations (Tenants) - each clinic/doctor/student has one
+export const organizations = pgTable("organizations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(), // URL-friendly identifier
+  // Owner (the user who created/owns this organization)
+  ownerId: varchar("owner_id", { length: 36 }),
+  // Subscription
+  subscriptionPlanId: varchar("subscription_plan_id", { length: 36 }).references(() => subscriptionPlans.id),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trial"),
+  billingCycle: billingCycleEnum("billing_cycle").default("annual"),
+  // Subscription dates
+  trialEndsAt: timestamp("trial_ends_at"),
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  subscriptionEndDate: timestamp("subscription_end_date"),
+  // Stripe integration
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  // Promo code applied
+  promoCodeId: varchar("promo_code_id", { length: 36 }).references(() => promoCodes.id),
+  // Usage tracking (cached for performance)
+  currentPatientCount: integer("current_patient_count").default(0),
+  currentUserCount: integer("current_user_count").default(1),
+  // Status
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// ==================== END MULTI-TENANT TABLES ====================
 
 // Users/Profiles table
 export const users = pgTable("users", {
@@ -55,12 +140,18 @@ export const users = pgTable("users", {
   licenseNumber: text("license_number"),
   bio: text("bio"),
   isActive: boolean("is_active").default(true),
+  // Multi-tenant: link user to organization
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
+  // Is this user the organization owner?
+  isOrganizationOwner: boolean("is_organization_owner").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Patients table
 export const patients = pgTable("patients", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  // Multi-tenant: link patient to organization
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   fileNumber: text("file_number"), // Custom patient file number
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -586,6 +677,11 @@ export const orthodonticNotesRelations = relations(orthodonticNotes, ({ one }) =
   }),
 }));
 
+// Insert schemas for subscription/multi-tenant tables
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ id: true, createdAt: true });
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({ id: true, createdAt: true });
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({ id: true, createdAt: true, updatedAt: true });
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertPatientSchema = createInsertSchema(patients).omit({ id: true, createdAt: true });
@@ -682,6 +778,39 @@ export type ClinicSettings = typeof clinicSettings.$inferSelect;
 
 export type InsertClinicRoom = z.infer<typeof insertClinicRoomSchema>;
 export type ClinicRoom = typeof clinicRooms.$inferSelect;
+
+// Subscription/Multi-tenant types
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Subscription plan type enum value
+export type SubscriptionPlanType = "clinic" | "doctor" | "student";
+
+// Subscription status enum value
+export type SubscriptionStatus = "active" | "trial" | "expired" | "canceled" | "past_due";
+
+// Feature flags interface for subscription plans
+export interface PlanFeatures {
+  dashboard: boolean;
+  patients: boolean;
+  appointments: boolean;
+  financials: boolean;
+  expenses: boolean;
+  labWork: boolean;
+  services: boolean;
+  inventory: boolean;
+  insuranceClaims: boolean;
+  users: boolean;
+  settings: boolean;
+  reports: boolean;
+  documents: boolean;
+}
 
 // Role type
 export type UserRole = "admin" | "doctor" | "staff" | "student";
