@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeTransitionLayer } from "@/components/theme-transition-layer";
 import { AnimatedBackground } from "@/components/animated-background";
+import { AppearanceSettingsProvider } from "@/hooks/use-appearance-settings";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -41,9 +42,11 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between h-14 px-4 border-b bg-background/80 backdrop-blur-sm shrink-0">
+          <header className="flex items-center justify-between gap-4 h-14 px-4 border-b shrink-0 bg-background backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--background)/var(--elements-transparency,0.85))]">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
+            <div className="flex items-center">
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto">
             {children}
@@ -201,16 +204,18 @@ function Router() {
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="dental-clinic-theme">
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <AnimatedBackground />
-            <Router />
-            <Toaster />
-            <ThemeTransitionLayer />
-          </TooltipProvider>
-        </AuthProvider>
-      </QueryClientProvider>
+      <AppearanceSettingsProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <AnimatedBackground />
+              <Router />
+              <Toaster />
+              <ThemeTransitionLayer />
+            </TooltipProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </AppearanceSettingsProvider>
     </ThemeProvider>
   );
 }

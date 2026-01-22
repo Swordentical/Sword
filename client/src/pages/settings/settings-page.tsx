@@ -75,6 +75,9 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useAppearanceSettings, type AppearanceSettings as AppearanceSettingsType } from "@/hooks/use-appearance-settings";
+import { Slider } from "@/components/ui/slider";
+import type { WallpaperPreset } from "@/components/animated-background";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { User } from "@shared/schema";
 
@@ -773,8 +776,17 @@ function ClinicSettings() {
   );
 }
 
+const WALLPAPER_PRESETS: { id: WallpaperPreset; name: string; description: string }[] = [
+  { id: "geometric", name: "Geometric", description: "Hexagonal patterns with floating particles" },
+  { id: "waves", name: "Waves", description: "Animated ocean waves effect" },
+  { id: "particles", name: "Particles", description: "Floating particles throughout" },
+  { id: "gradient", name: "Gradient", description: "Smooth animated color gradients" },
+  { id: "none", name: "None", description: "Solid background color only" },
+];
+
 function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
+  const { settings, updateSettings, resetToDefaults } = useAppearanceSettings();
 
   return (
     <div className="space-y-6">
@@ -782,15 +794,15 @@ function AppearanceSettings() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Palette className="h-5 w-5" />
-            Appearance
+            Theme
           </CardTitle>
           <CardDescription>
-            Customize how the application looks
+            Choose your preferred color scheme
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label>Theme</Label>
+            <Label>Theme Mode</Label>
             <div className="grid grid-cols-3 gap-3">
               {(["light", "dark", "system"] as const).map((t) => (
                 <button
@@ -801,13 +813,159 @@ function AppearanceSettings() {
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-muted-foreground/50"
                   }`}
+                  data-testid={`button-theme-${t}`}
                 >
                   <span className="text-sm font-medium capitalize">{t}</span>
                 </button>
               ))}
             </div>
           </div>
+        </CardContent>
+      </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            Background Wallpaper
+          </CardTitle>
+          <CardDescription>
+            Choose an animated background pattern
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {WALLPAPER_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => updateSettings({ wallpaperPreset: preset.id })}
+                className={`p-4 rounded-lg border-2 text-center transition-colors ${
+                  settings.wallpaperPreset === preset.id
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50"
+                }`}
+                data-testid={`button-wallpaper-${preset.id}`}
+              >
+                <span className="text-sm font-medium">{preset.name}</span>
+                <p className="text-xs text-muted-foreground mt-1">{preset.description}</p>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Transparency & Blur Effects
+          </CardTitle>
+          <CardDescription>
+            Adjust the transparency and blur levels for various elements
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-8">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Sidebar Transparency</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 20%
+                </p>
+              </div>
+              <span className="text-sm font-medium w-12 text-right">{settings.sidebarTransparency}%</span>
+            </div>
+            <Slider
+              value={[settings.sidebarTransparency]}
+              onValueChange={(value) => updateSettings({ sidebarTransparency: value[0] })}
+              min={0}
+              max={100}
+              step={5}
+              className="w-full"
+              data-testid="slider-sidebar-transparency"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Sidebar Blur Effect</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 50%
+                </p>
+              </div>
+              <span className="text-sm font-medium w-12 text-right">{settings.sidebarBlur}%</span>
+            </div>
+            <Slider
+              value={[settings.sidebarBlur]}
+              onValueChange={(value) => updateSettings({ sidebarBlur: value[0] })}
+              min={0}
+              max={100}
+              step={5}
+              className="w-full"
+              data-testid="slider-sidebar-blur"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Elements Transparency</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 15%
+                </p>
+              </div>
+              <span className="text-sm font-medium w-12 text-right">{settings.elementsTransparency}%</span>
+            </div>
+            <Slider
+              value={[settings.elementsTransparency]}
+              onValueChange={(value) => updateSettings({ elementsTransparency: value[0] })}
+              min={0}
+              max={100}
+              step={5}
+              className="w-full"
+              data-testid="slider-elements-transparency"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Elements Blur Effect</Label>
+                <p className="text-xs text-muted-foreground">
+                  Recommended: 30%
+                </p>
+              </div>
+              <span className="text-sm font-medium w-12 text-right">{settings.elementsBlur}%</span>
+            </div>
+            <Slider
+              value={[settings.elementsBlur]}
+              onValueChange={(value) => updateSettings({ elementsBlur: value[0] })}
+              min={0}
+              max={100}
+              step={5}
+              className="w-full"
+              data-testid="slider-elements-blur"
+            />
+          </div>
+
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={resetToDefaults}
+              data-testid="button-reset-appearance"
+            >
+              Reset to Recommended Defaults
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Additional Options</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
               <Label>Compact Mode</Label>

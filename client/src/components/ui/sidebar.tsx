@@ -170,7 +170,10 @@ function Sidebar({
       <div
         data-slot="sidebar"
         className={cn(
-          "bg-sidebar/80 backdrop-blur-sm text-sidebar-foreground flex h-full w-[var(--sidebar-width)] flex-col",
+          "text-sidebar-foreground flex h-full w-[var(--sidebar-width)] flex-col",
+          "bg-sidebar",
+          "backdrop-blur-[var(--sidebar-blur,8px)]",
+          "[background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.8))]",
           className
         )}
         {...props}
@@ -187,7 +190,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar/80 backdrop-blur-sm text-sidebar-foreground w-[var(--sidebar-width)] p-0 [&>button]:hidden"
+          className="text-sidebar-foreground w-[var(--sidebar-width)] p-0 [&>button]:hidden bg-sidebar backdrop-blur-[var(--sidebar-blur,8px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.8))]"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -244,7 +247,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="bg-sidebar/80 backdrop-blur-sm group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+          className="group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm bg-sidebar backdrop-blur-[var(--sidebar-blur,8px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.8))]"
         >
           {children}
         </div>
