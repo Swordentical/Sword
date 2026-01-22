@@ -945,28 +945,51 @@ export default function Dashboard() {
   };
 
   const { resolvedTheme } = useTheme();
-  const [greetingText, setGreetingText] = useState("Good morning");
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [timeOfDay, setTimeOfDay] = useState("morning");
+  const [displayText, setDisplayText] = useState("morning");
+  const [isTyping, setIsTyping] = useState(false);
+  const [showCursor, setShowCursor] = useState(false);
   
   useEffect(() => {
-    let newGreeting: string;
+    let targetWord: string;
     if (resolvedTheme === "dark") {
-      newGreeting = "Good evening";
+      targetWord = "evening";
     } else if (resolvedTheme === "dusk") {
-      newGreeting = "Good afternoon";
+      targetWord = "afternoon";
     } else {
-      newGreeting = "Good morning";
+      targetWord = "morning";
     }
     
-    if (newGreeting !== greetingText) {
-      setIsTransitioning(true);
-      const timer = setTimeout(() => {
-        setGreetingText(newGreeting);
-        setTimeout(() => setIsTransitioning(false), 50);
-      }, 300);
-      return () => clearTimeout(timer);
+    if (targetWord !== timeOfDay) {
+      setIsTyping(true);
+      setShowCursor(true);
+      const currentWord = displayText;
+      let charIndex = currentWord.length;
+      
+      const deleteInterval = setInterval(() => {
+        charIndex--;
+        if (charIndex >= 0) {
+          setDisplayText(currentWord.slice(0, charIndex));
+        } else {
+          clearInterval(deleteInterval);
+          let typeIndex = 0;
+          const typeInterval = setInterval(() => {
+            typeIndex++;
+            if (typeIndex <= targetWord.length) {
+              setDisplayText(targetWord.slice(0, typeIndex));
+            } else {
+              clearInterval(typeInterval);
+              setTimeOfDay(targetWord);
+              setIsTyping(false);
+              setTimeout(() => setShowCursor(false), 500);
+            }
+          }, 50);
+        }
+      }, 40);
+      
+      return () => clearInterval(deleteInterval);
     }
-  }, [resolvedTheme, greetingText]);
+  }, [resolvedTheme, timeOfDay, displayText]);
 
   const renderStatsWidget = () => (
     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
@@ -1204,15 +1227,16 @@ export default function Dashboard() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
-                    <span 
-                      className={cn(
-                        "inline-block transition-all duration-500 ease-out",
-                        isTransitioning 
-                          ? "opacity-0 blur-sm translate-y-2 scale-95" 
-                          : "opacity-100 blur-0 translate-y-0 scale-100"
-                      )}
-                    >
-                      {greetingText}
+                    <span>Good </span>
+                    <span className="inline-block min-w-[120px] sm:min-w-[160px]">
+                      {displayText}
+                      <span 
+                        className={cn(
+                          "inline-block w-[2px] h-[0.9em] ml-0.5 align-middle bg-primary transition-opacity",
+                          showCursor ? "animate-pulse" : "opacity-0"
+                        )}
+                        style={{ animationDuration: '530ms' }}
+                      />
                     </span>
                     , <span className="text-primary">{user?.firstName}</span>
                   </h1>
