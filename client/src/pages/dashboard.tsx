@@ -963,33 +963,35 @@ export default function Dashboard() {
     if (targetWord !== timeOfDay) {
       setIsTyping(true);
       setShowCursor(true);
-      const currentWord = displayText;
-      let charIndex = currentWord.length;
       
+      // Stop any existing intervals
       const deleteInterval = setInterval(() => {
-        charIndex--;
-        if (charIndex >= 0) {
-          setDisplayText(currentWord.slice(0, charIndex));
-        } else {
+        setDisplayText(prev => {
+          if (prev.length > 0) {
+            return prev.slice(0, -1);
+          }
+          
+          // Once cleared, start typing the new word
           clearInterval(deleteInterval);
-          let typeIndex = 0;
+          let charIndex = 0;
           const typeInterval = setInterval(() => {
-            typeIndex++;
-            if (typeIndex <= targetWord.length) {
-              setDisplayText(targetWord.slice(0, typeIndex));
+            charIndex++;
+            if (charIndex <= targetWord.length) {
+              setDisplayText(targetWord.slice(0, charIndex));
             } else {
               clearInterval(typeInterval);
               setTimeOfDay(targetWord);
               setIsTyping(false);
               setTimeout(() => setShowCursor(false), 500);
             }
-          }, 50);
-        }
+          }, 60);
+          return "";
+        });
       }, 40);
       
       return () => clearInterval(deleteInterval);
     }
-  }, [resolvedTheme, timeOfDay, displayText]);
+  }, [resolvedTheme, timeOfDay]);
 
   const renderStatsWidget = () => (
     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
