@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useLocation } from "wouter";
@@ -104,22 +104,37 @@ export default function PricingPage() {
   const products = productsData?.products || [];
 
   const checkoutMutation = useMutation({
-    mutationFn: async ({ priceId }: { priceId: string }) => {
+    mutationFn: async ({ priceId, planType }: { priceId: string; planType: string }) => {
       const response = await apiRequest("POST", "/api/stripe/checkout", {
         priceId,
+        planType,
         promoCode: validPromo ? promoCode : undefined,
       });
       return response.json();
     },
     onSuccess: (data) => {
+      if (data.freeUpgrade) {
+        toast({
+          title: "Plan Updated!",
+          description: "Your subscription has been updated successfully.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/subscription"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        setSelectedPlan(null);
+        setSelectedPriceId(null);
+        setValidPromo(null);
+        setPromoCode("");
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
       }
     },
-    onError: () => {
+    onError: (error: any) => {
+      const message = error?.message || "Failed to start checkout. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to start checkout. Please try again.",
+        description: message,
         variant: "destructive",
       });
     },
@@ -165,8 +180,8 @@ export default function PricingPage() {
   };
 
   const handleProceedToCheckout = () => {
-    if (selectedPriceId) {
-      checkoutMutation.mutate({ priceId: selectedPriceId });
+    if (selectedPriceId && selectedPlan) {
+      checkoutMutation.mutate({ priceId: selectedPriceId, planType: selectedPlan });
     }
   };
 

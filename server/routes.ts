@@ -2920,16 +2920,78 @@ export async function registerRoutes(
   app.post("/api/stripe/checkout", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
-      const { priceId, planType } = req.body;
+      const { priceId, planType, promoCode } = req.body;
 
       if (!priceId) {
         return res.status(400).json({ message: "Price ID required" });
       }
 
+      // Check if promo code makes it free (bypass Stripe)
+      if (promoCode) {
+        const promoResult = await db.execute(sql`
+          SELECT * FROM promo_codes 
+          WHERE code = ${promoCode} 
+          AND is_active = true
+          AND (valid_from IS NULL OR valid_from <= NOW())
+          AND (valid_until IS NULL OR valid_until >= NOW())
+          AND (max_uses IS NULL OR current_uses < max_uses)
+        `);
+
+        if (promoResult.rows.length > 0) {
+          const promo = promoResult.rows[0] as any;
+          // 100% discount = free plan change
+          if (promo.discount_type === 'percentage' && parseFloat(promo.discount_value) === 100) {
+            // Determine the plan type from price ID
+            let targetPlanType = planType;
+            if (!targetPlanType) {
+              if (priceId.includes('student')) targetPlanType = 'student';
+              else if (priceId.includes('doctor')) targetPlanType = 'doctor';
+              else if (priceId.includes('clinic')) targetPlanType = 'clinic';
+            }
+
+            // Find the subscription plan
+            const plan = await db.query.subscriptionPlans.findFirst({
+              where: eq(subscriptionPlans.type, targetPlanType)
+            });
+
+            if (plan && user.organizationId) {
+              // Update the organization's subscription directly
+              await db.execute(sql`
+                UPDATE organizations 
+                SET subscription_plan_id = ${plan.id},
+                    subscription_status = 'active',
+                    billing_cycle = 'annual',
+                    updated_at = NOW()
+                WHERE id = ${user.organizationId}
+              `);
+
+              // Increment promo code usage
+              await db.execute(sql`
+                UPDATE promo_codes SET current_uses = current_uses + 1 WHERE id = ${promo.id}
+              `);
+
+              return res.json({ url: "/pricing?success=true", freeUpgrade: true });
+            }
+          }
+        }
+      }
+
+      // Check if this is a placeholder price (development bypass) - skip Stripe checkout
+      if (priceId.startsWith('price_') && (priceId === 'price_student' || priceId === 'price_doctor' || priceId === 'price_clinic')) {
+        return res.status(400).json({ 
+          message: "Stripe prices not configured. Use promo code FREE2026 for 100% discount to bypass payment." 
+        });
+      }
+
       const { getUncachableStripeClient } = await import("./stripeClient");
       const stripe = await getUncachableStripeClient();
 
-      let customerId = user.stripeCustomerId;
+      // Get organization's stripe customer ID
+      const organization = await db.query.organizations.findFirst({
+        where: eq(organizations.id, user.organizationId)
+      });
+
+      let customerId = organization?.stripeCustomerId;
       if (!customerId) {
         const customer = await stripe.customers.create({
           email: user.email || `${user.username}@dentalcare.app`,
