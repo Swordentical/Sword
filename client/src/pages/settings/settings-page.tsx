@@ -1230,7 +1230,7 @@ function SecuritySettings() {
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      const res = await apiRequest("POST", "/api/password/change", data);
+      const res = await apiRequest("POST", "/api/users/change-password", data);
       return res.json();
     },
     onSuccess: () => {
@@ -1607,7 +1607,9 @@ type SortDirection = "asc" | "desc";
 function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState("");
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const { user: currentUser } = useAuth();
@@ -1686,6 +1688,30 @@ function UserManagement() {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, password }: { userId: string; password: string }) => {
+      const res = await apiRequest("POST", `/api/users/${userId}/reset-password`, { newPassword: password });
+      return res.json();
+    },
+    onSuccess: (_, { userId }) => {
+      const user = users.find(u => u.id === userId);
+      toast({
+        title: "Password Reset",
+        description: `Password has been reset for ${user?.firstName} ${user?.lastName}.`,
+      });
+      setResetPasswordDialogOpen(false);
+      setNewPassword("");
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reset password",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
     setEditDialogOpen(true);
@@ -1699,6 +1725,32 @@ function UserManagement() {
     if (confirm(`Are you sure you want to permanently delete ${user.firstName} ${user.lastName}? This action cannot be undone.`)) {
       deleteUserMutation.mutate(user.id);
     }
+  };
+
+  const handleResetPassword = (user: User) => {
+    setSelectedUser(user);
+    setNewPassword("");
+    setResetPasswordDialogOpen(true);
+  };
+
+  const confirmResetPassword = () => {
+    if (!selectedUser || !newPassword) {
+      toast({
+        title: "Password required",
+        description: "Please enter a new password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+    resetPasswordMutation.mutate({ userId: selectedUser.id, password: newPassword });
   };
 
   return (
@@ -1845,6 +1897,10 @@ function UserManagement() {
                                     </>
                                   )}
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleResetPassword(user)} data-testid={`menu-reset-password-${user.id}`}>
+                                  <KeyRound className="h-4 w-4 mr-2" />
+                                  Reset Password
+                                </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => handleDeleteUser(user)} 
                                   className="text-destructive"
@@ -1878,6 +1934,59 @@ function UserManagement() {
         onOpenChange={setEditDialogOpen} 
         user={selectedUser} 
       />
+      
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) {
+          setNewPassword("");
+          setSelectedUser(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Set a new password for {selectedUser?.firstName} {selectedUser?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="admin-new-password">New Password</Label>
+              <Input
+                id="admin-new-password"
+                type="password"
+                placeholder="Enter new password (min 6 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                data-testid="input-admin-new-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPasswordDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmResetPassword} 
+              disabled={resetPasswordMutation.isPending}
+              data-testid="button-confirm-reset-password"
+            >
+              {resetPasswordMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                "Reset Password"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
