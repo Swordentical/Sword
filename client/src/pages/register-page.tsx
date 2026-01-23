@@ -323,22 +323,12 @@ export default function RegisterPage() {
     const finalAmount = validPromo?.finalAmount ?? (price?.unitAmount || 0);
     const isFree = finalAmount === 0;
 
-    // We MUST have a price object if it's NOT free, because we need price.id
-    if (!price && !isFree) {
-      toast({
-        title: "Price not loaded",
-        description: "We're still fetching subscription prices. Please wait a moment.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     const promoCode = getPromoCode();
 
     registerMutation.mutate({
       planType: selectedPlan,
       formData,
-      priceId: price?.id || "free_registration", // Backend handles free registration if amount is 0
+      priceId: price?.id || "dev_bypass_price", // Use a placeholder if no price is loaded
       promoCode: promoCode || undefined,
     });
   };
@@ -569,13 +559,13 @@ export default function RegisterPage() {
                   {validatePromoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                 </Button>
               </div>
-              {validPromo && (
-                <p className="text-sm text-green-600">
-                  {validPromo.finalAmount === 0 
-                    ? "Subscription is free!" 
-                    : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
-                </p>
-              )}
+      {validPromo && (
+        <p className="text-sm text-green-600 mt-1">
+          {validPromo.finalAmount === 0 
+            ? "Development Bypass Active: Use FREE2026 to skip payment" 
+            : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
+        </p>
+      )}
               <FormMessage />
             </FormItem>
           )}
@@ -768,13 +758,13 @@ export default function RegisterPage() {
                   {validatePromoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                 </Button>
               </div>
-              {validPromo && (
-                <p className="text-sm text-green-600">
-                  {validPromo.finalAmount === 0 
-                    ? "Subscription is free!" 
-                    : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
-                </p>
-              )}
+      {validPromo && (
+        <p className="text-sm text-green-600 mt-1">
+          {validPromo.finalAmount === 0 
+            ? "Development Bypass Active: Use FREE2026 to skip payment" 
+            : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
+        </p>
+      )}
               <FormMessage />
             </FormItem>
           )}
@@ -930,13 +920,13 @@ export default function RegisterPage() {
                   {validatePromoMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
                 </Button>
               </div>
-              {validPromo && (
-                <p className="text-sm text-green-600">
-                  {validPromo.finalAmount === 0 
-                    ? "Subscription is free!" 
-                    : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
-                </p>
-              )}
+      {validPromo && (
+        <p className="text-sm text-green-600 mt-1">
+          {validPromo.finalAmount === 0 
+            ? "Development Bypass Active: Use FREE2026 to skip payment" 
+            : `Discount applied: ${validPromo.discountType === "percentage" ? `${validPromo.discountValue}%` : `$${validPromo.discountValue}`}`}
+        </p>
+      )}
               <FormMessage />
             </FormItem>
           )}
