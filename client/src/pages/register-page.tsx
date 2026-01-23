@@ -964,7 +964,7 @@ export default function RegisterPage() {
     const displayOriginalAmount = price?.unitAmount ?? (selectedPlan === 'student' ? 100 : 0);
     const finalAmount = validPromo?.finalAmount ?? displayOriginalAmount;
     const isFree = finalAmount === 0;
-    const isLoadingPrices = !productsData || products.length === 0;
+    const isLoadingPrices = (!productsData || products.length === 0) && !validPromo;
 
     return (
       <div className="space-y-6">
