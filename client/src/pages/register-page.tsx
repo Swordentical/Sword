@@ -28,7 +28,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GraduationCap, Stethoscope, Building2, Check, ArrowLeft, ArrowRight, CreditCard, Sparkles } from "lucide-react";
+import { Loader2, GraduationCap, Stethoscope, Building2, Check, ArrowLeft, ArrowRight, CreditCard, Sparkles, Lightbulb, TrendingUp, FileText, DollarSign, Users, Calendar, ClipboardList, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -80,6 +80,25 @@ const planDescriptions = {
     features: ["Unlimited patients", "Unlimited users", "All features included", "Advanced reporting", "Inventory management", "Insurance claims", "Expense tracking", "Full audit logs"],
   },
 };
+
+const systemFeatures = [
+  { icon: FileText, title: "Digital Records", desc: "Paperless patient files" },
+  { icon: DollarSign, title: "Financial Tracking", desc: "Invoices & payments" },
+  { icon: TrendingUp, title: "Analytics", desc: "Practice insights" },
+];
+
+const tips = [
+  "Use promo code FREE2026 for free access",
+  "Schedule appointments with drag & drop",
+  "Track treatment progress visually",
+];
+
+const coreFeatures = [
+  { icon: Users, title: "Patient Management" },
+  { icon: Calendar, title: "Smart Scheduling" },
+  { icon: ClipboardList, title: "Treatment Plans" },
+  { icon: Shield, title: "Secure Access" },
+];
 
 const studentSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -1138,16 +1157,73 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Right Side Feature Panel (Floating, matches auth page) */}
-      <div className="hidden lg:flex fixed right-4 top-4 bottom-4 w-[18%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 animate-in fade-in slide-in-from-right-4 duration-500">
+      {/* Left Side Panel - System Features & Tips */}
+      <div className="hidden lg:flex fixed left-4 top-16 bottom-16 w-[22%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 animate-in fade-in slide-in-from-left-4 duration-500">
+        {/* Decorative circles */}
+        <div className="absolute top-8 left-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-12 right-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+        
+        <div className="relative z-10 text-primary-foreground w-full max-w-xs">
+          <div className="flex items-center gap-2 mb-4">
+            <Lightbulb className="h-4 w-4" />
+            <span className="text-xs font-medium opacity-90">System Features</span>
+          </div>
+          
+          <h2 className="text-lg font-bold mb-2">
+            All-in-One Solution
+          </h2>
+          <p className="text-xs opacity-80 mb-5">
+            Everything you need to manage your practice.
+          </p>
+          
+          {/* System Features */}
+          <div className="space-y-2 mb-6">
+            {systemFeatures.map((feature, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 backdrop-blur-sm"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                  <feature.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm block">{feature.title}</span>
+                  <span className="text-xs opacity-70">{feature.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Tips Section */}
+          <div className="border-t border-white/20 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-3 w-3" />
+              <span className="text-xs font-medium">Quick Tips</span>
+            </div>
+            <ul className="space-y-2">
+              {tips.map((tip, index) => (
+                <li key={index} className="text-xs opacity-80 flex items-start gap-2">
+                  <span className="text-primary-foreground/60">•</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side Feature Panel */}
+      <div className="hidden lg:flex fixed right-4 top-16 bottom-16 w-[22%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 animate-in fade-in slide-in-from-right-4 duration-500">
         {/* Decorative circles */}
         <div className="absolute top-10 right-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute bottom-16 left-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
         
-        <div className="relative z-10 text-primary-foreground max-w-xs">
+        <div className="relative z-10 text-primary-foreground w-full max-w-xs">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-medium opacity-90">Get Started</span>
+            <span className="text-xs font-medium opacity-90">
+              {selectedPlan ? "Your Plan" : "Get Started"}
+            </span>
           </div>
           
           <h2 className="text-lg font-bold mb-2">
@@ -1159,10 +1235,10 @@ export default function RegisterPage() {
               : "Professional dental practice management"}
           </p>
           
-          {/* Feature List */}
-          {selectedPlan && (
-            <div className="space-y-2">
-              {planDescriptions[selectedPlan].features.slice(0, 5).map((feature, idx) => (
+          {/* Feature List - Show selected plan features or core features */}
+          <div className="space-y-2">
+            {selectedPlan ? (
+              planDescriptions[selectedPlan].features.slice(0, 5).map((feature, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur-sm"
@@ -1170,9 +1246,21 @@ export default function RegisterPage() {
                   <Check className="h-3 w-3 shrink-0" />
                   <span className="text-xs">{feature}</span>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              coreFeatures.map((feature, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 backdrop-blur-sm"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                    <feature.icon className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium text-sm">{feature.title}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

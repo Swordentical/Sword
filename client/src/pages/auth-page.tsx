@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles } from "lucide-react";
+import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles, Lightbulb, TrendingUp, FileText, DollarSign } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedBackground } from "@/components/animated-background";
 
@@ -31,6 +31,18 @@ const features = [
   { icon: Calendar, title: "Smart Scheduling" },
   { icon: ClipboardList, title: "Treatment Plans" },
   { icon: Shield, title: "Secure Access" },
+];
+
+const systemFeatures = [
+  { icon: FileText, title: "Digital Records", desc: "Paperless patient files" },
+  { icon: DollarSign, title: "Financial Tracking", desc: "Invoices & payments" },
+  { icon: TrendingUp, title: "Analytics", desc: "Practice insights" },
+];
+
+const tips = [
+  "Use promo code FREE2026 for free access",
+  "Schedule appointments with drag & drop",
+  "Track treatment progress visually",
 ];
 
 export default function AuthPage() {
@@ -181,13 +193,68 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right Side Feature Panel (Floating, 20%) */}
-      <div className={`hidden lg:flex fixed right-4 top-4 bottom-4 w-[18%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 transition-all duration-300 ${isExiting ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'}`}>
+      {/* Left Side Panel - System Features & Tips */}
+      <div className={`hidden lg:flex fixed left-4 top-16 bottom-16 w-[22%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 transition-all duration-300 ${isExiting ? 'opacity-0 -translate-x-10' : 'opacity-100 translate-x-0'}`}>
+        {/* Decorative circles */}
+        <div className="absolute top-8 left-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-12 right-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+        
+        <div className="relative z-10 text-primary-foreground w-full max-w-xs">
+          <div className="flex items-center gap-2 mb-4">
+            <Lightbulb className="h-4 w-4" />
+            <span className="text-xs font-medium opacity-90">System Features</span>
+          </div>
+          
+          <h2 className="text-lg font-bold mb-2">
+            All-in-One Solution
+          </h2>
+          <p className="text-xs opacity-80 mb-5">
+            Everything you need to manage your practice.
+          </p>
+          
+          {/* System Features */}
+          <div className="space-y-2 mb-6">
+            {systemFeatures.map((feature, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 backdrop-blur-sm"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                  <feature.icon className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="font-medium text-sm block">{feature.title}</span>
+                  <span className="text-xs opacity-70">{feature.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Tips Section */}
+          <div className="border-t border-white/20 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-3 w-3" />
+              <span className="text-xs font-medium">Quick Tips</span>
+            </div>
+            <ul className="space-y-2">
+              {tips.map((tip, index) => (
+                <li key={index} className="text-xs opacity-80 flex items-start gap-2">
+                  <span className="text-primary-foreground/60">•</span>
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Side Feature Panel */}
+      <div className={`hidden lg:flex fixed right-4 top-16 bottom-16 w-[22%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 transition-all duration-300 ${isExiting ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'}`}>
         {/* Decorative circles */}
         <div className="absolute top-10 right-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute bottom-16 left-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
         
-        <div className="relative z-10 text-primary-foreground max-w-xs">
+        <div className="relative z-10 text-primary-foreground w-full max-w-xs">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4" />
             <span className="text-xs font-medium opacity-90">Professional</span>
@@ -205,12 +272,12 @@ export default function AuthPage() {
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur-sm"
+                className="flex items-center gap-3 p-2.5 rounded-xl bg-white/10 backdrop-blur-sm"
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/20">
-                  <feature.icon className="h-3.5 w-3.5" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                  <feature.icon className="h-4 w-4" />
                 </div>
-                <span className="font-medium text-xs">{feature.title}</span>
+                <span className="font-medium text-sm">{feature.title}</span>
               </div>
             ))}
           </div>
