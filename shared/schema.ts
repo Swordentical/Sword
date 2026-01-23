@@ -100,6 +100,8 @@ export const organizations = pgTable("organizations", {
   slug: text("slug").notNull().unique(), // URL-friendly identifier
   // Owner (the user who created/owns this organization)
   ownerId: varchar("owner_id", { length: 36 }),
+  // Clinic-specific fields
+  city: text("city"), // City/location for clinic
   // Subscription
   subscriptionPlanId: varchar("subscription_plan_id", { length: 36 }).references(() => subscriptionPlans.id),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trial"),
@@ -124,6 +126,24 @@ export const organizations = pgTable("organizations", {
 
 // ==================== END MULTI-TENANT TABLES ====================
 
+// Pending Registrations - stores registration data before payment completes
+export const pendingRegistrations = pgTable("pending_registrations", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  // Registration data (stored as JSON for flexibility)
+  planType: subscriptionPlanTypeEnum("plan_type").notNull(), // student, doctor, clinic
+  registrationData: jsonb("registration_data").notNull(), // firstName, lastName, username, email, phone, password (hashed), + role-specific fields
+  // Pricing
+  priceId: text("price_id").notNull(), // Stripe price ID
+  promoCode: text("promo_code"), // Applied promo code
+  finalAmount: integer("final_amount").notNull(), // Final amount in cents after discount
+  // Stripe checkout
+  stripeSessionId: text("stripe_session_id"),
+  // Status
+  status: text("status").default("pending"), // pending, completed, expired
+  expiresAt: timestamp("expires_at").notNull(), // Registration data expires after 24 hours
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Users/Profiles table
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -139,6 +159,9 @@ export const users = pgTable("users", {
   specialty: doctorSpecialtyEnum("specialty"),
   licenseNumber: text("license_number"),
   bio: text("bio"),
+  // Student-specific fields
+  university: text("university"),
+  yearOfStudy: integer("year_of_study"),
   isActive: boolean("is_active").default(true),
   // Multi-tenant: link user to organization
   organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
