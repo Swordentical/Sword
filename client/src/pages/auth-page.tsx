@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +16,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles, Lightbulb, TrendingUp, FileText, DollarSign } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles, Lightbulb, TrendingUp, FileText, DollarSign, KeyRound } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedBackground } from "@/components/animated-background";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -49,12 +59,37 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation } = useAuth();
   const [isExiting, setIsExiting] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordIdentifier, setForgotPasswordIdentifier] = useState("");
+  const [forgotPasswordResult, setForgotPasswordResult] = useState<{ message: string; hint?: string } | null>(null);
+  const { toast } = useToast();
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
       password: "",
+    },
+  });
+
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (identifier: string) => {
+      const response = await apiRequest("POST", "/api/password/forgot", { identifier });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setForgotPasswordResult(data);
+      toast({
+        title: "Request Submitted",
+        description: data.message,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process request",
+        variant: "destructive",
+      });
     },
   });
 
@@ -65,6 +100,18 @@ export default function AuthPage() {
 
   const onLogin = (data: LoginFormValues) => {
     loginMutation.mutate(data);
+  };
+
+  const handleForgotPassword = () => {
+    if (!forgotPasswordIdentifier.trim()) {
+      toast({
+        title: "Required",
+        description: "Please enter your email, phone, or username",
+        variant: "destructive",
+      });
+      return;
+    }
+    forgotPasswordMutation.mutate(forgotPasswordIdentifier);
   };
 
   const handleCreateAccount = () => {
@@ -177,7 +224,17 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Password</FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => setShowForgotPassword(true)}
+                            className="text-xs text-primary hover:underline"
+                            data-testid="link-forgot-password"
+                          >
+                            Forgot Password?
+                          </button>
+                        </div>
                         <FormControl>
                           <Input
                             type="password"
@@ -328,6 +385,77 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotPassword} onOpenChange={(open) => {
+        setShowForgotPassword(open);
+        if (!open) {
+          setForgotPasswordIdentifier("");
+          setForgotPasswordResult(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter your email, phone number, or username to request a password reset.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!forgotPasswordResult ? (
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email, Phone, or Username</label>
+                <Input
+                  placeholder="Enter your identifier"
+                  value={forgotPasswordIdentifier}
+                  onChange={(e) => setForgotPasswordIdentifier(e.target.value)}
+                  data-testid="input-forgot-identifier"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowForgotPassword(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleForgotPassword}
+                  disabled={forgotPasswordMutation.isPending}
+                  data-testid="button-forgot-submit"
+                >
+                  {forgotPasswordMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Request Reset"
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                <p className="text-sm">{forgotPasswordResult.message}</p>
+                {forgotPasswordResult.hint && (
+                  <p className="text-xs text-muted-foreground">{forgotPasswordResult.hint}</p>
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={() => setShowForgotPassword(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

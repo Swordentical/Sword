@@ -424,8 +424,8 @@ export async function registerRoutes(
       }
 
       // Find user by email, phone, or username
-      const allUsers = await storage.getAllUsers();
-      const user = allUsers.find(u => 
+      const allUsers = await storage.getUsers();
+      const user = allUsers.find((u: any) => 
         u.email === identifier || 
         u.phone === identifier || 
         u.username === identifier
