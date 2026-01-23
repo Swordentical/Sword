@@ -30,6 +30,8 @@ import InsuranceClaimsPage from "@/pages/financials/insurance-claims-page";
 import SettingsPage from "@/pages/settings/settings-page";
 import UserManagement from "@/pages/admin/user-management";
 import AuditLogsPage from "@/pages/audit-logs-page";
+import PricingPage from "@/pages/subscription/pricing-page";
+import ManageSubscriptionPage from "@/pages/subscription/manage-page";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -177,6 +179,22 @@ function AuditLogsPageWrapper() {
   );
 }
 
+function PricingPageWrapper() {
+  return (
+    <MainLayout>
+      <PricingPage />
+    </MainLayout>
+  );
+}
+
+function ManageSubscriptionPageWrapper() {
+  return (
+    <MainLayout>
+      <ManageSubscriptionPage />
+    </MainLayout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
@@ -195,6 +213,8 @@ function Router() {
       <ProtectedRoute path="/audit-logs" component={AuditLogsPageWrapper} />
       <ProtectedRoute path="/settings" component={SettingsPageWrapper} />
       <ProtectedRoute path="/admin/users" component={UserManagementPageWrapper} />
+      <ProtectedRoute path="/pricing" component={PricingPageWrapper} />
+      <ProtectedRoute path="/subscription" component={ManageSubscriptionPageWrapper} />
       <Route path="/auth" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>

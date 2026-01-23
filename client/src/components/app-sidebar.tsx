@@ -17,6 +17,7 @@ import {
   Shield,
   ShieldCheck,
   Lock,
+  CreditCard,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -336,6 +337,12 @@ export function AppSidebar() {
                   <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="link-manage-profile">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Profile
+                  </Button>
+                </Link>
+                <Link href="/subscription">
+                  <Button variant="ghost" size="sm" className="w-full justify-start" data-testid="link-subscription">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Subscription
                   </Button>
                 </Link>
                 <Link href="/settings">
