@@ -113,3 +113,24 @@ The repository is organized into `client/` (React frontend), `server/` (Express 
 - **Overview enhancement**: Net Profit card added to overview with profit margin percentage
 - **Cash-basis accounting**: Uses actual collections (payments received) for accurate profit calculation
 - **API Endpoint**: GET /api/reports/net-profit (admin only) with date range filtering
+
+### Stripe Subscription System (January 2026)
+- **Multi-tenant SaaS Model**: Organizations-based subscription management with plan limits
+- **Three Subscription Tiers**:
+  - Student Plan: $1/year, 50 patients, 1 user, basic features
+  - Doctor Plan: $5/month or $50/year, 200 patients, 2 users, expanded features
+  - Clinic Plan: $150/year with 15-day trial, unlimited patients/users, full features
+- **Stripe Integration**:
+  - Products synced via stripe-replit-sync package
+  - Checkout sessions with Stripe-hosted payment page
+  - Customer portal for subscription management
+  - Webhook handling for subscription events
+- **Feature Gating**: Sidebar and routes gated based on subscription plan features
+- **Promo Code System**: Percentage or fixed discount codes with validation and usage limits
+- **Subscription Context Hook**: `useSubscription()` provides plan info, limits, and feature access
+- **Key Files**:
+  - server/stripeClient.ts - Stripe client and sync initialization
+  - server/subscription.ts - Subscription service with plan management
+  - client/src/pages/subscription/pricing-page.tsx - Plan selection and checkout
+  - client/src/pages/subscription/manage-page.tsx - Subscription management
+  - client/src/hooks/use-subscription.tsx - Subscription state hook
