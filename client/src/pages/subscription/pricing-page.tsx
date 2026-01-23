@@ -151,13 +151,21 @@ export default function PricingPage() {
     },
   });
 
+  const [selectedPriceId, setSelectedPriceId] = useState<string | null>(null);
+
   const handleSelectPlan = (priceId: string, planType: string) => {
     if (!user) {
       setLocation("/auth");
       return;
     }
     setSelectedPlan(planType);
-    checkoutMutation.mutate({ priceId });
+    setSelectedPriceId(priceId);
+  };
+
+  const handleProceedToCheckout = () => {
+    if (selectedPriceId) {
+      checkoutMutation.mutate({ priceId: selectedPriceId });
+    }
   };
 
   const handleValidatePromo = () => {
@@ -261,8 +269,8 @@ export default function PricingPage() {
                 <Button
                   className="w-full"
                   size="lg"
-                  variant={isPopular ? "default" : "outline"}
-                  disabled={checkoutMutation.isPending || isCurrent}
+                  variant={selectedPlan === planType ? "default" : isPopular ? "default" : "outline"}
+                  disabled={isCurrent}
                   onClick={() => {
                     if (displayPrice) {
                       handleSelectPlan(displayPrice.id, planType);
@@ -270,13 +278,13 @@ export default function PricingPage() {
                   }}
                   data-testid={`button-select-${planType}`}
                 >
-                  {checkoutMutation.isPending && selectedPlan === planType ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : isCurrent ? (
+                  {isCurrent ? (
                     "Current Plan"
+                  ) : selectedPlan === planType ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Selected
+                    </>
                   ) : planType === "clinic" ? (
                     "Start Free Trial"
                   ) : (
@@ -289,47 +297,65 @@ export default function PricingPage() {
         })}
       </div>
 
-      <Card className="max-w-md mx-auto" data-testid="card-promo-code">
-        <CardHeader>
-          <CardTitle className="text-lg">Have a promo code?</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Label htmlFor="promo" className="sr-only">Promo Code</Label>
-              <Input
-                id="promo"
-                placeholder="Enter promo code"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                data-testid="input-promo-code"
-              />
+      {selectedPlan && (
+        <Card className="max-w-md mx-auto" data-testid="card-checkout">
+          <CardHeader>
+            <CardTitle className="text-lg">Complete Your Order</CardTitle>
+            <CardDescription>
+              You've selected the {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Label htmlFor="promo" className="sr-only">Promo Code</Label>
+                <Input
+                  id="promo"
+                  placeholder="Enter promo code (optional)"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  data-testid="input-promo-code"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleValidatePromo}
+                disabled={!promoCode.trim() || validatePromoMutation.isPending}
+                data-testid="button-apply-promo"
+              >
+                {validatePromoMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
             </div>
+            {validPromo && (
+              <p className="text-sm text-green-600" data-testid="text-promo-applied">
+                Promo applied: {validPromo.discountType === "percentage" 
+                  ? `${validPromo.discountValue}% off` 
+                  : `$${validPromo.discountValue} off`}
+              </p>
+            )}
             <Button
-              variant="outline"
-              onClick={handleValidatePromo}
-              disabled={!promoCode.trim() || !selectedPlan || validatePromoMutation.isPending}
-              data-testid="button-apply-promo"
+              className="w-full"
+              size="lg"
+              onClick={handleProceedToCheckout}
+              disabled={checkoutMutation.isPending}
+              data-testid="button-proceed-checkout"
             >
-              {validatePromoMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+              {checkoutMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Redirecting to Checkout...
+                </>
               ) : (
-                "Apply"
+                "Proceed to Checkout"
               )}
             </Button>
-          </div>
-          {validPromo && (
-            <p className="text-sm text-green-600 mt-2" data-testid="text-promo-applied">
-              Promo applied: {validPromo.discountType === "percentage" 
-                ? `${validPromo.discountValue}% off` 
-                : `$${validPromo.discountValue} off`}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground mt-2">
-            Select a plan first, then apply your promo code
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

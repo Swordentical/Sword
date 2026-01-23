@@ -79,10 +79,10 @@ export function useSubscription() {
   });
 
   const hasFeature = (feature: keyof PlanFeatures): boolean => {
+    if (!user?.organizationId) {
+      return false;
+    }
     if (!subscriptionContext) {
-      if (!user?.organizationId) {
-        return true;
-      }
       return false;
     }
     return subscriptionContext.features[feature] ?? false;
