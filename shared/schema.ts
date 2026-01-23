@@ -144,6 +144,21 @@ export const pendingRegistrations = pgTable("pending_registrations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Password Reset Tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id).notNull(),
+  token: text("token").notNull().unique(),
+  // Reset method: email, phone, admin
+  resetMethod: text("reset_method").notNull().default("email"),
+  // For tracking who initiated (for admin resets)
+  initiatedBy: varchar("initiated_by", { length: 36 }),
+  // Status
+  used: boolean("used").default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Users/Profiles table
 export const users = pgTable("users", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -737,8 +752,12 @@ export const insertActivityLogSchema = createInsertSchema(activityLog).omit({ id
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, timestamp: true });
 export const insertClinicSettingsSchema = createInsertSchema(clinicSettings).omit({ id: true, updatedAt: true });
 export const insertClinicRoomSchema = createInsertSchema(clinicRooms).omit({ id: true, createdAt: true });
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
 
 // Types
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
