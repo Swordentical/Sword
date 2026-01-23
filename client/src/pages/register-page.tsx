@@ -28,10 +28,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, GraduationCap, Stethoscope, Building2, Check, ArrowLeft, ArrowRight, CreditCard } from "lucide-react";
+import { Loader2, GraduationCap, Stethoscope, Building2, Check, ArrowLeft, ArrowRight, CreditCard, Sparkles } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { AnimatedBackground } from "@/components/animated-background";
 
 const DENTAL_SPECIALTIES = [
   { value: "general_dentistry", label: "General Dentistry" },
@@ -1077,16 +1078,22 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex relative">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Live Animated Background */}
+      <AnimatedBackground />
+      
+      {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
       
-      <div className="flex-1 flex items-center justify-center p-6">
+      {/* Centered Registration Form */}
+      <div className="min-h-screen flex items-center justify-center p-6 relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
         <div className="w-full max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl dental-gradient">
-              <Stethoscope className="h-7 w-7 text-white" />
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-8 justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
+              <Stethoscope className="h-7 w-7 text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">DentalCare</h1>
@@ -1094,18 +1101,19 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* Progress Steps */}
           <div className="flex items-center gap-2 mb-6">
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`flex-1 h-2 rounded-full transition-colors ${
-                  s <= step ? "dental-gradient" : "bg-muted"
+                className={`flex-1 h-2 rounded-full transition-all duration-300 ${
+                  s <= step ? "bg-primary" : "bg-muted"
                 }`}
               />
             ))}
           </div>
 
-          <Card>
+          <Card className="border-border/50 shadow-xl backdrop-blur-sm bg-card/95">
             <CardContent className="pt-6">
               {step === 1 && renderPlanSelection()}
               {step === 2 && selectedPlan === "student" && renderStudentForm()}
@@ -1114,28 +1122,55 @@ export default function RegisterPage() {
               {step === 3 && renderPaymentConfirmation()}
             </CardContent>
           </Card>
+
+          {/* Back to Sign In link */}
+          <div className="text-center mt-6">
+            <Button
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setLocation("/auth")}
+              data-testid="link-back-to-signin"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Sign In
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="hidden lg:flex flex-1 dental-gradient items-center justify-center p-12">
-        <div className="max-w-lg text-white">
-          <h2 className="text-3xl font-bold mb-4">
-            Start Managing Your Dental Practice Today
+      {/* Right Side Feature Panel (Floating, matches auth page) */}
+      <div className="hidden lg:flex fixed right-4 top-4 bottom-4 w-[18%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 animate-in fade-in slide-in-from-right-4 duration-500">
+        {/* Decorative circles */}
+        <div className="absolute top-10 right-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-16 left-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
+        
+        <div className="relative z-10 text-primary-foreground max-w-xs">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-4 w-4" />
+            <span className="text-xs font-medium opacity-90">Get Started</span>
+          </div>
+          
+          <h2 className="text-lg font-bold mb-2">
+            {selectedPlan ? planDescriptions[selectedPlan].title : "Join Us Today"}
           </h2>
-          <p className="text-lg opacity-90 mb-8">
-            Join thousands of dental professionals who trust DentalCare for their practice management needs.
+          <p className="text-xs opacity-80 mb-6">
+            {selectedPlan 
+              ? planDescriptions[selectedPlan].description 
+              : "Professional dental practice management"}
           </p>
+          
+          {/* Feature List */}
           {selectedPlan && (
-            <div className="space-y-3">
-              <p className="font-semibold">Your {planDescriptions[selectedPlan].title} plan includes:</p>
-              <ul className="space-y-2">
-                {planDescriptions[selectedPlan].features.map((feature, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <Check className="h-4 w-4" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
+            <div className="space-y-2">
+              {planDescriptions[selectedPlan].features.slice(0, 5).map((feature, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur-sm"
+                >
+                  <Check className="h-3 w-3 shrink-0" />
+                  <span className="text-xs">{feature}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

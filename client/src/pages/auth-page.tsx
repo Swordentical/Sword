@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
@@ -26,27 +27,16 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const features = [
-  {
-    icon: Users,
-    title: "Patient Management",
-  },
-  {
-    icon: Calendar,
-    title: "Smart Scheduling",
-  },
-  {
-    icon: ClipboardList,
-    title: "Treatment Plans",
-  },
-  {
-    icon: Shield,
-    title: "Secure Access",
-  },
+  { icon: Users, title: "Patient Management" },
+  { icon: Calendar, title: "Smart Scheduling" },
+  { icon: ClipboardList, title: "Treatment Plans" },
+  { icon: Shield, title: "Secure Access" },
 ];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, loginMutation } = useAuth();
+  const [isExiting, setIsExiting] = useState(false);
 
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -65,17 +55,25 @@ export default function AuthPage() {
     loginMutation.mutate(data);
   };
 
+  const handleCreateAccount = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      setLocation("/register");
+    }, 300);
+  };
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row relative">
+    <div className="min-h-screen relative overflow-hidden">
       {/* Live Animated Background */}
       <AnimatedBackground />
       
+      {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-      
-      {/* Main Content - Sign In Form (Centered, 80% on desktop) */}
-      <div className="flex-1 lg:w-[80%] flex items-center justify-center p-6 lg:p-12 relative z-10">
+
+      {/* Centered Sign In Form */}
+      <div className={`min-h-screen flex items-center justify-center p-6 relative z-10 transition-all duration-300 ${isExiting ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 justify-center">
@@ -169,7 +167,7 @@ export default function AuthPage() {
               <Button
                 variant="outline"
                 className="w-full h-11"
-                onClick={() => setLocation("/register")}
+                onClick={handleCreateAccount}
                 data-testid="link-create-account"
               >
                 Create Account
@@ -183,8 +181,8 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right Side - Feature Panel (20% on desktop, transparent gradient, rounded corners) */}
-      <div className="hidden lg:flex lg:w-[20%] m-4 rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 relative overflow-hidden border border-primary/20">
+      {/* Right Side Feature Panel (Floating, 20%) */}
+      <div className={`hidden lg:flex fixed right-4 top-4 bottom-4 w-[18%] rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 overflow-hidden border border-primary/20 transition-all duration-300 ${isExiting ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'}`}>
         {/* Decorative circles */}
         <div className="absolute top-10 right-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
         <div className="absolute bottom-16 left-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
