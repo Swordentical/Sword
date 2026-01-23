@@ -26,6 +26,8 @@ import {
   ArrowUp,
   ArrowDown,
   Camera,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1220,6 +1222,138 @@ function DataBackup() {
   );
 }
 
+function SecuritySettings() {
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
+      const res = await apiRequest("POST", "/api/password/change", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password Changed",
+        description: "Your password has been updated successfully.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Change Password",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleChangePassword = () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast({
+        title: "All fields required",
+        description: "Please fill in all password fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirmation must match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "New password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    changePasswordMutation.mutate({ currentPassword, newPassword });
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Change Password
+          </CardTitle>
+          <CardDescription>
+            Update your account password for security
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <Input
+              id="current-password"
+              type="password"
+              placeholder="Enter your current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              data-testid="input-current-password"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              placeholder="Enter new password (min 6 characters)"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              data-testid="input-new-password"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              placeholder="Confirm your new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              data-testid="input-confirm-password"
+            />
+          </div>
+
+          <Button
+            onClick={handleChangePassword}
+            disabled={changePasswordMutation.isPending}
+            data-testid="button-change-password"
+          >
+            {changePasswordMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <KeyRound className="mr-2 h-4 w-4" />
+                Update Password
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function EditUserDialog({
   open,
   onOpenChange,
@@ -1768,6 +1902,10 @@ export default function SettingsPage() {
             <Palette className="h-4 w-4 mr-2" />
             Appearance
           </TabsTrigger>
+          <TabsTrigger value="security" data-testid="tab-security">
+            <Lock className="h-4 w-4 mr-2" />
+            Security
+          </TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="h-4 w-4 mr-2" />
             Users
@@ -1784,6 +1922,10 @@ export default function SettingsPage() {
 
         <TabsContent value="appearance">
           <AppearanceSettings />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecuritySettings />
         </TabsContent>
 
         <TabsContent value="users">
