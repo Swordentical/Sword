@@ -32,6 +32,8 @@ import UserManagement from "@/pages/admin/user-management";
 import AuditLogsPage from "@/pages/audit-logs-page";
 import PricingPage from "@/pages/subscription/pricing-page";
 import ManageSubscriptionPage from "@/pages/subscription/manage-page";
+import RegisterPage from "@/pages/register-page";
+import RegistrationSuccessPage from "@/pages/registration-success";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -216,6 +218,8 @@ function Router() {
       <ProtectedRoute path="/pricing" component={PricingPageWrapper} />
       <ProtectedRoute path="/subscription" component={ManageSubscriptionPageWrapper} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/register" component={RegisterPage} />
+      <Route path="/registration/success" component={RegistrationSuccessPage} />
       <Route component={NotFound} />
     </Switch>
   );

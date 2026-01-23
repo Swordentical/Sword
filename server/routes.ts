@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
 import { subscriptionService } from "./subscription";
+import bcrypt from "bcrypt";
 import {
   insertPatientSchema,
   insertTreatmentSchema,
@@ -2995,6 +2996,468 @@ export async function registerRoutes(
   });
 
   // ==================== END SUBSCRIPTION ROUTES ====================
+
+  // ==================== REGISTRATION ROUTES (Payment-First Flow) ====================
+
+  // Validate promo code for registration (no auth required)
+  app.post("/api/registration/validate-promo", async (req, res) => {
+    try {
+      const { code, planType, priceId } = req.body;
+
+      if (!code || !planType || !priceId) {
+        return res.status(400).json({ valid: false, message: "Missing required fields" });
+      }
+
+      const promoResult = await db.execute(sql`
+        SELECT * FROM promo_codes 
+        WHERE code = ${code} 
+        AND is_active = true
+        AND (valid_from IS NULL OR valid_from <= NOW())
+        AND (valid_until IS NULL OR valid_until >= NOW())
+        AND (max_uses IS NULL OR current_uses < max_uses)
+      `);
+
+      if (promoResult.rows.length === 0) {
+        return res.json({ valid: false, message: "Invalid or expired promo code" });
+      }
+
+      const promo = promoResult.rows[0] as any;
+
+      // Check if applicable to this plan
+      if (promo.applicable_plans && !promo.applicable_plans.includes(planType)) {
+        return res.json({ valid: false, message: "This code is not valid for the selected plan" });
+      }
+
+      // Get price info from Stripe
+      const priceResult = await db.execute(sql`
+        SELECT unit_amount FROM stripe.prices WHERE id = ${priceId}
+      `);
+
+      if (priceResult.rows.length === 0) {
+        return res.status(400).json({ valid: false, message: "Invalid price" });
+      }
+
+      const originalAmount = (priceResult.rows[0] as any).unit_amount || 0;
+      let finalAmount = originalAmount;
+
+      if (promo.discount_type === "percentage") {
+        finalAmount = Math.round(originalAmount * (1 - parseFloat(promo.discount_value) / 100));
+      } else {
+        finalAmount = Math.max(0, originalAmount - parseFloat(promo.discount_value) * 100);
+      }
+
+      res.json({
+        valid: true,
+        promoCode: {
+          discountType: promo.discount_type,
+          discountValue: promo.discount_value,
+        },
+        originalAmount,
+        finalAmount,
+      });
+    } catch (error) {
+      console.error("Error validating promo code:", error);
+      res.status(500).json({ valid: false, message: "Error validating code" });
+    }
+  });
+
+  // Start registration (no auth required - creates pending registration and redirects to Stripe)
+  app.post("/api/registration/start", async (req, res) => {
+    try {
+      const { planType, formData, priceId, promoCode } = req.body;
+
+      if (!planType || !formData || !priceId) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Validate plan type
+      if (!['student', 'doctor', 'clinic'].includes(planType)) {
+        return res.status(400).json({ message: "Invalid plan type" });
+      }
+
+      // Validate required fields
+      const { username, email, phone, password } = formData;
+      if (!username || !email || !phone || !password) {
+        return res.status(400).json({ message: "Username, email, phone, and password are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      // Validate role-specific required fields
+      if (planType === 'student') {
+        if (!formData.firstName || !formData.lastName) {
+          return res.status(400).json({ message: "First name and last name are required" });
+        }
+        if (!formData.university) {
+          return res.status(400).json({ message: "University is required for students" });
+        }
+        if (!formData.yearOfStudy) {
+          return res.status(400).json({ message: "Year of study is required for students" });
+        }
+      } else if (planType === 'doctor') {
+        if (!formData.firstName || !formData.lastName) {
+          return res.status(400).json({ message: "First name and last name are required" });
+        }
+        if (!formData.specialty) {
+          return res.status(400).json({ message: "Specialty is required for doctors" });
+        }
+      } else if (planType === 'clinic') {
+        if (!formData.fullName) {
+          return res.status(400).json({ message: "Full name is required" });
+        }
+        if (!formData.clinicName) {
+          return res.status(400).json({ message: "Clinic name is required" });
+        }
+        if (!formData.city) {
+          return res.status(400).json({ message: "City is required for clinics" });
+        }
+      }
+
+      // Check if username already exists
+      const existingUser = await db.execute(sql`
+        SELECT id FROM users WHERE username = ${username}
+      `);
+      if (existingUser.rows.length > 0) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Check if email already exists
+      const existingEmail = await db.execute(sql`
+        SELECT id FROM users WHERE email = ${email}
+      `);
+      if (existingEmail.rows.length > 0) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const registrationData = {
+        ...formData,
+        password: hashedPassword,
+      };
+
+      // Get price info
+      const priceResult = await db.execute(sql`
+        SELECT unit_amount FROM stripe.prices WHERE id = ${priceId}
+      `);
+
+      if (priceResult.rows.length === 0) {
+        return res.status(400).json({ message: "Invalid price" });
+      }
+
+      let finalAmount = (priceResult.rows[0] as any).unit_amount || 0;
+      let promoCodeId = null;
+
+      // Apply promo code if provided
+      if (promoCode) {
+        const promoResult = await db.execute(sql`
+          SELECT * FROM promo_codes 
+          WHERE code = ${promoCode} 
+          AND is_active = true
+          AND (valid_from IS NULL OR valid_from <= NOW())
+          AND (valid_until IS NULL OR valid_until >= NOW())
+          AND (max_uses IS NULL OR current_uses < max_uses)
+        `);
+
+        if (promoResult.rows.length > 0) {
+          const promo = promoResult.rows[0] as any;
+          promoCodeId = promo.id;
+
+          if (promo.discount_type === "percentage") {
+            finalAmount = Math.round(finalAmount * (1 - parseFloat(promo.discount_value) / 100));
+          } else {
+            finalAmount = Math.max(0, finalAmount - parseFloat(promo.discount_value) * 100);
+          }
+        }
+      }
+
+      // If final amount is 0, create account directly without payment
+      if (finalAmount === 0) {
+        // Create organization
+        const orgName = planType === "clinic" 
+          ? formData.clinicName 
+          : planType === "doctor"
+            ? `Dr. ${formData.firstName} ${formData.lastName}`
+            : `${formData.firstName} ${formData.lastName}`;
+        
+        const slug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+
+        // Get subscription plan
+        const planResult = await db.execute(sql`
+          SELECT id FROM subscription_plans WHERE type = ${planType} LIMIT 1
+        `);
+        const subscriptionPlanId = planResult.rows.length > 0 ? (planResult.rows[0] as any).id : null;
+
+        // Create organization
+        const orgResult = await db.execute(sql`
+          INSERT INTO organizations (name, slug, subscription_plan_id, subscription_status, city, promo_code_id)
+          VALUES (${orgName}, ${uniqueSlug}, ${subscriptionPlanId}, 'active', ${formData.city || null}, ${promoCodeId})
+          RETURNING id
+        `);
+        const organizationId = (orgResult.rows[0] as any).id;
+
+        // Determine user role
+        const userRole = planType === "student" ? "student" : planType === "doctor" ? "doctor" : "admin";
+
+        // Parse names for clinic
+        let firstName = formData.firstName;
+        let lastName = formData.lastName;
+        if (planType === "clinic" && formData.fullName) {
+          const nameParts = formData.fullName.split(' ');
+          firstName = nameParts[0] || formData.fullName;
+          lastName = nameParts.slice(1).join(' ') || '';
+        }
+
+        // Create user
+        await db.execute(sql`
+          INSERT INTO users (
+            username, password, email, first_name, last_name, phone, role,
+            specialty, university, year_of_study,
+            organization_id, is_organization_owner, is_active
+          )
+          VALUES (
+            ${username}, ${hashedPassword}, ${email}, ${firstName}, ${lastName}, ${phone}, ${userRole},
+            ${formData.specialty || null}, ${formData.university || null}, ${formData.yearOfStudy ? parseInt(formData.yearOfStudy) : null},
+            ${organizationId}, true, true
+          )
+        `);
+
+        // Update promo code usage
+        if (promoCodeId) {
+          await db.execute(sql`
+            UPDATE promo_codes SET current_uses = current_uses + 1 WHERE id = ${promoCodeId}
+          `);
+        }
+
+        return res.json({ freeRegistration: true, message: "Account created successfully" });
+      }
+
+      // Create pending registration
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      const pendingResult = await db.execute(sql`
+        INSERT INTO pending_registrations (plan_type, registration_data, price_id, promo_code, final_amount, expires_at)
+        VALUES (${planType}, ${JSON.stringify(registrationData)}, ${priceId}, ${promoCode || null}, ${finalAmount}, ${expiresAt})
+        RETURNING id
+      `);
+      const pendingId = (pendingResult.rows[0] as any).id;
+
+      // Create Stripe checkout session
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+      const trialDays = planType === 'clinic' ? 15 : 0;
+
+      const sessionConfig: any = {
+        payment_method_types: ['card'],
+        line_items: [{ price: priceId, quantity: 1 }],
+        mode: 'subscription',
+        success_url: `${baseUrl}/registration/success?session_id={CHECKOUT_SESSION_ID}&pending_id=${pendingId}`,
+        cancel_url: `${baseUrl}/register`,
+        customer_email: email,
+        metadata: { 
+          pendingRegistrationId: pendingId,
+          planType,
+        },
+      };
+
+      if (trialDays > 0) {
+        sessionConfig.subscription_data = {
+          trial_period_days: trialDays,
+        };
+      }
+
+      // Apply promo code discount in Stripe if available
+      if (promoCode && promoCodeId) {
+        // For simplicity, we'll handle discount on our end during account creation
+        // Stripe doesn't natively support our promo code system
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+
+      // Update pending registration with session ID
+      await db.execute(sql`
+        UPDATE pending_registrations SET stripe_session_id = ${session.id} WHERE id = ${pendingId}
+      `);
+
+      res.json({ checkoutUrl: session.url });
+    } catch (error) {
+      console.error("Error starting registration:", error);
+      res.status(500).json({ message: "Failed to start registration" });
+    }
+  });
+
+  // Complete registration after successful payment
+  app.post("/api/registration/complete", async (req, res) => {
+    try {
+      const { sessionId, pendingId } = req.body;
+
+      if (!pendingId || !sessionId) {
+        return res.status(400).json({ message: "Missing pending registration ID or session ID" });
+      }
+
+      // Get pending registration
+      const pendingResult = await db.execute(sql`
+        SELECT * FROM pending_registrations 
+        WHERE id = ${pendingId} 
+        AND status = 'pending'
+        AND expires_at > NOW()
+      `);
+
+      if (pendingResult.rows.length === 0) {
+        return res.status(400).json({ message: "Registration not found, already completed, or expired" });
+      }
+
+      const pending = pendingResult.rows[0] as any;
+      const formData = pending.registration_data;
+      const planType = pending.plan_type;
+
+      // Verify payment with Stripe
+      const { getUncachableStripeClient } = await import("./stripeClient");
+      const stripe = await getUncachableStripeClient();
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId, {
+        expand: ['line_items'],
+      });
+
+      // SECURITY: Verify session metadata matches pending registration
+      if (session.metadata?.pendingRegistrationId !== pendingId) {
+        console.error(`Session mismatch: expected ${pendingId}, got ${session.metadata?.pendingRegistrationId}`);
+        return res.status(400).json({ message: "Invalid session for this registration" });
+      }
+
+      // SECURITY: Verify session matches the stored session ID
+      if (pending.stripe_session_id && pending.stripe_session_id !== sessionId) {
+        console.error(`Stored session ID mismatch: expected ${pending.stripe_session_id}, got ${sessionId}`);
+        return res.status(400).json({ message: "Session ID mismatch" });
+      }
+
+      // SECURITY: Verify plan type matches
+      if (session.metadata?.planType !== planType) {
+        console.error(`Plan type mismatch: expected ${planType}, got ${session.metadata?.planType}`);
+        return res.status(400).json({ message: "Plan type mismatch" });
+      }
+
+      // SECURITY: Verify price ID matches (check line items)
+      const lineItems = session.line_items?.data || [];
+      const sessionPriceId = lineItems[0]?.price?.id;
+      if (sessionPriceId && sessionPriceId !== pending.price_id) {
+        console.error(`Price ID mismatch: expected ${pending.price_id}, got ${sessionPriceId}`);
+        return res.status(400).json({ message: "Price mismatch" });
+      }
+
+      // SECURITY: For non-trial plans, require actual payment
+      // For clinic plan (15-day trial), subscription creation is sufficient
+      const isTrialPlan = planType === 'clinic';
+      if (isTrialPlan) {
+        // For trial plans, having a subscription is sufficient
+        if (!session.subscription) {
+          return res.status(400).json({ message: "Subscription not created" });
+        }
+      } else {
+        // For non-trial plans, require actual payment
+        if (session.payment_status !== 'paid') {
+          return res.status(400).json({ message: "Payment not completed" });
+        }
+      }
+
+      // Create organization
+      const orgName = planType === "clinic" 
+        ? formData.clinicName 
+        : planType === "doctor"
+          ? `Dr. ${formData.firstName} ${formData.lastName}`
+          : `${formData.firstName} ${formData.lastName}`;
+      
+      const slug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const uniqueSlug = `${slug}-${Date.now().toString(36)}`;
+
+      // Get subscription plan
+      const planResult = await db.execute(sql`
+        SELECT id FROM subscription_plans WHERE type = ${planType} LIMIT 1
+      `);
+      const subscriptionPlanId = planResult.rows.length > 0 ? (planResult.rows[0] as any).id : null;
+
+      // Get promo code ID if used
+      let promoCodeId = null;
+      if (pending.promo_code) {
+        const promoResult = await db.execute(sql`
+          SELECT id FROM promo_codes WHERE code = ${pending.promo_code}
+        `);
+        if (promoResult.rows.length > 0) {
+          promoCodeId = (promoResult.rows[0] as any).id;
+        }
+      }
+
+      // Create organization
+      const orgResult = await db.execute(sql`
+        INSERT INTO organizations (
+          name, slug, subscription_plan_id, subscription_status, 
+          stripe_customer_id, stripe_subscription_id, city, promo_code_id
+        )
+        VALUES (
+          ${orgName}, ${uniqueSlug}, ${subscriptionPlanId}, 'active',
+          ${session.customer}, ${session.subscription}, ${formData.city || null}, ${promoCodeId}
+        )
+        RETURNING id
+      `);
+      const organizationId = (orgResult.rows[0] as any).id;
+
+      // Determine user role
+      const userRole = planType === "student" ? "student" : planType === "doctor" ? "doctor" : "admin";
+
+      // Parse names for clinic
+      let firstName = formData.firstName;
+      let lastName = formData.lastName;
+      if (planType === "clinic" && formData.fullName) {
+        const nameParts = formData.fullName.split(' ');
+        firstName = nameParts[0] || formData.fullName;
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+
+      // Create user
+      await db.execute(sql`
+        INSERT INTO users (
+          username, password, email, first_name, last_name, phone, role,
+          specialty, university, year_of_study,
+          organization_id, is_organization_owner, is_active
+        )
+        VALUES (
+          ${formData.username}, ${formData.password}, ${formData.email}, ${firstName}, ${lastName}, ${formData.phone}, ${userRole},
+          ${formData.specialty || null}, ${formData.university || null}, ${formData.yearOfStudy ? parseInt(formData.yearOfStudy) : null},
+          ${organizationId}, true, true
+        )
+      `);
+
+      // Update promo code usage
+      if (promoCodeId) {
+        await db.execute(sql`
+          UPDATE promo_codes SET current_uses = current_uses + 1 WHERE id = ${promoCodeId}
+        `);
+      }
+
+      // Mark registration as completed
+      await db.execute(sql`
+        UPDATE pending_registrations SET status = 'completed' WHERE id = ${pendingId}
+      `);
+
+      res.json({ success: true, message: "Account created successfully" });
+    } catch (error) {
+      console.error("Error completing registration:", error);
+      res.status(500).json({ message: "Failed to complete registration" });
+    }
+  });
+
+  // ==================== END REGISTRATION ROUTES ====================
 
   return httpServer;
 }

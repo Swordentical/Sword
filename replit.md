@@ -134,3 +134,36 @@ The repository is organized into `client/` (React frontend), `server/` (Express 
   - client/src/pages/subscription/pricing-page.tsx - Plan selection and checkout
   - client/src/pages/subscription/manage-page.tsx - Subscription management
   - client/src/hooks/use-subscription.tsx - Subscription state hook
+
+### Payment-First Registration System (January 2026)
+- **Complete Registration Redesign**: Payment MUST occur before account creation
+- **3-Step Registration Flow**:
+  1. Role Selection: Choose between Student, Doctor, or Clinic Manager with hover tooltips showing features
+  2. Role-Specific Form: Collect appropriate information based on selected plan type
+  3. Payment Confirmation: Review order and proceed to Stripe checkout
+- **Role-Specific Registration Fields**:
+  - **Student ($1/year)**: First Name, Last Name, Username, Email*, Phone*, Password, University, Year of Study, Promo Code
+  - **Doctor ($5/month or $50/year)**: First Name, Last Name, Username, Email*, Phone*, Password, Specialty (dropdown), Promo Code
+  - **Clinic Manager ($150/year with 15-day trial)**: Full Name, Clinic Name, Username, Email*, Phone*, Password, City, Promo Code
+- **Free Registration with Promo Codes**: If promo code reduces price to $0, account is created immediately without payment
+- **Multi-Tenant Data Isolation**: Each subscriber gets their own organization with isolated data via organizationId
+- **Security Features**:
+  - Pending registrations stored temporarily before payment with 24-hour expiration
+  - Session metadata verification to prevent payment bypass
+  - Plan type and price ID validation against Stripe session
+  - Server-side validation for all role-specific required fields
+  - Password hashing before storage
+- **New Database Tables**:
+  - `pending_registrations`: Stores registration data before payment completion
+- **New Schema Fields**:
+  - `users.university`: University name for students
+  - `users.year_of_study`: Year of study for students  
+  - `organizations.city`: City/location for clinics
+- **API Endpoints**:
+  - POST /api/registration/validate-promo - Validate promo code and calculate final amount
+  - POST /api/registration/start - Start registration flow, create pending registration, redirect to Stripe
+  - POST /api/registration/complete - Complete registration after successful payment
+- **Key Files**:
+  - client/src/pages/register-page.tsx - New registration page with 3-step flow
+  - client/src/pages/registration-success.tsx - Success page after payment
+  - client/src/pages/auth-page.tsx - Updated to redirect to new registration flow
