@@ -167,3 +167,23 @@ The repository is organized into `client/` (React frontend), `server/` (Express 
   - client/src/pages/register-page.tsx - New registration page with 3-step flow
   - client/src/pages/registration-success.tsx - Success page after payment
   - client/src/pages/auth-page.tsx - Updated to redirect to new registration flow
+
+### Password Management System (January 2026)
+- **Forgot Password Flow**: Users can request password reset via email, phone, or username
+- **Password Reset Tokens**: Database table (`password_reset_tokens`) for secure token-based reset
+- **Change Password**: Logged-in users can change their password in Settings > Security tab
+- **Admin Password Reset**: Admins can reset any user's password from Settings > Users with audit logging
+- **Sign-in Page Enhancement**: "Forgot Password?" link with modal dialog
+- **Security Features**:
+  - Password hashing with bcrypt
+  - Token expiration and one-time use enforcement
+  - Audit logging for all password changes
+  - Role-based access control for admin reset
+- **API Endpoints**:
+  - POST /api/users/change-password - User changes own password (requires current password)
+  - POST /api/password/forgot - Request password reset (creates token for admin intervention)
+  - POST /api/password/reset - Complete reset using valid token
+  - POST /api/users/:id/reset-password - Admin resets user password (admin only)
+- **Key Files**:
+  - client/src/pages/auth-page.tsx - Forgot Password modal
+  - client/src/pages/settings/settings-page.tsx - Security tab and admin reset UI
