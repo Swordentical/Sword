@@ -74,11 +74,11 @@ export default function AuthPage() {
         <ThemeToggle />
       </div>
       
-      {/* Left Side - Sign In Form (70% on desktop) */}
-      <div className="flex-1 lg:w-[70%] flex items-center justify-center p-6 lg:p-12 relative z-10">
+      {/* Main Content - Sign In Form (Centered, 80% on desktop) */}
+      <div className="flex-1 lg:w-[80%] flex items-center justify-center p-6 lg:p-12 relative z-10">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="flex items-center gap-3 mb-8 justify-center lg:justify-start">
+          <div className="flex items-center gap-3 mb-8 justify-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
               <Stethoscope className="h-7 w-7 text-primary-foreground" />
             </div>
@@ -183,37 +183,36 @@ export default function AuthPage() {
         </div>
       </div>
 
-      {/* Right Side - Feature Panel (30% on desktop) */}
-      <div className="hidden lg:flex lg:w-[30%] bg-gradient-to-b from-primary/90 to-primary dark:from-primary/80 dark:to-primary/90 items-center justify-center p-8 relative overflow-hidden">
+      {/* Right Side - Feature Panel (20% on desktop, transparent gradient, rounded corners) */}
+      <div className="hidden lg:flex lg:w-[20%] m-4 rounded-3xl bg-gradient-to-b from-primary/60 via-primary/40 to-primary/20 dark:from-primary/50 dark:via-primary/30 dark:to-primary/10 backdrop-blur-md items-center justify-center p-6 relative overflow-hidden border border-primary/20">
         {/* Decorative circles */}
-        <div className="absolute top-10 right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
-        <div className="absolute bottom-20 left-5 w-24 h-24 bg-white/10 rounded-full blur-xl" />
-        <div className="absolute top-1/2 right-0 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute top-10 right-5 w-20 h-20 bg-white/10 rounded-full blur-2xl" />
+        <div className="absolute bottom-16 left-2 w-16 h-16 bg-white/10 rounded-full blur-xl" />
         
         <div className="relative z-10 text-primary-foreground max-w-xs">
-          <div className="flex items-center gap-2 mb-6">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-sm font-medium opacity-90">Professional Solution</span>
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-4 w-4" />
+            <span className="text-xs font-medium opacity-90">Professional</span>
           </div>
           
-          <h2 className="text-2xl font-bold mb-4">
-            Modern Practice Management
+          <h2 className="text-lg font-bold mb-2">
+            Practice Management
           </h2>
-          <p className="text-sm opacity-80 mb-8">
-            Everything you need to run your dental practice efficiently.
+          <p className="text-xs opacity-80 mb-6">
+            Run your dental practice efficiently.
           </p>
           
           {/* Feature List */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {features.map((feature, index) => (
               <div
                 key={index}
-                className="flex items-center gap-3 p-3 rounded-lg bg-white/10 backdrop-blur-sm"
+                className="flex items-center gap-2 p-2 rounded-xl bg-white/10 backdrop-blur-sm"
               >
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/20">
-                  <feature.icon className="h-4 w-4" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/20">
+                  <feature.icon className="h-3.5 w-3.5" />
                 </div>
-                <span className="font-medium text-sm">{feature.title}</span>
+                <span className="font-medium text-xs">{feature.title}</span>
               </div>
             ))}
           </div>
