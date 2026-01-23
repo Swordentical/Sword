@@ -184,12 +184,34 @@ export default function PricingPage() {
     );
   }
 
-  const sortedProducts = [...products].sort((a, b) => {
+  const sortedProducts = products.length > 0 ? [...products].sort((a, b) => {
     const order = { student: 0, doctor: 1, clinic: 2 };
     const aType = a.metadata.planType || "";
     const bType = b.metadata.planType || "";
     return (order[aType as keyof typeof order] || 0) - (order[bType as keyof typeof order] || 0);
-  });
+  }) : [
+    {
+      id: "prod_student",
+      name: "Student",
+      description: "Perfect for dental students learning practice management",
+      metadata: { planType: "student" },
+      prices: [{ id: "price_student", unit_amount: 100, recurring: { interval: "year", interval_count: 1 } }]
+    },
+    {
+      id: "prod_doctor",
+      name: "Doctor",
+      description: "For individual dentists running their practice",
+      metadata: { planType: "doctor" },
+      prices: [{ id: "price_doctor", unit_amount: 5000, recurring: { interval: "year", interval_count: 1 } }]
+    },
+    {
+      id: "prod_clinic",
+      name: "Clinic Manager",
+      description: "Complete solution for dental clinics",
+      metadata: { planType: "clinic" },
+      prices: [{ id: "price_clinic", unit_amount: 15000, recurring: { interval: "year", interval_count: 1 } }]
+    }
+  ];
 
   const currentPlanType = subscriptionContext.plan?.type;
 
