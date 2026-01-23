@@ -2938,7 +2938,7 @@ export async function registerRoutes(
         customerId = customer.id;
 
         await db.execute(sql`
-          UPDATE users SET stripe_customer_id = ${customer.id} WHERE id = ${user.id}
+          UPDATE organizations SET stripe_customer_id = ${customer.id} WHERE id = ${user.organizationId}
         `);
       }
 
@@ -2974,8 +2974,11 @@ export async function registerRoutes(
   app.post("/api/stripe/portal", requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
+      const organization = await db.query.organizations.findFirst({
+        where: eq(organizations.id, user.organizationId)
+      });
 
-      if (!user.stripeCustomerId) {
+      if (!organization?.stripeCustomerId) {
         return res.status(400).json({ message: "No Stripe customer found" });
       }
 
@@ -2984,7 +2987,7 @@ export async function registerRoutes(
 
       const baseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
       const session = await stripe.billingPortal.sessions.create({
-        customer: user.stripeCustomerId,
+        customer: organization.stripeCustomerId,
         return_url: `${baseUrl}/settings`,
       });
 
