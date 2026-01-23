@@ -309,9 +309,10 @@ export default function RegisterPage() {
 
   const handlePromoValidate = () => {
     const promoCode = getPromoCode();
-    const priceId = getSelectedPrice()?.id;
+    // Use a dummy ID if price isn't loaded yet to allow bypass
+    const priceId = getSelectedPrice()?.id || "dev_bypass_id";
     
-    if (promoCode && selectedPlan && priceId) {
+    if (promoCode && selectedPlan) {
       validatePromoMutation.mutate({ code: promoCode, planType: selectedPlan, priceId });
     }
   };
