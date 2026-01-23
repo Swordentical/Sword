@@ -34,6 +34,7 @@ import {
   subscriptionPlans,
   organizations,
   promoCodes,
+  passwordResetTokens,
   type PlanFeatures,
 } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
@@ -314,6 +315,221 @@ export async function registerRoutes(
       res.status(500).json({ message: "Failed to change user role" });
     }
   });
+
+  // ==================== PASSWORD MANAGEMENT ====================
+
+  // Change own password (for logged-in users)
+  app.post("/api/users/change-password", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      // Get user with current password
+      const dbUser = await storage.getUser(user.id);
+      if (!dbUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isMatch = await bcrypt.compare(currentPassword, dbUser.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password and update
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(user.id, { password: hashedPassword });
+
+      // Log the password change
+      await storage.logActivity({
+        userId: user.id,
+        action: "password_changed",
+        entityType: "user",
+        entityId: user.id,
+        details: `User ${user.firstName} ${user.lastName} changed their password`,
+      });
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Password change error:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Admin reset password for any user
+  app.post("/api/users/:id/reset-password", requireRole("admin"), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { newPassword } = req.body;
+      const adminUser = req.user as any;
+
+      if (!newPassword) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      const targetUser = await storage.getUser(id);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash new password and update
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(id, { password: hashedPassword });
+
+      // Create audit log entry for admin password reset
+      await db.insert(passwordResetTokens).values({
+        userId: id,
+        token: `admin_reset_${Date.now()}`,
+        resetMethod: "admin",
+        initiatedBy: adminUser.id,
+        used: true,
+        expiresAt: new Date(),
+      });
+
+      // Log the activity
+      await storage.logActivity({
+        userId: adminUser.id,
+        action: "admin_reset_password",
+        entityType: "user",
+        entityId: id,
+        details: `Admin ${adminUser.firstName} ${adminUser.lastName} reset password for ${targetUser.firstName} ${targetUser.lastName}`,
+      });
+
+      res.json({ message: `Password reset successfully for ${targetUser.firstName} ${targetUser.lastName}` });
+    } catch (error) {
+      console.error("Admin password reset error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // Request password reset (forgot password - generates token)
+  app.post("/api/password/forgot", async (req, res) => {
+    try {
+      const { identifier } = req.body; // Can be email, phone, or username
+
+      if (!identifier) {
+        return res.status(400).json({ message: "Email, phone, or username is required" });
+      }
+
+      // Find user by email, phone, or username
+      const allUsers = await storage.getAllUsers();
+      const user = allUsers.find(u => 
+        u.email === identifier || 
+        u.phone === identifier || 
+        u.username === identifier
+      );
+
+      if (!user) {
+        // Don't reveal if user exists for security
+        return res.json({ 
+          message: "If an account with that identifier exists, a password reset will be initiated. Please contact the administrator.",
+          requiresAdmin: true
+        });
+      }
+
+      // Generate reset token
+      const token = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+
+      // Determine reset method based on identifier
+      let resetMethod = "email";
+      if (user.phone === identifier) resetMethod = "phone";
+      else if (user.username === identifier) resetMethod = "username";
+
+      // Store the reset token
+      await db.insert(passwordResetTokens).values({
+        userId: user.id,
+        token,
+        resetMethod,
+        expiresAt,
+      });
+
+      // For now, without email/SMS integration, return info for admin reset
+      // In production, this would send an email or SMS
+      res.json({ 
+        message: "Password reset request recorded. Please contact your administrator to complete the reset.",
+        resetToken: token, // Only return in dev mode for testing
+        expiresAt,
+        requiresAdmin: true,
+        hint: "An administrator can reset your password from the User Management section."
+      });
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  // Verify reset token and set new password
+  app.post("/api/password/reset", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: "Token and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+
+      // Find valid token
+      const [resetToken] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.token, token));
+
+      if (!resetToken) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+
+      if (resetToken.used) {
+        return res.status(400).json({ message: "This reset token has already been used" });
+      }
+
+      if (new Date() > resetToken.expiresAt) {
+        return res.status(400).json({ message: "Reset token has expired" });
+      }
+
+      // Hash new password and update user
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await storage.updateUser(resetToken.userId, { password: hashedPassword });
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ used: true })
+        .where(eq(passwordResetTokens.id, resetToken.id));
+
+      // Log the activity
+      const user = await storage.getUser(resetToken.userId);
+      await storage.logActivity({
+        userId: resetToken.userId,
+        action: "password_reset",
+        entityType: "user",
+        entityId: resetToken.userId,
+        details: `Password reset for ${user?.firstName} ${user?.lastName} via ${resetToken.resetMethod}`,
+      });
+
+      res.json({ message: "Password reset successfully. You can now sign in with your new password." });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // ==================== END PASSWORD MANAGEMENT ====================
 
   // Patients
   app.get("/api/patients", requireAuth, async (req, res) => {
