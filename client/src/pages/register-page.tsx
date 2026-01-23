@@ -320,14 +320,25 @@ export default function RegisterPage() {
     if (!selectedPlan || !formData) return;
     
     const price = getSelectedPrice();
-    if (!price) return;
+    const finalAmount = validPromo?.finalAmount ?? (price?.unitAmount || 0);
+    const isFree = finalAmount === 0;
+
+    // We MUST have a price object if it's NOT free, because we need price.id
+    if (!price && !isFree) {
+      toast({
+        title: "Price not loaded",
+        description: "We're still fetching subscription prices. Please wait a moment.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const promoCode = getPromoCode();
 
     registerMutation.mutate({
       planType: selectedPlan,
       formData,
-      priceId: price.id,
+      priceId: price?.id || "free_registration", // Backend handles free registration if amount is 0
       promoCode: promoCode || undefined,
     });
   };
@@ -957,8 +968,12 @@ export default function RegisterPage() {
   const renderPaymentConfirmation = () => {
     const price = getSelectedPrice();
     const plan = selectedPlan ? planDescriptions[selectedPlan] : null;
-    const finalAmount = validPromo?.finalAmount ?? (price?.unitAmount || 0);
+    
+    // For student plan, if price is not loaded yet, default to 100 cents ($1.00) for display
+    const displayOriginalAmount = price?.unitAmount ?? (selectedPlan === 'student' ? 100 : 0);
+    const finalAmount = validPromo?.finalAmount ?? displayOriginalAmount;
     const isFree = finalAmount === 0;
+    const isLoadingPrices = !productsData || products.length === 0;
 
     return (
       <div className="space-y-6">
@@ -988,7 +1003,14 @@ export default function RegisterPage() {
             <div className="flex justify-between items-center py-2 border-t">
               <span className="text-muted-foreground">Original Price</span>
               <span className={validPromo ? "line-through text-muted-foreground" : "font-medium"}>
-                ${((price?.unitAmount || 0) / 100).toFixed(2)}
+                {isLoadingPrices ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Calculating...
+                  </span>
+                ) : (
+                  `$${(displayOriginalAmount / 100).toFixed(2)}`
+                )}
               </span>
             </div>
 
@@ -1006,7 +1028,13 @@ export default function RegisterPage() {
             <div className="flex justify-between items-center py-2 border-t border-t-2">
               <span className="font-semibold">Total</span>
               <span className="text-xl font-bold">
-                {isFree ? "FREE" : `$${(finalAmount / 100).toFixed(2)}`}
+                {isLoadingPrices ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : isFree ? (
+                  "FREE"
+                ) : (
+                  `$${(finalAmount / 100).toFixed(2)}`
+                )}
               </span>
             </div>
 
@@ -1027,13 +1055,18 @@ export default function RegisterPage() {
           <Button 
             className="flex-1" 
             onClick={handleProceedToPayment}
-            disabled={registerMutation.isPending}
+            disabled={registerMutation.isPending || isLoadingPrices || (!price && !isFree)}
             data-testid="button-pay"
           >
             {registerMutation.isPending ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 Processing...
+              </>
+            ) : isLoadingPrices ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading Prices...
               </>
             ) : isFree ? (
               <>

@@ -3145,13 +3145,19 @@ export async function registerRoutes(
         password: hashedPassword,
       };
 
+      // Special case for Student Plan fallback: If priceId is "student-fallback"
+      // or similar, we might want to handle it, but it's safer to ensure
+      // the priceId is always valid from Stripe.
+      
       // Get price info
       const priceResult = await db.execute(sql`
-        SELECT unit_amount FROM stripe.prices WHERE id = ${priceId}
+        SELECT id, unit_amount FROM stripe.prices WHERE id = ${priceId}
       `);
 
       if (priceResult.rows.length === 0) {
-        return res.status(400).json({ message: "Invalid price" });
+        // Log the error but provide more info
+        console.error(`Price not found in database: ${priceId}`);
+        return res.status(400).json({ message: "Invalid price or price not synchronized yet. Please try again in a few moments." });
       }
 
       let finalAmount = (priceResult.rows[0] as any).unit_amount || 0;
