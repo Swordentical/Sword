@@ -19,10 +19,6 @@ import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles,
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedBackground } from "@/components/animated-background";
 
-import dentalIllustration1 from "@assets/360_F_524092029_7tUgEwBSNlkW9RQvqth2140cic4B3syi_1769211141115.webp";
-import dentalIllustration2 from "@assets/set-of-dental-care-concept-vector-illustration_1769211141116.webp";
-import dentalIllustration3 from "@assets/stomatologist-doctor-explains-proper-dental-hygiene-to-patien_1769211141116.webp";
-
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -85,26 +81,47 @@ export default function AuthPage() {
       
       {/* Dental Illustrations - Blending with background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
-        {/* Top center illustration - dental care concepts (3 panels) */}
-        <img 
-          src={dentalIllustration1} 
-          alt="" 
-          className="absolute top-4 left-1/2 -translate-x-1/2 w-[50%] max-w-[600px] opacity-[0.25] dark:opacity-[0.12] object-contain"
-        />
+        {/* Large tooth - top left area */}
+        <svg className="absolute top-[8%] left-[26%] w-32 h-32 text-primary/10 dark:text-primary/5 animate-pulse" viewBox="0 0 100 100" fill="currentColor">
+          <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
+        </svg>
         
-        {/* Bottom left illustration - dental consultation */}
-        <img 
-          src={dentalIllustration3} 
-          alt="" 
-          className="absolute bottom-4 left-[24%] w-[18%] max-w-[220px] opacity-[0.20] dark:opacity-[0.10] object-contain"
-        />
+        {/* Smile curve - top right */}
+        <svg className="absolute top-[12%] right-[28%] w-24 h-16 text-primary/8 dark:text-primary/4" viewBox="0 0 100 50" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round">
+          <path d="M10 15 Q50 45 90 15"/>
+        </svg>
         
-        {/* Bottom right illustration - dental care set */}
-        <img 
-          src={dentalIllustration2} 
-          alt="" 
-          className="absolute bottom-8 right-[24%] w-[16%] max-w-[200px] opacity-[0.18] dark:opacity-[0.08] object-contain"
-        />
+        {/* Small tooth - bottom left */}
+        <svg className="absolute bottom-[15%] left-[28%] w-20 h-20 text-primary/8 dark:text-primary/4 rotate-12" viewBox="0 0 100 100" fill="currentColor">
+          <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
+        </svg>
+        
+        {/* Dental mirror - bottom right */}
+        <svg className="absolute bottom-[18%] right-[30%] w-16 h-24 text-primary/10 dark:text-primary/5 -rotate-45" viewBox="0 0 40 80" fill="currentColor">
+          <circle cx="20" cy="15" r="12" fill="none" stroke="currentColor" strokeWidth="3"/>
+          <rect x="18" y="27" width="4" height="45" rx="2"/>
+        </svg>
+        
+        {/* Sparkle stars scattered */}
+        <svg className="absolute top-[25%] left-[32%] w-6 h-6 text-primary/15 dark:text-primary/8 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
+        </svg>
+        <svg className="absolute bottom-[28%] right-[34%] w-5 h-5 text-primary/12 dark:text-primary/6 animate-pulse" style={{animationDelay: '1s'}} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
+        </svg>
+        <svg className="absolute top-[60%] left-[30%] w-4 h-4 text-primary/10 dark:text-primary/5 animate-pulse" style={{animationDelay: '0.5s'}} viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
+        </svg>
+        
+        {/* Floating plus signs (medical) */}
+        <svg className="absolute top-[40%] left-[25%] w-8 h-8 text-primary/8 dark:text-primary/4" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="10" y="4" width="4" height="16" rx="1"/>
+          <rect x="4" y="10" width="16" height="4" rx="1"/>
+        </svg>
+        <svg className="absolute bottom-[35%] right-[26%] w-6 h-6 text-primary/10 dark:text-primary/5" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="10" y="4" width="4" height="16" rx="1"/>
+          <rect x="4" y="10" width="16" height="4" rx="1"/>
+        </svg>
       </div>
       
       {/* Theme Toggle */}
