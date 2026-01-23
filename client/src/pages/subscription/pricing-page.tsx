@@ -97,9 +97,11 @@ export default function PricingPage() {
   const [validPromo, setValidPromo] = useState<{ discountType: string; discountValue: string } | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  const { data: products, isLoading } = useQuery<StripeProduct[]>({
+  const { data: productsData, isLoading } = useQuery<{ products: StripeProduct[] }>({
     queryKey: ["/api/stripe/products"],
   });
+  
+  const products = productsData?.products || [];
 
   const checkoutMutation = useMutation({
     mutationFn: async ({ priceId }: { priceId: string }) => {
@@ -182,7 +184,7 @@ export default function PricingPage() {
     );
   }
 
-  const sortedProducts = [...(products || [])].sort((a, b) => {
+  const sortedProducts = [...products].sort((a, b) => {
     const order = { student: 0, doctor: 1, clinic: 2 };
     const aType = a.metadata.planType || "";
     const bType = b.metadata.planType || "";
