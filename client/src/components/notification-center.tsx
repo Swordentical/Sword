@@ -53,6 +53,29 @@ const priorityColors: Record<Notification["priority"], string> = {
   urgent: "text-destructive",
 };
 
+function getNotificationRoute(notification: Notification): string {
+  const { type, relatedEntityType, relatedEntityId } = notification;
+  
+  switch (type) {
+    case "password_reset":
+      return "/settings?tab=users";
+    case "low_stock":
+      if (relatedEntityType === "inventory" && relatedEntityId) {
+        return `/inventory?highlight=${relatedEntityId}`;
+      }
+      return "/inventory";
+    case "appointment_reminder":
+      if (relatedEntityType === "appointment" && relatedEntityId) {
+        return `/appointments?highlight=${relatedEntityId}`;
+      }
+      return "/appointments";
+    case "security_alert":
+      return "/settings?tab=security";
+    default:
+      return "/dashboard";
+  }
+}
+
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
@@ -108,6 +131,14 @@ export function NotificationCenter() {
   });
 
   const count = unreadCount?.count || 0;
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    setOpen(false);
+    setLocation(getNotificationRoute(notification));
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -184,6 +215,7 @@ export function NotificationCenter() {
                     className={`p-3 hover-elevate cursor-pointer ${
                       !notification.isRead ? "bg-primary/5" : ""
                     }`}
+                    onClick={() => handleNotificationClick(notification)}
                     data-testid={`notification-item-${notification.id}`}
                   >
                     <div className="flex gap-3">
