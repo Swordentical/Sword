@@ -2118,6 +2118,206 @@ function QuickAppointmentDialog({ open, onOpenChange, patientId, patientName, do
   );
 }
 
+interface EditPatientDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  patient: Patient;
+}
+
+function EditPatientDialog({ open, onOpenChange, patient }: EditPatientDialogProps) {
+  const { toast } = useToast();
+  const [firstName, setFirstName] = useState(patient.firstName);
+  const [lastName, setLastName] = useState(patient.lastName);
+  const [phone, setPhone] = useState(patient.phone);
+  const [email, setEmail] = useState(patient.email || "");
+  const [dateOfBirth, setDateOfBirth] = useState(patient.dateOfBirth || "");
+  const [gender, setGender] = useState(patient.gender || "");
+  const [address, setAddress] = useState(patient.address || "");
+  const [emergencyContact, setEmergencyContact] = useState(patient.emergencyContact || "");
+  const [emergencyPhone, setEmergencyPhone] = useState(patient.emergencyPhone || "");
+  const [insuranceProvider, setInsuranceProvider] = useState(patient.insuranceProvider || "");
+  const [insurancePolicyNumber, setInsurancePolicyNumber] = useState(patient.insurancePolicyNumber || "");
+  const [assignedDoctorId, setAssignedDoctorId] = useState(patient.assignedDoctorId || "");
+  const [notes, setNotes] = useState(patient.notes || "");
+
+  const { data: doctors = [] } = useQuery<UserType[]>({
+    queryKey: ["/api/users", { role: "doctor" }],
+    enabled: open,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Partial<Patient>) => {
+      const res = await apiRequest("PATCH", `/api/patients/${patient.id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patient.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      toast({ title: "Patient updated", description: "Patient information has been saved successfully." });
+      onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to update patient", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
+      toast({ title: "Missing required fields", description: "First name, last name, and phone are required", variant: "destructive" });
+      return;
+    }
+    updateMutation.mutate({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone.trim(),
+      email: email.trim() || null,
+      dateOfBirth: dateOfBirth || null,
+      gender: gender as "male" | "female" | "other" | null,
+      address: address.trim() || null,
+      emergencyContact: emergencyContact.trim() || null,
+      emergencyPhone: emergencyPhone.trim() || null,
+      insuranceProvider: insuranceProvider.trim() || null,
+      insurancePolicyNumber: insurancePolicyNumber.trim() || null,
+      assignedDoctorId: assignedDoctorId || null,
+      notes: notes.trim() || null,
+    });
+  };
+
+  // Reset form when patient changes or dialog opens
+  const resetForm = () => {
+    setFirstName(patient.firstName);
+    setLastName(patient.lastName);
+    setPhone(patient.phone);
+    setEmail(patient.email || "");
+    setDateOfBirth(patient.dateOfBirth || "");
+    setGender(patient.gender || "");
+    setAddress(patient.address || "");
+    setEmergencyContact(patient.emergencyContact || "");
+    setEmergencyPhone(patient.emergencyPhone || "");
+    setInsuranceProvider(patient.insuranceProvider || "");
+    setInsurancePolicyNumber(patient.insurancePolicyNumber || "");
+    setAssignedDoctorId(patient.assignedDoctorId || "");
+    setNotes(patient.notes || "");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => { if (isOpen) resetForm(); onOpenChange(isOpen); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Patient Information</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-6 py-4">
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Personal Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} data-testid="input-edit-firstname" />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name *</Label>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} data-testid="input-edit-lastname" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Phone *</Label>
+                <Input value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-edit-phone" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="input-edit-email" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date of Birth</Label>
+                <Input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} data-testid="input-edit-dob" />
+              </div>
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger data-testid="select-edit-gender">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Address</Label>
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} data-testid="input-edit-address" />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Emergency Contact</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Contact Name</Label>
+                <Input value={emergencyContact} onChange={(e) => setEmergencyContact(e.target.value)} data-testid="input-edit-emergency-contact" />
+              </div>
+              <div className="space-y-2">
+                <Label>Contact Phone</Label>
+                <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} data-testid="input-edit-emergency-phone" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Insurance Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Insurance Provider</Label>
+                <Input value={insuranceProvider} onChange={(e) => setInsuranceProvider(e.target.value)} data-testid="input-edit-insurance-provider" />
+              </div>
+              <div className="space-y-2">
+                <Label>Policy Number</Label>
+                <Input value={insurancePolicyNumber} onChange={(e) => setInsurancePolicyNumber(e.target.value)} data-testid="input-edit-insurance-policy" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground">Assignment</h3>
+            <div className="space-y-2">
+              <Label>Assigned Doctor</Label>
+              <Select value={assignedDoctorId} onValueChange={setAssignedDoctorId}>
+                <SelectTrigger data-testid="select-edit-assigned-doctor">
+                  <SelectValue placeholder="Select a doctor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.filter(d => d.isActive).map((doctor) => (
+                    <SelectItem key={doctor.id} value={doctor.id}>
+                      Dr. {doctor.firstName} {doctor.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} data-testid="input-edit-notes" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={updateMutation.isPending} data-testid="button-save-patient">
+            {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PatientDetail() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -2125,6 +2325,7 @@ export default function PatientDetail() {
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
   const [quickAppointmentOpen, setQuickAppointmentOpen] = useState(false);
   const [isTreatmentModalOpen, setIsTreatmentModalOpen] = useState(false);
+  const [editPatientOpen, setEditPatientOpen] = useState(false);
   const { user } = useAuth();
 
   const canEditMedicalHistory = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
@@ -2190,7 +2391,7 @@ export default function PatientDetail() {
             <DollarSign className="h-4 w-4 mr-2" />
             Record Payment
           </Button>
-          <Button variant="outline" data-testid="button-edit-patient">
+          <Button variant="outline" onClick={() => setEditPatientOpen(true)} data-testid="button-edit-patient">
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
@@ -2210,6 +2411,13 @@ export default function PatientDetail() {
         patientName={patient ? `${patient.firstName} ${patient.lastName}` : ""}
         doctorId={patient?.assignedDoctorId || undefined}
       />
+      {patient && (
+        <EditPatientDialog
+          open={editPatientOpen}
+          onOpenChange={setEditPatientOpen}
+          patient={patient}
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
