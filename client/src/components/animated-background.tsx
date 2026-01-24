@@ -1,6 +1,13 @@
 import { useTheme } from "@/components/theme-provider";
 import { useAppearanceSettings } from "@/hooks/use-appearance-settings";
 
+import bracesImg from "@assets/braces_1769289027586.png";
+import dentalCheckImg from "@assets/dental-check_1769289027587.png";
+import dentalServiceImg from "@assets/dental-service_1769289027587.png";
+import dentistToolsImg from "@assets/dentist-tools_1769289027588.png";
+import implantImg from "@assets/implant_1769289027588.png";
+import toothImg from "@assets/tooth_1769289027588.png";
+
 export type WallpaperPreset = "geometric" | "waves" | "particles" | "gradient" | "none";
 
 interface AnimatedBackgroundProps {
@@ -181,84 +188,49 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
 }
 
 function FloatingDentalElements({ themeMode }: { themeMode: ThemeMode }) {
-  const getColor = (light: string, dusk: string, dark: string) => {
-    switch (themeMode) {
-      case "dark": return dark;
-      case "dusk": return dusk;
-      default: return light;
-    }
-  };
-
-  const dentalElements = [
-    // Layer 1: Sharp foreground elements
-    { type: 'tooth', size: 60, left: '4%', top: '6%', delay: 0, duration: 28, blur: 0, opacity: 0.15 },
-    { type: 'tooth', size: 45, left: '90%', top: '40%', delay: 1, duration: 30, blur: 0, opacity: 0.12 },
-    { type: 'enamel', size: 50, left: '85%', top: '75%', delay: 3, duration: 32, blur: 0, opacity: 0.14 },
-    { type: 'curve', size: 55, left: '95%', top: '60%', delay: 9, duration: 33, blur: 0, opacity: 0.13 },
-    { type: 'tooth', size: 38, left: '22%', top: '12%', delay: 11, duration: 27, blur: 0, opacity: 0.13 },
-    { type: 'enamel', size: 42, left: '68%', top: '88%', delay: 13, duration: 31, blur: 0, opacity: 0.12 },
-    { type: 'curve', size: 48, left: '35%', top: '5%', delay: 15, duration: 29, blur: 0, opacity: 0.11 },
-    { type: 'tooth', size: 52, left: '78%', top: '22%', delay: 17, duration: 34, blur: 0, opacity: 0.14 },
-    { type: 'enamel', size: 36, left: '12%', top: '65%', delay: 19, duration: 26, blur: 0, opacity: 0.13 },
-    { type: 'curve', size: 44, left: '55%', top: '15%', delay: 21, duration: 30, blur: 0, opacity: 0.12 },
-    
-    // Layer 2: Slightly blurred mid-layer
-    { type: 'tooth', size: 35, left: '15%', top: '80%', delay: 5, duration: 26, blur: 4, opacity: 0.10 },
-    { type: 'enamel', size: 40, left: '2%', top: '30%', delay: 7, duration: 29, blur: 2, opacity: 0.11 },
-    { type: 'curve', size: 70, left: '70%', top: '3%', delay: 6, duration: 38, blur: 6, opacity: 0.07 },
-    { type: 'tooth', size: 48, left: '42%', top: '72%', delay: 12, duration: 35, blur: 3, opacity: 0.09 },
-    { type: 'enamel', size: 55, left: '28%', top: '45%', delay: 14, duration: 32, blur: 5, opacity: 0.08 },
-    { type: 'curve', size: 62, left: '88%', top: '55%', delay: 16, duration: 28, blur: 4, opacity: 0.10 },
-    { type: 'tooth', size: 40, left: '62%', top: '35%', delay: 18, duration: 33, blur: 3, opacity: 0.09 },
-    { type: 'enamel', size: 46, left: '8%', top: '92%', delay: 20, duration: 27, blur: 5, opacity: 0.08 },
-    { type: 'curve', size: 58, left: '45%', top: '58%', delay: 22, duration: 36, blur: 4, opacity: 0.09 },
-    { type: 'tooth', size: 44, left: '75%', top: '8%', delay: 24, duration: 31, blur: 3, opacity: 0.10 },
-    
-    // Layer 3: Heavily blurred background elements
-    { type: 'enamel', size: 80, left: '82%', top: '8%', delay: 2, duration: 35, blur: 8, opacity: 0.08 },
-    { type: 'curve', size: 100, left: '6%', top: '50%', delay: 4, duration: 25, blur: 12, opacity: 0.06 },
-    { type: 'tooth', size: 90, left: '50%', top: '85%', delay: 8, duration: 40, blur: 16, opacity: 0.04 },
-    { type: 'enamel', size: 95, left: '25%', top: '25%', delay: 10, duration: 42, blur: 14, opacity: 0.05 },
-    { type: 'curve', size: 110, left: '65%', top: '65%', delay: 23, duration: 38, blur: 18, opacity: 0.04 },
-    { type: 'tooth', size: 85, left: '38%', top: '38%', delay: 25, duration: 44, blur: 12, opacity: 0.05 },
-    { type: 'enamel', size: 75, left: '92%', top: '92%', delay: 26, duration: 36, blur: 10, opacity: 0.06 },
-    { type: 'curve', size: 88, left: '18%', top: '18%', delay: 27, duration: 41, blur: 14, opacity: 0.05 },
-    { type: 'tooth', size: 105, left: '58%', top: '48%', delay: 28, duration: 45, blur: 20, opacity: 0.03 },
-    { type: 'enamel', size: 92, left: '5%', top: '75%', delay: 29, duration: 39, blur: 16, opacity: 0.04 },
+  const dentalImages = [
+    { src: toothImg, name: 'tooth' },
+    { src: bracesImg, name: 'braces' },
+    { src: implantImg, name: 'implant' },
+    { src: dentalCheckImg, name: 'dentalCheck' },
+    { src: dentalServiceImg, name: 'dentalService' },
+    { src: dentistToolsImg, name: 'dentistTools' },
   ];
 
-  const renderDentalElement = (type: string, size: number, color: string) => {
-    switch (type) {
-      case 'tooth':
-        return (
-          <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
-            <path 
-              d="M24 6C16 6 12 12 12 18C12 24 14 28 16 32C18 36 20 40 22 42C23 43 24 43 24 43C24 43 25 43 26 42C28 40 30 36 32 32C34 28 36 24 36 18C36 12 32 6 24 6Z" 
-              fill={color}
-            />
-          </svg>
-        );
-      case 'enamel':
-        return (
-          <svg width={size} height={size * 0.6} viewBox="0 0 60 36" fill="none">
-            <ellipse cx="30" cy="18" rx="28" ry="16" fill={color} />
-            <ellipse cx="30" cy="14" rx="18" ry="8" fill={color} style={{ opacity: 0.5 }} />
-          </svg>
-        );
-      case 'curve':
-        return (
-          <svg width={size} height={size * 0.5} viewBox="0 0 80 40" fill="none">
-            <path 
-              d="M4 36C4 36 20 4 40 4C60 4 76 36 76 36" 
-              stroke={color}
-              strokeWidth="6"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
-        );
+  const dentalElements = [
+    // Layer 1: Sharp foreground elements (clear, visible)
+    { imgIndex: 0, size: 55, left: '4%', top: '8%', delay: 0, duration: 45, blur: 0, opacity: 0.18 },
+    { imgIndex: 2, size: 48, left: '88%', top: '35%', delay: 3, duration: 50, blur: 0, opacity: 0.15 },
+    { imgIndex: 1, size: 60, left: '82%', top: '78%', delay: 6, duration: 48, blur: 0, opacity: 0.16 },
+    { imgIndex: 3, size: 42, left: '18%', top: '72%', delay: 9, duration: 52, blur: 0, opacity: 0.14 },
+    { imgIndex: 4, size: 50, left: '75%', top: '12%', delay: 12, duration: 46, blur: 0, opacity: 0.15 },
+    { imgIndex: 5, size: 45, left: '8%', top: '42%', delay: 15, duration: 55, blur: 0, opacity: 0.14 },
+    
+    // Layer 2: Slightly blurred mid-layer
+    { imgIndex: 0, size: 38, left: '92%', top: '58%', delay: 2, duration: 58, blur: 3, opacity: 0.10 },
+    { imgIndex: 1, size: 52, left: '35%', top: '5%', delay: 5, duration: 62, blur: 4, opacity: 0.08 },
+    { imgIndex: 2, size: 44, left: '58%', top: '88%', delay: 8, duration: 56, blur: 3, opacity: 0.09 },
+    { imgIndex: 3, size: 48, left: '12%', top: '22%', delay: 11, duration: 60, blur: 4, opacity: 0.08 },
+    { imgIndex: 4, size: 40, left: '68%', top: '45%', delay: 14, duration: 54, blur: 3, opacity: 0.09 },
+    { imgIndex: 5, size: 55, left: '42%', top: '62%', delay: 17, duration: 65, blur: 5, opacity: 0.07 },
+    
+    // Layer 3: Heavily blurred background elements (distant, ethereal)
+    { imgIndex: 0, size: 75, left: '25%', top: '32%', delay: 1, duration: 72, blur: 10, opacity: 0.05 },
+    { imgIndex: 1, size: 85, left: '65%', top: '68%', delay: 4, duration: 78, blur: 12, opacity: 0.04 },
+    { imgIndex: 2, size: 70, left: '48%', top: '15%', delay: 7, duration: 68, blur: 8, opacity: 0.05 },
+    { imgIndex: 3, size: 80, left: '5%', top: '85%', delay: 10, duration: 75, blur: 14, opacity: 0.04 },
+    { imgIndex: 4, size: 90, left: '85%', top: '5%', delay: 13, duration: 80, blur: 16, opacity: 0.03 },
+    { imgIndex: 5, size: 65, left: '52%', top: '52%', delay: 16, duration: 70, blur: 10, opacity: 0.05 },
+  ];
+
+  const getFilterStyle = () => {
+    switch (themeMode) {
+      case "dark":
+        return "invert(65%) sepia(70%) saturate(400%) hue-rotate(150deg) brightness(95%)";
+      case "dusk":
+        return "invert(70%) sepia(50%) saturate(600%) hue-rotate(340deg) brightness(100%)";
       default:
-        return null;
+        return "invert(55%) sepia(80%) saturate(500%) hue-rotate(160deg) brightness(90%)";
     }
   };
 
@@ -267,37 +239,50 @@ function FloatingDentalElements({ themeMode }: { themeMode: ThemeMode }) {
       {dentalElements.map((el, i) => (
         <div
           key={i}
-          className="absolute transition-all duration-500"
+          className="absolute transition-all duration-700"
           style={{
             left: el.left,
             top: el.top,
             opacity: el.opacity,
-            filter: el.blur > 0 ? `blur(${el.blur}px)` : 'none',
-            animation: `dental-float-${i % 3} ${el.duration}s ease-in-out infinite`,
+            filter: `${el.blur > 0 ? `blur(${el.blur}px) ` : ''}${getFilterStyle()}`,
+            animation: `space-float-${i % 4} ${el.duration}s ease-in-out infinite`,
             animationDelay: `${el.delay}s`,
           }}
         >
-          {renderDentalElement(
-            el.type, 
-            el.size, 
-            getColor('rgb(0, 188, 212)', 'rgb(251, 146, 60)', 'rgb(0, 188, 212)')
-          )}
+          <img 
+            src={dentalImages[el.imgIndex].src} 
+            alt="" 
+            width={el.size} 
+            height={el.size}
+            style={{ 
+              width: el.size, 
+              height: el.size,
+              objectFit: 'contain',
+            }}
+            draggable={false}
+          />
         </div>
       ))}
 
       <style>{`
-        @keyframes dental-float-0 {
+        @keyframes space-float-0 {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-12px) rotate(3deg); }
+          50% { transform: translateY(-8px) rotate(1.5deg); }
         }
-        @keyframes dental-float-1 {
+        @keyframes space-float-1 {
+          0%, 100% { transform: translateY(0px) translateX(0px); }
+          50% { transform: translateY(-6px) translateX(4px); }
+        }
+        @keyframes space-float-2 {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-8px) rotate(-2deg); }
+          33% { transform: translateY(-5px) rotate(-1deg); }
+          66% { transform: translateY(-3px) rotate(0.5deg); }
         }
-        @keyframes dental-float-2 {
+        @keyframes space-float-3 {
           0%, 100% { transform: translateX(0px) translateY(0px); }
-          33% { transform: translateX(6px) translateY(-6px); }
-          66% { transform: translateX(-4px) translateY(-10px); }
+          25% { transform: translateX(3px) translateY(-4px); }
+          50% { transform: translateX(0px) translateY(-7px); }
+          75% { transform: translateX(-3px) translateY(-4px); }
         }
       `}</style>
     </>
