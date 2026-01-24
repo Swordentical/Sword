@@ -211,7 +211,9 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
-          <img src={glazerLogo} alt="GLAZER" className="h-12 w-auto object-contain" />
+          <span className="text-2xl font-bold bg-gradient-to-r from-[#12a3b0] via-[#2089de] to-[#9b59b6] bg-clip-text text-transparent">
+            GLAZER
+          </span>
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
               By Dr. Ahmad Saleh

@@ -29,7 +29,12 @@ import {
   KeyRound,
   Lock,
   Bell,
+  Info,
+  Mail,
+  Phone,
+  Globe,
 } from "lucide-react";
+import glazerLogo from "@/assets/glazer-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2255,6 +2260,10 @@ export default function SettingsPage() {
             <Database className="h-4 w-4 mr-2" />
             Data
           </TabsTrigger>
+          <TabsTrigger value="about" data-testid="tab-about">
+            <Info className="h-4 w-4 mr-2" />
+            About
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="clinic">
@@ -2280,7 +2289,104 @@ export default function SettingsPage() {
         <TabsContent value="data">
           <DataBackup />
         </TabsContent>
+
+        <TabsContent value="about">
+          <AboutSection />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function AboutSection() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="text-center pb-2">
+          <div className="flex justify-center mb-4">
+            <img src={glazerLogo} alt="GLAZER" className="h-24 w-auto object-contain" />
+          </div>
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-[#12a3b0] via-[#2089de] to-[#9b59b6] bg-clip-text text-transparent">
+            GLAZER
+          </CardTitle>
+          <CardDescription className="text-base">
+            Dental Clinic Management System
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="text-center">
+            <Badge variant="outline" className="text-sm px-3 py-1">
+              Version 1.0.0
+            </Badge>
+          </div>
+
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              A comprehensive, full-stack dental clinic management solution designed to streamline 
+              patient management, appointment scheduling, treatment tracking, financial operations, 
+              inventory control, and lab work coordination.
+            </p>
+            <p className="text-sm font-medium">
+              Developed by Dr. Ahmad Saleh
+            </p>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4 text-center">Contact Us</h3>
+            <div className="grid gap-4 max-w-md mx-auto">
+              <a 
+                href="mailto:info@glazer.live" 
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                data-testid="link-contact-email"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-medium">info@glazer.live</p>
+                </div>
+              </a>
+              
+              <a 
+                href="tel:+201096889713" 
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                data-testid="link-contact-phone"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Phone className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Phone</p>
+                  <p className="text-sm font-medium">+20 1096 889 713</p>
+                </div>
+              </a>
+              
+              <a 
+                href="https://glazer.live" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                data-testid="link-contact-website"
+              >
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Globe className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Website</p>
+                  <p className="text-sm font-medium">glazer.live</p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div className="border-t pt-6 text-center">
+            <p className="text-xs text-muted-foreground">
+              &copy; {new Date().getFullYear()} GLAZER. All rights reserved.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
