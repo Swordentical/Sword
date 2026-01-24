@@ -609,9 +609,12 @@ function TreatmentHistorySection({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Filter payments for this specific invoice
-    const invoicePayments = (financials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
-    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    // Get all payments for this invoice (both active and refunded)
+    const allInvoicePayments = (financials?.payments || []).filter((p: any) => p.invoiceId === invoice.id);
+    const activePayments = allInvoicePayments.filter((p: any) => !p.isRefunded);
+    const refundedPayments = allInvoicePayments.filter((p: any) => p.isRefunded);
+    const totalPaid = activePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const totalRefunded = refundedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
     const invoiceHtml = `
@@ -619,34 +622,40 @@ function TreatmentHistorySection({
         <head>
           <title>Invoice ${invoice.invoiceNumber}</title>
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.5; }
-            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; }
-            .clinic-info h1 { margin: 0; color: #19585d; font-size: 24px; }
-            .clinic-info p { margin: 5px 0 0; color: #666; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid; border-image: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6) 1; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 32px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+            .logo-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
             .invoice-title { text-align: right; }
-            .invoice-title h2 { margin: 0; color: #333; font-size: 28px; letter-spacing: 1px; }
+            .invoice-title h2 { margin: 0; font-size: 28px; color: #333; letter-spacing: 2px; }
             .invoice-title p { margin: 5px 0 0; color: #666; font-weight: bold; }
             .details { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #999; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #12a3b0; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 13px; color: #333; text-transform: uppercase; }
+            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 12px; color: #666; text-transform: uppercase; background: #f8f9fa; }
             td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-            .totals { margin-left: auto; width: 300px; }
+            .totals { margin-left: auto; width: 320px; background: #f8f9fa; border-radius: 8px; padding: 15px 20px; }
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
             .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
             .payment-row { color: #1e7e34; font-size: 13px; }
+            .refunded-row { background: #fdf2f2; }
+            .refunded-row td { color: #c81e1e; text-decoration: line-through; }
+            .refund-badge { display: inline-block; background: #c81e1e; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; text-transform: uppercase; font-weight: bold; text-decoration: none; }
             .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
+            .status-draft { background: #f0f0f0; color: #666; border: 1px solid #999; }
+            .footer { margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px; font-size: 11px; color: #999; text-align: center; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="clinic-info">
-              <h1>GLAZER</h1>
-              <p>By Dr. Ahmad Saleh</p>
+            <div>
+              <div class="logo">GLAZER</div>
+              <div class="logo-subtitle">Dental Clinic Management</div>
             </div>
             <div class="invoice-title">
               <h2>INVOICE</h2>
@@ -657,7 +666,7 @@ function TreatmentHistorySection({
           <div class="details">
             <div>
               <div class="section-title">Bill To</div>
-              <div style="font-size: 18px; font-weight: bold; color: #000;">${patientName}</div>
+              <div style="font-size: 18px; font-weight: bold; color: #12a3b0;">${patientName}</div>
               <div style="color: #666; margin-top: 4px;">Patient ID: ${patientId}</div>
             </div>
             <div style="text-align: right;">
@@ -682,10 +691,20 @@ function TreatmentHistorySection({
                 <td>Dental Services and Treatments</td>
                 <td style="text-align: right;">$${parseFloat(invoice.totalAmount).toFixed(2)}</td>
               </tr>
-              ${invoicePayments.map((p: any) => `
+              ${activePayments.map((p: any) => `
                 <tr class="payment-row">
-                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</td>
                   <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              ${refundedPayments.map((p: any) => `
+                <tr class="refunded-row">
+                  <td>
+                    <span style="text-decoration: line-through;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</span>
+                    <span class="refund-badge">Refunded</span>
+                    ${p.refundReason ? `<div style="font-size: 11px; color: #c81e1e; text-decoration: none; margin-top: 4px;">Reason: ${p.refundReason}</div>` : ''}
+                  </td>
+                  <td style="text-align: right; text-decoration: line-through;">-$${parseFloat(p.amount).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -700,15 +719,21 @@ function TreatmentHistorySection({
               <span>Total Paid</span>
               <span>-$${totalPaid.toFixed(2)}</span>
             </div>
+            ${totalRefunded > 0 ? `
+            <div class="total-row" style="color: #c81e1e;">
+              <span>Refunded</span>
+              <span>$${totalRefunded.toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="total-row grand-total">
               <span>Balance Remaining</span>
               <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
             </div>
           </div>
 
-          <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
-            Please include the invoice number ${invoice.invoiceNumber} with your payment.<br>
-            Thank you for your business!
+          <div class="footer">
+            <p>Please include the invoice number ${invoice.invoiceNumber} with your payment.</p>
+            <p>Thank you for choosing GLAZER Dental Clinic!</p>
           </div>
 
           <script>
@@ -934,7 +959,179 @@ function FinancialsSection({
   });
 
   const handlePrintFinancials = () => {
-    window.print();
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const currentData = financials || fetchedFinancials;
+    if (!currentData) return;
+
+    const { summary, invoices, payments } = currentData;
+    
+    // Separate refunded and non-refunded payments
+    const activePayments = (payments || []).filter((p: any) => !p.isRefunded);
+    const refundedPayments = (payments || []).filter((p: any) => p.isRefunded);
+    const totalRefunded = refundedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+
+    const statementHtml = `
+      <html>
+        <head>
+          <title>Financial Statement - ${patientName}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid; border-image: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6) 1; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 32px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+            .logo-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
+            .doc-title { text-align: right; }
+            .doc-title h2 { margin: 0; font-size: 24px; color: #333; letter-spacing: 2px; }
+            .doc-title p { margin: 5px 0 0; color: #666; }
+            .patient-info { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+            .patient-name { font-size: 20px; font-weight: bold; color: #12a3b0; margin-bottom: 5px; }
+            .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+            .summary-card { background: #f8f9fa; border-radius: 8px; padding: 15px; text-align: center; }
+            .summary-card.highlight { background: linear-gradient(135deg, #12a3b010, #2089de10); border: 1px solid #12a3b030; }
+            .summary-label { font-size: 11px; text-transform: uppercase; color: #666; margin-bottom: 5px; }
+            .summary-value { font-size: 22px; font-weight: bold; color: #333; }
+            .summary-value.positive { color: #1e7e34; }
+            .summary-value.negative { color: #c81e1e; }
+            .section { margin-bottom: 25px; }
+            .section-title { font-size: 14px; font-weight: 600; text-transform: uppercase; color: #12a3b0; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+            table { width: 100%; border-collapse: collapse; }
+            th { text-align: left; padding: 10px; font-size: 11px; text-transform: uppercase; color: #666; background: #f8f9fa; border-bottom: 2px solid #eee; }
+            td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+            .text-right { text-align: right; }
+            .payment-row { }
+            .refunded-row { background: #fdf2f2; }
+            .refunded-row td { color: #c81e1e; text-decoration: line-through; }
+            .refund-badge { display: inline-block; background: #c81e1e; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; text-transform: uppercase; font-weight: bold; text-decoration: none; }
+            .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+            .status-paid { background: #e6f4ea; color: #1e7e34; }
+            .status-pending { background: #fff4e5; color: #b7791f; }
+            .status-overdue { background: #fdf2f2; color: #c81e1e; }
+            .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; }
+            @media print { 
+              body { padding: 20px; }
+              .no-print { display: none; } 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">GLAZER</div>
+              <div class="logo-subtitle">Dental Clinic Management</div>
+            </div>
+            <div class="doc-title">
+              <h2>FINANCIAL STATEMENT</h2>
+              <p>${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+          </div>
+
+          <div class="patient-info">
+            <div class="patient-name">${patientName}</div>
+            <div style="color: #666; font-size: 13px;">Patient ID: ${patientId}</div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="summary-card highlight">
+              <div class="summary-label">Total Invoiced</div>
+              <div class="summary-value">$${summary.totalInvoiced.toFixed(2)}</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-label">Total Paid</div>
+              <div class="summary-value positive">$${summary.totalPaid.toFixed(2)}</div>
+            </div>
+            ${totalRefunded > 0 ? `
+            <div class="summary-card">
+              <div class="summary-label">Total Refunded</div>
+              <div class="summary-value negative">$${totalRefunded.toFixed(2)}</div>
+            </div>
+            ` : ''}
+            <div class="summary-card highlight">
+              <div class="summary-label">Outstanding Balance</div>
+              <div class="summary-value ${summary.outstandingBalance > 0 ? 'negative' : 'positive'}">$${summary.outstandingBalance.toFixed(2)}</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Invoices (${(invoices || []).length})</div>
+            ${(invoices || []).length > 0 ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(invoices || []).map((inv: any) => `
+                  <tr>
+                    <td>${inv.invoiceNumber}</td>
+                    <td>${inv.issuedDate ? new Date(inv.issuedDate).toLocaleDateString() : 'N/A'}</td>
+                    <td><span class="status-badge status-${inv.status}">${inv.status}</span></td>
+                    <td class="text-right">$${parseFloat(inv.finalAmount).toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ` : '<p style="color: #666; font-size: 13px;">No invoices recorded.</p>'}
+          </div>
+
+          <div class="section">
+            <div class="section-title">Payment History (${activePayments.length} active${refundedPayments.length > 0 ? `, ${refundedPayments.length} refunded` : ''})</div>
+            ${(payments || []).length > 0 ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Method</th>
+                  <th>Reference</th>
+                  <th class="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(payments || []).map((p: any) => `
+                  <tr class="${p.isRefunded ? 'refunded-row' : 'payment-row'}">
+                    <td>
+                      ${p.paymentDate ? new Date(p.paymentDate).toLocaleDateString() : 'N/A'}
+                      ${p.isRefunded ? '<span class="refund-badge">Refunded</span>' : ''}
+                    </td>
+                    <td>${(p.paymentMethod || 'unknown').replace(/_/g, ' ')}</td>
+                    <td>${p.referenceNumber || '-'}</td>
+                    <td class="text-right">$${parseFloat(p.amount).toFixed(2)}</td>
+                  </tr>
+                  ${p.isRefunded && p.refundReason ? `
+                  <tr class="refunded-row">
+                    <td colspan="4" style="font-size: 11px; font-style: italic; text-decoration: none; padding-top: 0;">
+                      Refund reason: ${p.refundReason} ${p.refundedAt ? `(${new Date(p.refundedAt).toLocaleDateString()})` : ''}
+                    </td>
+                  </tr>
+                  ` : ''}
+                `).join('')}
+              </tbody>
+            </table>
+            ` : '<p style="color: #666; font-size: 13px;">No payments recorded.</p>'}
+          </div>
+
+          <div class="footer">
+            <p>This is an official financial statement from GLAZER Dental Clinic.</p>
+            <p>For questions, please contact our billing department.</p>
+          </div>
+
+          <script>
+            window.onload = () => {
+              window.print();
+              setTimeout(() => window.close(), 500);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(statementHtml);
+    printWindow.document.close();
   };
 
   const currentFinancials = financials || fetchedFinancials;
@@ -943,9 +1140,12 @@ function FinancialsSection({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Filter payments for this specific invoice
-    const invoicePayments = (currentFinancials?.payments || []).filter((p: any) => p.invoiceId === invoice.id && !p.isRefunded);
-    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    // Get all payments for this invoice (both active and refunded)
+    const allInvoicePayments = (currentFinancials?.payments || []).filter((p: any) => p.invoiceId === invoice.id);
+    const activePayments = allInvoicePayments.filter((p: any) => !p.isRefunded);
+    const refundedPayments = allInvoicePayments.filter((p: any) => p.isRefunded);
+    const totalPaid = activePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const totalRefunded = refundedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
     const invoiceHtml = `
@@ -953,34 +1153,40 @@ function FinancialsSection({
         <head>
           <title>Invoice ${invoice.invoiceNumber}</title>
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.5; }
-            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; }
-            .clinic-info h1 { margin: 0; color: #19585d; font-size: 24px; }
-            .clinic-info p { margin: 5px 0 0; color: #666; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid; border-image: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6) 1; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 32px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+            .logo-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
             .invoice-title { text-align: right; }
-            .invoice-title h2 { margin: 0; color: #333; font-size: 28px; letter-spacing: 1px; }
+            .invoice-title h2 { margin: 0; font-size: 28px; color: #333; letter-spacing: 2px; }
             .invoice-title p { margin: 5px 0 0; color: #666; font-weight: bold; }
             .details { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #999; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #12a3b0; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 13px; color: #333; text-transform: uppercase; }
+            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 12px; color: #666; text-transform: uppercase; background: #f8f9fa; }
             td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-            .totals { margin-left: auto; width: 300px; }
+            .totals { margin-left: auto; width: 320px; background: #f8f9fa; border-radius: 8px; padding: 15px 20px; }
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
             .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
             .payment-row { color: #1e7e34; font-size: 13px; }
+            .refunded-row { background: #fdf2f2; }
+            .refunded-row td { color: #c81e1e; text-decoration: line-through; }
+            .refund-badge { display: inline-block; background: #c81e1e; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; text-transform: uppercase; font-weight: bold; text-decoration: none; }
             .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
+            .status-draft { background: #f0f0f0; color: #666; border: 1px solid #999; }
+            .footer { margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px; font-size: 11px; color: #999; text-align: center; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="clinic-info">
-              <h1>GLAZER</h1>
-              <p>By Dr. Ahmad Saleh</p>
+            <div>
+              <div class="logo">GLAZER</div>
+              <div class="logo-subtitle">Dental Clinic Management</div>
             </div>
             <div class="invoice-title">
               <h2>INVOICE</h2>
@@ -991,7 +1197,7 @@ function FinancialsSection({
           <div class="details">
             <div>
               <div class="section-title">Bill To</div>
-              <div style="font-size: 18px; font-weight: bold; color: #000;">${patientName}</div>
+              <div style="font-size: 18px; font-weight: bold; color: #12a3b0;">${patientName}</div>
               <div style="color: #666; margin-top: 4px;">Patient ID: ${patientId}</div>
             </div>
             <div style="text-align: right;">
@@ -1016,10 +1222,20 @@ function FinancialsSection({
                 <td>Dental Services and Treatments</td>
                 <td style="text-align: right;">$${parseFloat(invoice.totalAmount).toFixed(2)}</td>
               </tr>
-              ${invoicePayments.map((p: any) => `
+              ${activePayments.map((p: any) => `
                 <tr class="payment-row">
-                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</td>
                   <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              ${refundedPayments.map((p: any) => `
+                <tr class="refunded-row">
+                  <td>
+                    <span style="text-decoration: line-through;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</span>
+                    <span class="refund-badge">Refunded</span>
+                    ${p.refundReason ? `<div style="font-size: 11px; color: #c81e1e; text-decoration: none; margin-top: 4px;">Reason: ${p.refundReason}</div>` : ''}
+                  </td>
+                  <td style="text-align: right; text-decoration: line-through;">-$${parseFloat(p.amount).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -1034,15 +1250,21 @@ function FinancialsSection({
               <span>Total Paid</span>
               <span>-$${totalPaid.toFixed(2)}</span>
             </div>
+            ${totalRefunded > 0 ? `
+            <div class="total-row" style="color: #c81e1e;">
+              <span>Refunded</span>
+              <span>$${totalRefunded.toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="total-row grand-total">
               <span>Balance Remaining</span>
               <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
             </div>
           </div>
 
-          <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
-            Please include the invoice number ${invoice.invoiceNumber} with your payment.<br>
-            Thank you for your business!
+          <div class="footer">
+            <p>Please include the invoice number ${invoice.invoiceNumber} with your payment.</p>
+            <p>Thank you for choosing GLAZER Dental Clinic!</p>
           </div>
 
           <script>
