@@ -52,7 +52,7 @@ The system is a full-stack TypeScript application, emphasizing type safety, modu
 - **Audit Logging**: Immutable, append-only audit trail capturing user actions and changes.
 - **Clinic Settings**: Centralized management of clinic information.
 - **Room Management**: CRUD operations for clinic rooms.
-- **Appearance Customization**: Animated background wallpapers, transparency and blur controls for UI elements with dynamic CSS custom properties.
+- **Appearance Customization**: Animated background wallpapers (geometric, waves, particles, gradient), floating dental illustration elements with calm space-like animations (18-24 second cycles), transparency and blur controls for UI elements with dynamic CSS custom properties. Toggle for floating elements in Settings > Appearance.
 - **Multi-tenant SaaS Model**: Organizations-based subscription management with Student, Doctor, and Clinic plans, integrated with Stripe for checkout, customer portal, and webhooks. Features are gated based on subscription.
 - **Payment-First Registration System**: A three-step registration flow requiring payment before account creation, with role-specific forms and promo code validation. Ensures multi-tenant data isolation.
 - **Password Management System**: Forgot password flow via email/phone/username, password reset tokens, logged-in user password change, and admin-initiated password resets with audit logging.

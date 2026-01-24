@@ -198,29 +198,29 @@ function FloatingDentalElements({ themeMode }: { themeMode: ThemeMode }) {
   ];
 
   const dentalElements = [
-    // Layer 1: Sharp foreground elements (clear, visible)
-    { imgIndex: 0, size: 55, left: '4%', top: '8%', delay: 0, duration: 45, blur: 0, opacity: 0.18 },
-    { imgIndex: 2, size: 48, left: '88%', top: '35%', delay: 3, duration: 50, blur: 0, opacity: 0.15 },
-    { imgIndex: 1, size: 60, left: '82%', top: '78%', delay: 6, duration: 48, blur: 0, opacity: 0.16 },
-    { imgIndex: 3, size: 42, left: '18%', top: '72%', delay: 9, duration: 52, blur: 0, opacity: 0.14 },
-    { imgIndex: 4, size: 50, left: '75%', top: '12%', delay: 12, duration: 46, blur: 0, opacity: 0.15 },
-    { imgIndex: 5, size: 45, left: '8%', top: '42%', delay: 15, duration: 55, blur: 0, opacity: 0.14 },
+    // Layer 1: Sharp foreground elements
+    { imgIndex: 0, size: 50, left: '3%', top: '6%', blur: 0, opacity: 0.35 },
+    { imgIndex: 2, size: 45, left: '90%', top: '32%', blur: 0, opacity: 0.32 },
+    { imgIndex: 1, size: 55, left: '85%', top: '75%', blur: 0, opacity: 0.35 },
+    { imgIndex: 3, size: 40, left: '15%', top: '80%', blur: 0, opacity: 0.30 },
+    { imgIndex: 4, size: 48, left: '78%', top: '8%', blur: 0, opacity: 0.32 },
+    { imgIndex: 5, size: 42, left: '5%', top: '45%', blur: 0, opacity: 0.30 },
     
     // Layer 2: Slightly blurred mid-layer
-    { imgIndex: 0, size: 38, left: '92%', top: '58%', delay: 2, duration: 58, blur: 3, opacity: 0.10 },
-    { imgIndex: 1, size: 52, left: '35%', top: '5%', delay: 5, duration: 62, blur: 4, opacity: 0.08 },
-    { imgIndex: 2, size: 44, left: '58%', top: '88%', delay: 8, duration: 56, blur: 3, opacity: 0.09 },
-    { imgIndex: 3, size: 48, left: '12%', top: '22%', delay: 11, duration: 60, blur: 4, opacity: 0.08 },
-    { imgIndex: 4, size: 40, left: '68%', top: '45%', delay: 14, duration: 54, blur: 3, opacity: 0.09 },
-    { imgIndex: 5, size: 55, left: '42%', top: '62%', delay: 17, duration: 65, blur: 5, opacity: 0.07 },
+    { imgIndex: 0, size: 35, left: '93%', top: '55%', blur: 2, opacity: 0.22 },
+    { imgIndex: 1, size: 50, left: '32%', top: '3%', blur: 2, opacity: 0.18 },
+    { imgIndex: 2, size: 42, left: '60%', top: '90%', blur: 2, opacity: 0.20 },
+    { imgIndex: 3, size: 45, left: '8%', top: '20%', blur: 3, opacity: 0.18 },
+    { imgIndex: 4, size: 38, left: '70%', top: '42%', blur: 2, opacity: 0.20 },
+    { imgIndex: 5, size: 52, left: '40%', top: '65%', blur: 3, opacity: 0.16 },
     
-    // Layer 3: Heavily blurred background elements (distant, ethereal)
-    { imgIndex: 0, size: 75, left: '25%', top: '32%', delay: 1, duration: 72, blur: 10, opacity: 0.05 },
-    { imgIndex: 1, size: 85, left: '65%', top: '68%', delay: 4, duration: 78, blur: 12, opacity: 0.04 },
-    { imgIndex: 2, size: 70, left: '48%', top: '15%', delay: 7, duration: 68, blur: 8, opacity: 0.05 },
-    { imgIndex: 3, size: 80, left: '5%', top: '85%', delay: 10, duration: 75, blur: 14, opacity: 0.04 },
-    { imgIndex: 4, size: 90, left: '85%', top: '5%', delay: 13, duration: 80, blur: 16, opacity: 0.03 },
-    { imgIndex: 5, size: 65, left: '52%', top: '52%', delay: 16, duration: 70, blur: 10, opacity: 0.05 },
+    // Layer 3: Blurred background elements
+    { imgIndex: 0, size: 70, left: '22%', top: '28%', blur: 5, opacity: 0.10 },
+    { imgIndex: 1, size: 80, left: '62%', top: '62%', blur: 6, opacity: 0.08 },
+    { imgIndex: 2, size: 65, left: '45%', top: '12%', blur: 4, opacity: 0.10 },
+    { imgIndex: 3, size: 75, left: '2%', top: '88%', blur: 8, opacity: 0.06 },
+    { imgIndex: 4, size: 85, left: '88%', top: '2%', blur: 10, opacity: 0.06 },
+    { imgIndex: 5, size: 60, left: '55%', top: '48%', blur: 5, opacity: 0.10 },
   ];
 
   const getFilterStyle = () => {
@@ -236,53 +236,69 @@ function FloatingDentalElements({ themeMode }: { themeMode: ThemeMode }) {
 
   return (
     <>
-      {dentalElements.map((el, i) => (
-        <div
-          key={i}
-          className="absolute transition-all duration-700"
-          style={{
-            left: el.left,
-            top: el.top,
-            opacity: el.opacity,
-            filter: `${el.blur > 0 ? `blur(${el.blur}px) ` : ''}${getFilterStyle()}`,
-            animation: `space-float-${i % 4} ${el.duration}s ease-in-out infinite`,
-            animationDelay: `${el.delay}s`,
-          }}
-        >
-          <img 
-            src={dentalImages[el.imgIndex].src} 
-            alt="" 
-            width={el.size} 
-            height={el.size}
-            style={{ 
-              width: el.size, 
-              height: el.size,
-              objectFit: 'contain',
+      {dentalElements.map((el, i) => {
+        const animClass = `floating-dental-${i % 4}`;
+        return (
+          <div
+            key={i}
+            className={`absolute ${animClass}`}
+            style={{
+              left: el.left,
+              top: el.top,
+              opacity: el.opacity,
+              filter: el.blur > 0 ? `blur(${el.blur}px)` : undefined,
+              zIndex: 1,
             }}
-            draggable={false}
-          />
-        </div>
-      ))}
+          >
+            <img 
+              src={dentalImages[el.imgIndex].src} 
+              alt="" 
+              width={el.size} 
+              height={el.size}
+              className="dental-element-img"
+              style={{ 
+                width: el.size, 
+                height: el.size,
+                objectFit: 'contain',
+                filter: getFilterStyle(),
+              }}
+              draggable={false}
+            />
+          </div>
+        );
+      })}
 
       <style>{`
+        .floating-dental-0 {
+          animation: space-float-0 18s ease-in-out infinite;
+        }
+        .floating-dental-1 {
+          animation: space-float-1 20s ease-in-out infinite;
+        }
+        .floating-dental-2 {
+          animation: space-float-2 22s ease-in-out infinite;
+        }
+        .floating-dental-3 {
+          animation: space-float-3 24s ease-in-out infinite;
+        }
         @keyframes space-float-0 {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-8px) rotate(1.5deg); }
+          50% { transform: translateY(-15px) rotate(2deg); }
         }
         @keyframes space-float-1 {
           0%, 100% { transform: translateY(0px) translateX(0px); }
-          50% { transform: translateY(-6px) translateX(4px); }
+          50% { transform: translateY(-12px) translateX(8px); }
         }
         @keyframes space-float-2 {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-5px) rotate(-1deg); }
-          66% { transform: translateY(-3px) rotate(0.5deg); }
+          33% { transform: translateY(-10px) rotate(-2deg); }
+          66% { transform: translateY(-5px) rotate(1deg); }
         }
         @keyframes space-float-3 {
           0%, 100% { transform: translateX(0px) translateY(0px); }
-          25% { transform: translateX(3px) translateY(-4px); }
-          50% { transform: translateX(0px) translateY(-7px); }
-          75% { transform: translateX(-3px) translateY(-4px); }
+          25% { transform: translateX(6px) translateY(-8px); }
+          50% { transform: translateX(0px) translateY(-14px); }
+          75% { transform: translateX(-6px) translateY(-8px); }
         }
       `}</style>
     </>
