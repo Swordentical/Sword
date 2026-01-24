@@ -148,6 +148,27 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
               fill={getColor('rgba(0, 188, 212, 0.08)', 'rgba(251, 146, 60, 0.08)', 'rgba(0, 188, 212, 0.06)')}
             />
           </pattern>
+          
+          <pattern 
+            id="hex-pattern" 
+            width="56" 
+            height="100" 
+            patternUnits="userSpaceOnUse"
+            patternTransform="scale(1.5)"
+          >
+            <path 
+              d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" 
+              fill="none" 
+              stroke={getColor('rgba(0, 188, 212, 0.10)', 'rgba(251, 146, 60, 0.10)', 'rgba(0, 188, 212, 0.08)')}
+              strokeWidth="1.5"
+            />
+            <path 
+              d="M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34" 
+              fill="none" 
+              stroke={getColor('rgba(156, 39, 176, 0.08)', 'rgba(251, 146, 60, 0.08)', 'rgba(156, 39, 176, 0.06)')}
+              strokeWidth="1"
+            />
+          </pattern>
 
           <linearGradient id="fade-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.06)', 'rgba(251, 146, 60, 0.08)', 'rgba(0, 188, 212, 0.06)')} />
@@ -156,6 +177,7 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
           </linearGradient>
         </defs>
 
+        <rect width="100%" height="100%" fill="url(#hex-pattern)" />
         <rect width="100%" height="100%" fill="url(#grid-pattern)" />
         <rect width="100%" height="100%" fill="url(#fade-gradient)" />
       </svg>
