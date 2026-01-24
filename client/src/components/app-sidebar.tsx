@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
+import glazerLogo from "@/assets/glazer-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -210,16 +211,16 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg dental-gradient">
-            <Stethoscope className="h-6 w-6 text-white" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden bg-white">
+            <img src={glazerLogo} alt="GLAZER" className="h-10 w-10 object-contain" />
           </div>
           <div className="flex flex-col">
             <span className="text-base font-semibold text-sidebar-foreground">
-              DentalCare
+              GLAZER
             </span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                Clinic Management
+                By Dr. Ahmad Saleh
               </span>
               {planType && (
                 <Badge 

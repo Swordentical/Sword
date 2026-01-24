@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, Stethoscope } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiRequest } from "@/lib/queryClient";
+import glazerLogo from "@/assets/glazer-logo.png";
 
 export default function RegistrationSuccessPage() {
   const [, setLocation] = useLocation();
@@ -58,12 +59,12 @@ export default function RegistrationSuccessPage() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl dental-gradient">
-              <Stethoscope className="h-7 w-7 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-lg overflow-hidden">
+              <img src={glazerLogo} alt="GLAZER" className="h-12 w-12 object-contain" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">DentalCare</h1>
-              <p className="text-sm text-muted-foreground">Registration</p>
+              <h1 className="text-2xl font-bold text-foreground">GLAZER</h1>
+              <p className="text-sm text-muted-foreground">By Dr. Ahmad Saleh</p>
             </div>
           </div>
 
@@ -85,7 +86,7 @@ export default function RegistrationSuccessPage() {
                   <div className="mx-auto mb-4">
                     <CheckCircle className="h-12 w-12 text-green-500" />
                   </div>
-                  <CardTitle>Welcome to DentalCare!</CardTitle>
+                  <CardTitle>Welcome to GLAZER!</CardTitle>
                   <CardDescription>
                     {message}
                   </CardDescription>
@@ -155,7 +156,7 @@ export default function RegistrationSuccessPage() {
                 You're All Set!
               </h2>
               <p className="text-lg opacity-90">
-                Thank you for choosing DentalCare. We're excited to help you manage your dental practice more efficiently.
+                Thank you for choosing GLAZER. We're excited to help you manage your dental practice more efficiently.
               </p>
             </>
           )}

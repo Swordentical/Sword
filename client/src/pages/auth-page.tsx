@@ -27,6 +27,7 @@ import { Loader2, Stethoscope, Users, Calendar, ClipboardList, Shield, Sparkles,
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedBackground } from "@/components/animated-background";
 import { useToast } from "@/hooks/use-toast";
+import glazerLogo from "@/assets/glazer-logo.png";
 import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
@@ -181,12 +182,12 @@ export default function AuthPage() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
-              <Stethoscope className="h-7 w-7 text-primary-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-lg overflow-hidden">
+              <img src={glazerLogo} alt="GLAZER" className="h-12 w-12 object-contain" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">DentalCare</h1>
-              <p className="text-sm text-muted-foreground">Clinic Management</p>
+              <h1 className="text-2xl font-bold text-foreground">GLAZER</h1>
+              <p className="text-sm text-muted-foreground">By Dr. Ahmad Saleh</p>
             </div>
           </div>
 
@@ -273,7 +274,7 @@ export default function AuthPage() {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    New to DentalCare?
+                    New to GLAZER?
                   </span>
                 </div>
               </div>

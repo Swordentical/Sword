@@ -645,8 +645,8 @@ function TreatmentHistorySection({
         <body>
           <div class="header">
             <div class="clinic-info">
-              <h1>Dental Clinic</h1>
-              <p>Professional Dental Care</p>
+              <h1>GLAZER</h1>
+              <p>By Dr. Ahmad Saleh</p>
             </div>
             <div class="invoice-title">
               <h2>INVOICE</h2>
@@ -979,8 +979,8 @@ function FinancialsSection({
         <body>
           <div class="header">
             <div class="clinic-info">
-              <h1>Dental Clinic</h1>
-              <p>Professional Dental Care</p>
+              <h1>GLAZER</h1>
+              <p>By Dr. Ahmad Saleh</p>
             </div>
             <div class="invoice-title">
               <h2>INVOICE</h2>

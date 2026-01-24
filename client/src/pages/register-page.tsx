@@ -33,6 +33,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { AnimatedBackground } from "@/components/animated-background";
+import glazerLogo from "@/assets/glazer-logo.png";
 
 const DENTAL_SPECIALTIES = [
   { value: "general_dentistry", label: "General Dentistry" },
@@ -1111,12 +1112,12 @@ export default function RegisterPage() {
         <div className="w-full max-w-md">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-8 justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg">
-              <Stethoscope className="h-7 w-7 text-primary-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-lg overflow-hidden">
+              <img src={glazerLogo} alt="GLAZER" className="h-12 w-12 object-contain" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">DentalCare</h1>
-              <p className="text-sm text-muted-foreground">Create your account</p>
+              <h1 className="text-2xl font-bold text-foreground">GLAZER</h1>
+              <p className="text-sm text-muted-foreground">By Dr. Ahmad Saleh</p>
             </div>
           </div>
 

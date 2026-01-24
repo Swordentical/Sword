@@ -1,8 +1,9 @@
-# Dental Clinic Management System
+# GLAZER - Dental Clinic Management System
+## By Dr. Ahmad Saleh
 
 ## Overview
 
-This is a comprehensive, full-stack TypeScript application designed for single-clinic dental operations. Its primary purpose is to streamline patient management, appointment scheduling, treatment tracking, financial operations, inventory control, and lab work coordination. The system aims to enhance efficiency and organization within a dental practice, offering a robust solution for managing all aspects of clinic operations. Key capabilities include managing patient profiles, scheduling and tracking appointments, overseeing treatment plans, handling invoicing and payments, controlling inventory, coordinating lab work, and managing user roles.
+GLAZER is a comprehensive, full-stack TypeScript application designed for single-clinic dental operations. Its primary purpose is to streamline patient management, appointment scheduling, treatment tracking, financial operations, inventory control, and lab work coordination. The system aims to enhance efficiency and organization within a dental practice, offering a robust solution for managing all aspects of clinic operations. Key capabilities include managing patient profiles, scheduling and tracking appointments, overseeing treatment plans, handling invoicing and payments, controlling inventory, coordinating lab work, and managing user roles.
 
 ## User Preferences
 
