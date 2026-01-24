@@ -814,8 +814,24 @@ function AppearanceSettings() {
   }, [settings.sidebarTransparency, settings.sidebarBlur, settings.elementsTransparency, settings.elementsBlur]);
   
   const updatePendingSettings = (updates: Partial<typeof pendingSettings>) => {
-    setPendingSettings(prev => ({ ...prev, ...updates }));
+    const newSettings = { ...pendingSettings, ...updates };
+    setPendingSettings(newSettings);
     setHasUnsavedChanges(true);
+    
+    // Apply live preview to CSS
+    const root = document.documentElement;
+    if (updates.sidebarTransparency !== undefined) {
+      root.style.setProperty('--sidebar-transparency', `${(100 - updates.sidebarTransparency) / 100}`);
+    }
+    if (updates.sidebarBlur !== undefined) {
+      root.style.setProperty('--sidebar-blur', `${updates.sidebarBlur / 10}px`);
+    }
+    if (updates.elementsTransparency !== undefined) {
+      root.style.setProperty('--elements-transparency', `${(100 - updates.elementsTransparency) / 100}`);
+    }
+    if (updates.elementsBlur !== undefined) {
+      root.style.setProperty('--elements-blur', `${updates.elementsBlur / 10}px`);
+    }
   };
   
   const saveChanges = () => {
@@ -835,6 +851,13 @@ function AppearanceSettings() {
       elementsBlur: settings.elementsBlur,
     });
     setHasUnsavedChanges(false);
+    
+    // Revert CSS to saved settings
+    const root = document.documentElement;
+    root.style.setProperty('--sidebar-transparency', `${(100 - settings.sidebarTransparency) / 100}`);
+    root.style.setProperty('--sidebar-blur', `${settings.sidebarBlur / 10}px`);
+    root.style.setProperty('--elements-transparency', `${(100 - settings.elementsTransparency) / 100}`);
+    root.style.setProperty('--elements-blur', `${settings.elementsBlur / 10}px`);
   };
 
   return (
