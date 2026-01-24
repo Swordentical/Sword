@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   File,
   Printer,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -958,12 +959,9 @@ function FinancialsSection({
     enabled: !financials
   });
 
-  const handlePrintFinancials = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
+  const generateStatementHtml = (forDownload = false) => {
     const currentData = financials || fetchedFinancials;
-    if (!currentData) return;
+    if (!currentData) return null;
 
     const { summary, invoices, payments } = currentData;
     
@@ -972,7 +970,7 @@ function FinancialsSection({
     const refundedPayments = (payments || []).filter((p: any) => p.isRefunded);
     const totalRefunded = refundedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
 
-    const statementHtml = `
+    return `
       <html>
         <head>
           <title>Financial Statement - ${patientName}</title>
@@ -1120,18 +1118,43 @@ function FinancialsSection({
             <p>For questions, please contact our billing department.</p>
           </div>
 
+          ${!forDownload ? `
           <script>
             window.onload = () => {
               window.print();
               setTimeout(() => window.close(), 500);
             };
           </script>
+          ` : ''}
         </body>
       </html>
     `;
+  };
+
+  const handlePrintFinancials = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const statementHtml = generateStatementHtml(false);
+    if (!statementHtml) return;
 
     printWindow.document.write(statementHtml);
     printWindow.document.close();
+  };
+
+  const handleDownloadFinancials = () => {
+    const statementHtml = generateStatementHtml(true);
+    if (!statementHtml) return;
+
+    const blob = new Blob([statementHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Financial_Statement_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const currentFinancials = financials || fetchedFinancials;
@@ -1308,10 +1331,14 @@ function FinancialsSection({
         <p className="text-lg font-medium text-primary">{patientName}</p>
         <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP")}</p>
       </div>
-      <div className="flex justify-end print:hidden">
-        <Button variant="outline" size="sm" onClick={handlePrintFinancials}>
-          <FileText className="h-4 w-4 mr-2" />
-          Print Financial Statement
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={handleDownloadFinancials} data-testid="button-download-financial-statement">
+          <Download className="h-4 w-4 mr-2" />
+          Download
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrintFinancials} data-testid="button-print-financial-statement">
+          <Printer className="h-4 w-4 mr-2" />
+          Print
         </Button>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
