@@ -2875,7 +2875,9 @@ export async function registerRoutes(
       const pendingCost = pendingTreatments.reduce((sum, t) => sum + parseFloat(t.price || "0"), 0);
       
       const totalInvoiced = invoicesList.reduce((sum, inv) => sum + parseFloat(inv.finalAmount || "0"), 0);
-      const totalPaid = patientPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
+      // Only count payments that haven't been refunded
+      const nonRefundedPayments = patientPayments.filter(p => !p.isRefunded);
+      const totalPaid = nonRefundedPayments.reduce((sum, p) => sum + parseFloat(p.amount || "0"), 0);
       const outstandingBalance = totalInvoiced - totalPaid;
       
       // Group treatments by category
@@ -2902,7 +2904,8 @@ export async function registerRoutes(
           completedCount: completedTreatments.length,
           pendingCount: pendingTreatments.length,
           invoiceCount: invoicesList.length,
-          paymentCount: patientPayments.length,
+          paymentCount: nonRefundedPayments.length,
+          refundedPaymentCount: patientPayments.length - nonRefundedPayments.length,
         },
         treatmentsByCategory,
         treatments: treatments.map(t => ({
