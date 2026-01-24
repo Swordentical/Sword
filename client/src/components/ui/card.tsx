@@ -10,8 +10,8 @@ const Card = React.forwardRef<
     ref={ref}
     className={cn(
       "shadcn-card rounded-xl border border-card-border text-card-foreground shadow-sm",
-      "backdrop-blur-[var(--elements-blur,3px)]",
-      "[background-color:hsl(var(--card)/var(--elements-transparency,0.85))]",
+      "backdrop-blur-[var(--elements-blur,2px)]",
+      "[background-color:hsl(var(--card)/var(--elements-transparency,0.5))]",
       className
     )}
     {...props}

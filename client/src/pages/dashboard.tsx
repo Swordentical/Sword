@@ -88,7 +88,7 @@ function TodayAppointmentCard({
 
   return (
     <div 
-      className="group relative flex items-center gap-3 p-3 rounded-lg border hover-elevate shadow-sm transition-all cursor-pointer backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.85))]"
+      className="group relative flex items-center gap-3 p-3 rounded-lg border hover-elevate shadow-sm transition-all cursor-pointer backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]"
       onClick={() => onClick(appointment)}
       data-testid={`card-appointment-${appointment.id}`}
     >
@@ -537,7 +537,7 @@ function MiniStatCard({
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border shadow-sm hover-elevate transition-shadow backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.85))]">
+    <div className="flex items-center gap-3 p-3 rounded-lg border shadow-sm hover-elevate transition-shadow backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
       <div className={cn("rounded-lg p-2", colorClasses[color])}>
         <Icon className="h-4 w-4" />
       </div>
@@ -797,7 +797,7 @@ function WidgetSettingsPanel({
               {slotWidgets.map((widget, index) => (
                 <div 
                   key={widget.id} 
-                  className="flex items-center justify-between p-3 rounded-lg border backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.85))]"
+                  className="flex items-center justify-between p-3 rounded-lg border backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]"
                 >
                   <div className="flex items-center gap-2">
                     <Switch
@@ -1222,7 +1222,7 @@ export default function Dashboard() {
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
       <LiveWallpaper />
-      <div className="shrink-0 border-b p-3 sm:p-4 backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.85))]">
+      <div className="shrink-0 border-b p-3 sm:p-4 backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3 min-w-0">
