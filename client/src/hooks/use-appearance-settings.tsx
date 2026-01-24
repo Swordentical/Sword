@@ -11,10 +11,10 @@ export interface AppearanceSettings {
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
   wallpaperPreset: "geometric",
-  sidebarTransparency: 20,
-  sidebarBlur: 50,
-  elementsTransparency: 15,
-  elementsBlur: 30,
+  sidebarTransparency: 80,
+  sidebarBlur: 20,
+  elementsTransparency: 50,
+  elementsBlur: 20,
 };
 
 interface AppearanceSettingsContextType {

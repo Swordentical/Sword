@@ -790,6 +790,52 @@ const WALLPAPER_PRESETS: { id: WallpaperPreset; name: string; description: strin
 function AppearanceSettings() {
   const { theme, setTheme } = useTheme();
   const { settings, updateSettings, resetToDefaults } = useAppearanceSettings();
+  const { toast } = useToast();
+  
+  // Local state for pending changes (only applied on save)
+  const [pendingSettings, setPendingSettings] = useState({
+    sidebarTransparency: settings.sidebarTransparency,
+    sidebarBlur: settings.sidebarBlur,
+    elementsTransparency: settings.elementsTransparency,
+    elementsBlur: settings.elementsBlur,
+  });
+  
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Update pending settings when actual settings change (e.g., reset to defaults)
+  useEffect(() => {
+    setPendingSettings({
+      sidebarTransparency: settings.sidebarTransparency,
+      sidebarBlur: settings.sidebarBlur,
+      elementsTransparency: settings.elementsTransparency,
+      elementsBlur: settings.elementsBlur,
+    });
+    setHasUnsavedChanges(false);
+  }, [settings.sidebarTransparency, settings.sidebarBlur, settings.elementsTransparency, settings.elementsBlur]);
+  
+  const updatePendingSettings = (updates: Partial<typeof pendingSettings>) => {
+    setPendingSettings(prev => ({ ...prev, ...updates }));
+    setHasUnsavedChanges(true);
+  };
+  
+  const saveChanges = () => {
+    updateSettings(pendingSettings);
+    setHasUnsavedChanges(false);
+    toast({
+      title: "Settings saved",
+      description: "Your appearance settings have been saved successfully.",
+    });
+  };
+  
+  const discardChanges = () => {
+    setPendingSettings({
+      sidebarTransparency: settings.sidebarTransparency,
+      sidebarBlur: settings.sidebarBlur,
+      elementsTransparency: settings.elementsTransparency,
+      elementsBlur: settings.elementsBlur,
+    });
+    setHasUnsavedChanges(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -873,14 +919,14 @@ function AppearanceSettings() {
               <div>
                 <Label>Sidebar Transparency</Label>
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 20%
+                  Recommended: 80%
                 </p>
               </div>
-              <span className="text-sm font-medium w-12 text-right">{settings.sidebarTransparency}%</span>
+              <span className="text-sm font-medium w-12 text-right">{pendingSettings.sidebarTransparency}%</span>
             </div>
             <Slider
-              value={[settings.sidebarTransparency]}
-              onValueChange={(value) => updateSettings({ sidebarTransparency: value[0] })}
+              value={[pendingSettings.sidebarTransparency]}
+              onValueChange={(value) => updatePendingSettings({ sidebarTransparency: value[0] })}
               min={0}
               max={100}
               step={5}
@@ -894,14 +940,14 @@ function AppearanceSettings() {
               <div>
                 <Label>Sidebar Blur Effect</Label>
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 50%
+                  Recommended: 20%
                 </p>
               </div>
-              <span className="text-sm font-medium w-12 text-right">{settings.sidebarBlur}%</span>
+              <span className="text-sm font-medium w-12 text-right">{pendingSettings.sidebarBlur}%</span>
             </div>
             <Slider
-              value={[settings.sidebarBlur]}
-              onValueChange={(value) => updateSettings({ sidebarBlur: value[0] })}
+              value={[pendingSettings.sidebarBlur]}
+              onValueChange={(value) => updatePendingSettings({ sidebarBlur: value[0] })}
               min={0}
               max={100}
               step={5}
@@ -915,14 +961,14 @@ function AppearanceSettings() {
               <div>
                 <Label>Elements Transparency</Label>
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 15%
+                  Recommended: 50%
                 </p>
               </div>
-              <span className="text-sm font-medium w-12 text-right">{settings.elementsTransparency}%</span>
+              <span className="text-sm font-medium w-12 text-right">{pendingSettings.elementsTransparency}%</span>
             </div>
             <Slider
-              value={[settings.elementsTransparency]}
-              onValueChange={(value) => updateSettings({ elementsTransparency: value[0] })}
+              value={[pendingSettings.elementsTransparency]}
+              onValueChange={(value) => updatePendingSettings({ elementsTransparency: value[0] })}
               min={0}
               max={100}
               step={5}
@@ -936,14 +982,14 @@ function AppearanceSettings() {
               <div>
                 <Label>Elements Blur Effect</Label>
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 30%
+                  Recommended: 20%
                 </p>
               </div>
-              <span className="text-sm font-medium w-12 text-right">{settings.elementsBlur}%</span>
+              <span className="text-sm font-medium w-12 text-right">{pendingSettings.elementsBlur}%</span>
             </div>
             <Slider
-              value={[settings.elementsBlur]}
-              onValueChange={(value) => updateSettings({ elementsBlur: value[0] })}
+              value={[pendingSettings.elementsBlur]}
+              onValueChange={(value) => updatePendingSettings({ elementsBlur: value[0] })}
               min={0}
               max={100}
               step={5}
@@ -952,13 +998,29 @@ function AppearanceSettings() {
             />
           </div>
 
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t flex items-center gap-3 flex-wrap">
             <Button
-              variant="outline"
+              onClick={saveChanges}
+              disabled={!hasUnsavedChanges}
+              data-testid="button-save-appearance"
+            >
+              Save Changes
+            </Button>
+            {hasUnsavedChanges && (
+              <Button
+                variant="outline"
+                onClick={discardChanges}
+                data-testid="button-discard-appearance"
+              >
+                Discard Changes
+              </Button>
+            )}
+            <Button
+              variant="ghost"
               onClick={resetToDefaults}
               data-testid="button-reset-appearance"
             >
-              Reset to Recommended Defaults
+              Reset to Defaults
             </Button>
           </div>
         </CardContent>
