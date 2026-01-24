@@ -9,6 +9,15 @@ GLAZER is a comprehensive, full-stack TypeScript application designed for single
 
 Preferred communication style: Simple, everyday language.
 
+## Brand Identity
+
+GLAZER uses a distinctive teal-blue-purple color gradient extracted from the logo:
+- **Primary (Teal)**: HSL 187 85% 42% - Used for buttons, links, focus rings, active states
+- **Secondary (Blue)**: HSL 207 90% 54% - Used in gradients and chart colors
+- **Accent (Purple)**: HSL 280 70% 55% - Used for highlights and secondary accents
+- **Logo**: Located at `client/src/assets/glazer-logo.png`
+- **Brand Gradient**: `.glazer-gradient` class provides the teal→blue→purple gradient
+
 ## System Architecture
 
 ### Core Design Principles

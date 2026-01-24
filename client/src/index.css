@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE - Professional Medical Aesthetic */
+/* LIGHT MODE - GLAZER Brand Identity */
+/* Brand Colors from Logo: Teal (#00BCD4) → Blue (#2196F3) → Purple (#9C27B0) */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -12,51 +13,55 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 20% 98%;
-  --foreground: 215 25% 15%;
+  --background: 200 25% 98%;
+  --foreground: 220 25% 15%;
 
-  --border: 210 15% 88%;
+  --border: 200 20% 88%;
 
   --card: 0 0% 100%;
-  --card-foreground: 215 25% 15%;
-  --card-border: 210 15% 90%;
+  --card-foreground: 220 25% 15%;
+  --card-border: 200 20% 90%;
 
-  --sidebar: 210 25% 97%;
-  --sidebar-foreground: 215 20% 35%;
-  --sidebar-border: 210 15% 88%;
-  --sidebar-primary: 195 85% 40%;
+  --sidebar: 200 30% 97%;
+  --sidebar-foreground: 220 20% 35%;
+  --sidebar-border: 200 20% 88%;
+  --sidebar-primary: 187 85% 42%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 195 30% 92%;
-  --sidebar-accent-foreground: 195 70% 30%;
-  --sidebar-ring: 195 85% 40%;
+  --sidebar-accent: 187 35% 92%;
+  --sidebar-accent-foreground: 187 70% 30%;
+  --sidebar-ring: 187 85% 42%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 215 25% 15%;
-  --popover-border: 210 15% 88%;
+  --popover-foreground: 220 25% 15%;
+  --popover-border: 200 20% 88%;
 
-  --primary: 195 85% 40%;
+  /* Primary: Teal from logo */
+  --primary: 187 85% 42%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 210 15% 93%;
-  --secondary-foreground: 215 20% 35%;
+  /* Secondary: Light teal tint */
+  --secondary: 200 20% 93%;
+  --secondary-foreground: 220 20% 35%;
 
-  --muted: 210 15% 95%;
-  --muted-foreground: 215 15% 50%;
+  --muted: 200 20% 95%;
+  --muted-foreground: 220 15% 50%;
 
-  --accent: 195 30% 92%;
-  --accent-foreground: 195 70% 28%;
+  /* Accent: Purple from logo */
+  --accent: 280 35% 92%;
+  --accent-foreground: 280 70% 40%;
 
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 210 15% 85%;
-  --ring: 195 85% 40%;
+  --input: 200 20% 85%;
+  --ring: 187 85% 42%;
 
-  --chart-1: 195 85% 40%;
-  --chart-2: 160 65% 45%;
-  --chart-3: 35 90% 55%;
-  --chart-4: 280 65% 55%;
-  --chart-5: 350 75% 55%;
+  /* Chart colors from logo gradient */
+  --chart-1: 187 85% 42%;
+  --chart-2: 207 90% 54%;
+  --chart-3: 280 70% 55%;
+  --chart-4: 320 75% 55%;
+  --chart-5: 160 65% 45%;
 
   --font-sans: 'Inter', 'DM Sans', sans-serif;
   --font-serif: 'Merriweather', Georgia, serif;
@@ -91,6 +96,7 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* DARK MODE - GLAZER Brand Identity */
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
@@ -99,51 +105,54 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 215 25% 9%;
-  --foreground: 210 20% 95%;
+  --background: 220 25% 9%;
+  --foreground: 200 20% 95%;
 
-  --border: 215 20% 18%;
+  --border: 220 20% 18%;
 
-  --card: 215 22% 12%;
-  --card-foreground: 210 20% 95%;
-  --card-border: 215 20% 18%;
+  --card: 220 22% 12%;
+  --card-foreground: 200 20% 95%;
+  --card-border: 220 20% 18%;
 
-  --sidebar: 215 25% 10%;
-  --sidebar-foreground: 210 15% 70%;
-  --sidebar-border: 215 20% 18%;
-  --sidebar-primary: 195 80% 50%;
-  --sidebar-primary-foreground: 215 25% 9%;
-  --sidebar-accent: 195 25% 18%;
-  --sidebar-accent-foreground: 195 60% 70%;
-  --sidebar-ring: 195 80% 50%;
+  --sidebar: 220 25% 10%;
+  --sidebar-foreground: 200 15% 70%;
+  --sidebar-border: 220 20% 18%;
+  --sidebar-primary: 187 80% 50%;
+  --sidebar-primary-foreground: 220 25% 9%;
+  --sidebar-accent: 187 25% 18%;
+  --sidebar-accent-foreground: 187 60% 70%;
+  --sidebar-ring: 187 80% 50%;
 
-  --popover: 215 22% 12%;
-  --popover-foreground: 210 20% 95%;
-  --popover-border: 215 20% 20%;
+  --popover: 220 22% 12%;
+  --popover-foreground: 200 20% 95%;
+  --popover-border: 220 20% 20%;
 
-  --primary: 195 80% 50%;
-  --primary-foreground: 215 25% 9%;
+  /* Primary: Teal from logo - slightly brighter for dark mode */
+  --primary: 187 80% 50%;
+  --primary-foreground: 220 25% 9%;
 
-  --secondary: 215 18% 20%;
-  --secondary-foreground: 210 15% 80%;
+  --secondary: 220 18% 20%;
+  --secondary-foreground: 200 15% 80%;
 
-  --muted: 215 18% 16%;
-  --muted-foreground: 215 12% 55%;
+  --muted: 220 18% 16%;
+  --muted-foreground: 220 12% 55%;
 
-  --accent: 195 25% 18%;
-  --accent-foreground: 195 60% 70%;
+  /* Accent: Purple from logo */
+  --accent: 280 25% 20%;
+  --accent-foreground: 280 60% 75%;
 
   --destructive: 0 65% 50%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 215 18% 22%;
-  --ring: 195 80% 50%;
+  --input: 220 18% 22%;
+  --ring: 187 80% 50%;
 
-  --chart-1: 195 80% 50%;
-  --chart-2: 160 60% 50%;
-  --chart-3: 35 85% 60%;
-  --chart-4: 280 60% 60%;
-  --chart-5: 350 70% 60%;
+  /* Chart colors from logo gradient */
+  --chart-1: 187 80% 50%;
+  --chart-2: 207 85% 58%;
+  --chart-3: 280 65% 60%;
+  --chart-4: 320 70% 60%;
+  --chart-5: 160 60% 50%;
 
   --shadow-2xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
@@ -339,8 +348,14 @@
     border-radius: 3px;
   }
 
-  .dental-gradient {
-    background: linear-gradient(135deg, hsl(195 85% 40%) 0%, hsl(180 70% 45%) 100%);
+  /* GLAZER brand gradient: Teal → Blue → Purple (from logo) */
+  .dental-gradient,
+  .glazer-gradient {
+    background: linear-gradient(135deg, hsl(187 85% 42%) 0%, hsl(207 90% 54%) 50%, hsl(280 70% 55%) 100%);
+  }
+  
+  .glazer-gradient-subtle {
+    background: linear-gradient(135deg, hsl(187 85% 42% / 0.1) 0%, hsl(207 90% 54% / 0.1) 50%, hsl(280 70% 55% / 0.1) 100%);
   }
 }
 
