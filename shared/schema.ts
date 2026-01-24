@@ -144,6 +144,58 @@ export const pendingRegistrations = pgTable("pending_registrations", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Notification type enum
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "password_reset", "low_stock", "appointment_reminder", "security_alert"
+]);
+
+// Notification priority enum
+export const notificationPriorityEnum = pgEnum("notification_priority", ["low", "medium", "high", "urgent"]);
+
+// Notifications table
+export const notifications = pgTable("notifications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  // Who receives this notification
+  userId: varchar("user_id", { length: 36 }).references(() => users.id).notNull(),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
+  // Notification content
+  type: notificationTypeEnum("type").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  priority: notificationPriorityEnum("priority").default("medium"),
+  // Related entity (optional) - for linking to specific records
+  relatedEntityType: text("related_entity_type"), // e.g., "patient", "appointment", "inventory_item"
+  relatedEntityId: varchar("related_entity_id", { length: 36 }),
+  // Status
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  // Metadata for additional context
+  metadata: jsonb("metadata"), // Additional data like { patientName, itemName, etc. }
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Notification Preferences table - per user settings
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id", { length: 36 }).references(() => users.id).notNull().unique(),
+  // In-app notification preferences (all enabled by default)
+  passwordResetInApp: boolean("password_reset_in_app").default(true),
+  lowStockInApp: boolean("low_stock_in_app").default(true),
+  appointmentReminderInApp: boolean("appointment_reminder_in_app").default(true),
+  securityAlertInApp: boolean("security_alert_in_app").default(true),
+  // Email notification preferences (for future use)
+  passwordResetEmail: boolean("password_reset_email").default(false),
+  lowStockEmail: boolean("low_stock_email").default(false),
+  appointmentReminderEmail: boolean("appointment_reminder_email").default(false),
+  securityAlertEmail: boolean("security_alert_email").default(false),
+  // SMS notification preferences (for future use)
+  passwordResetSms: boolean("password_reset_sms").default(false),
+  lowStockSms: boolean("low_stock_sms").default(false),
+  appointmentReminderSms: boolean("appointment_reminder_sms").default(false),
+  securityAlertSms: boolean("security_alert_sms").default(false),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Password Reset Tokens table
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -753,10 +805,18 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: tru
 export const insertClinicSettingsSchema = createInsertSchema(clinicSettings).omit({ id: true, updatedAt: true });
 export const insertClinicRoomSchema = createInsertSchema(clinicRooms).omit({ id: true, createdAt: true });
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({ id: true, updatedAt: true });
 
 // Types
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
+
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
