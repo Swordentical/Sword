@@ -41,7 +41,7 @@ export function AnimatedBackground({ preset: propPreset }: AnimatedBackgroundPro
         style={{ backgroundColor: getBackgroundColor() }}
       />
       
-      {preset === "geometric" && <GeometricPattern themeMode={themeMode} />}
+      {preset === "geometric" && <GeometricPattern themeMode={themeMode} showFloatingElements={settings.showFloatingElements} />}
       {preset === "waves" && <WavesPattern themeMode={themeMode} />}
       {preset === "particles" && <ParticlesPattern themeMode={themeMode} />}
       {preset === "gradient" && <GradientPattern themeMode={themeMode} />}
@@ -81,7 +81,7 @@ export function AnimatedBackground({ preset: propPreset }: AnimatedBackgroundPro
   );
 }
 
-function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
+function GeometricPattern({ themeMode, showFloatingElements = true }: { themeMode: ThemeMode; showFloatingElements?: boolean }) {
   const getColor = (light: string, dusk: string, dark: string) => {
     switch (themeMode) {
       case "dark": return dark;
@@ -212,7 +212,7 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
         </svg>
       </div>
 
-      {dentalElements.map((el, i) => (
+      {showFloatingElements && dentalElements.map((el, i) => (
         <div
           key={i}
           className="absolute transition-colors duration-500"

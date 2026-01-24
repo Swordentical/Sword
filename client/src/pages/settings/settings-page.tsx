@@ -928,6 +928,21 @@ function AppearanceSettings() {
               </button>
             ))}
           </div>
+          
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div>
+              <Label htmlFor="floating-elements">Floating Dental Elements</Label>
+              <p className="text-xs text-muted-foreground">
+                Show animated teeth, mirrors, and probes in the background
+              </p>
+            </div>
+            <Switch
+              id="floating-elements"
+              checked={settings.showFloatingElements}
+              onCheckedChange={(checked) => updateSettings({ showFloatingElements: checked })}
+              data-testid="switch-floating-elements"
+            />
+          </div>
         </CardContent>
       </Card>
 

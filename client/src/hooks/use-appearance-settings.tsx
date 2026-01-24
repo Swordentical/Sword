@@ -7,6 +7,7 @@ export interface AppearanceSettings {
   sidebarBlur: number;
   elementsTransparency: number;
   elementsBlur: number;
+  showFloatingElements: boolean;
 }
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
@@ -15,6 +16,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   sidebarBlur: 20,
   elementsTransparency: 50,
   elementsBlur: 20,
+  showFloatingElements: true,
 };
 
 interface AppearanceSettingsContextType {
