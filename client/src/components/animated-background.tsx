@@ -91,36 +91,46 @@ function GeometricPattern({ themeMode, showFloatingElements = true }: { themeMod
   };
 
   const dentalElements = [
-    { type: 'tooth', size: 48, left: '5%', top: '8%', delay: 0, duration: 25 },
-    { type: 'mirror', size: 36, left: '85%', top: '12%', delay: 3, duration: 30 },
-    { type: 'tooth', size: 32, left: '92%', top: '45%', delay: 1, duration: 28 },
-    { type: 'probe', size: 40, left: '8%', top: '55%', delay: 5, duration: 22 },
-    { type: 'tooth', size: 28, left: '88%', top: '78%', delay: 2, duration: 26 },
-    { type: 'mirror', size: 30, left: '12%', top: '85%', delay: 4, duration: 24 },
-    { type: 'probe', size: 24, left: '75%', top: '5%', delay: 6, duration: 32 },
-    { type: 'tooth', size: 22, left: '3%', top: '35%', delay: 7, duration: 27 },
+    { type: 'tooth', size: 60, left: '4%', top: '6%', delay: 0, duration: 28, blur: 0, opacity: 0.15 },
+    { type: 'enamel', size: 80, left: '82%', top: '8%', delay: 2, duration: 35, blur: 8, opacity: 0.08 },
+    { type: 'tooth', size: 45, left: '90%', top: '40%', delay: 1, duration: 30, blur: 0, opacity: 0.12 },
+    { type: 'curve', size: 100, left: '6%', top: '50%', delay: 4, duration: 25, blur: 12, opacity: 0.06 },
+    { type: 'enamel', size: 50, left: '85%', top: '75%', delay: 3, duration: 32, blur: 0, opacity: 0.14 },
+    { type: 'tooth', size: 35, left: '15%', top: '80%', delay: 5, duration: 26, blur: 4, opacity: 0.10 },
+    { type: 'curve', size: 70, left: '70%', top: '3%', delay: 6, duration: 38, blur: 6, opacity: 0.07 },
+    { type: 'enamel', size: 40, left: '2%', top: '30%', delay: 7, duration: 29, blur: 2, opacity: 0.11 },
+    { type: 'tooth', size: 90, left: '50%', top: '85%', delay: 8, duration: 40, blur: 16, opacity: 0.04 },
+    { type: 'curve', size: 55, left: '95%', top: '60%', delay: 9, duration: 33, blur: 0, opacity: 0.13 },
   ];
 
   const renderDentalElement = (type: string, size: number, color: string) => {
     switch (type) {
       case 'tooth':
         return (
-          <svg width={size} height={size} viewBox="0 0 100 100" fill={color}>
-            <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
+          <svg width={size} height={size} viewBox="0 0 48 48" fill="none">
+            <path 
+              d="M24 6C16 6 12 12 12 18C12 24 14 28 16 32C18 36 20 40 22 42C23 43 24 43 24 43C24 43 25 43 26 42C28 40 30 36 32 32C34 28 36 24 36 18C36 12 32 6 24 6Z" 
+              fill={color}
+            />
           </svg>
         );
-      case 'mirror':
+      case 'enamel':
         return (
-          <svg width={size} height={size * 1.5} viewBox="0 0 40 60" fill={color}>
-            <circle cx="20" cy="12" r="10" fill="none" stroke={color} strokeWidth="2.5"/>
-            <rect x="18" y="22" width="4" height="35" rx="2"/>
+          <svg width={size} height={size * 0.6} viewBox="0 0 60 36" fill="none">
+            <ellipse cx="30" cy="18" rx="28" ry="16" fill={color} />
+            <ellipse cx="30" cy="14" rx="18" ry="8" fill={color} style={{ opacity: 0.5 }} />
           </svg>
         );
-      case 'probe':
+      case 'curve':
         return (
-          <svg width={size * 0.4} height={size * 1.5} viewBox="0 0 16 60" fill={color}>
-            <path d="M8 0 C6 3 4 8 4 12 L4 50 C4 54 6 56 8 56 C10 56 12 54 12 50 L12 12 C12 8 10 3 8 0z"/>
-            <circle cx="8" cy="4" r="2"/>
+          <svg width={size} height={size * 0.5} viewBox="0 0 80 40" fill="none">
+            <path 
+              d="M4 36C4 36 20 4 40 4C60 4 76 36 76 36" 
+              stroke={color}
+              strokeWidth="6"
+              strokeLinecap="round"
+              fill="none"
+            />
           </svg>
         );
       default:
@@ -215,23 +225,38 @@ function GeometricPattern({ themeMode, showFloatingElements = true }: { themeMod
       {showFloatingElements && dentalElements.map((el, i) => (
         <div
           key={i}
-          className="absolute transition-colors duration-500"
+          className="absolute transition-all duration-500"
           style={{
             left: el.left,
             top: el.top,
-            animation: `dental-rotate-${i % 2} ${el.duration}s ease-in-out infinite`,
+            opacity: el.opacity,
+            filter: el.blur > 0 ? `blur(${el.blur}px)` : 'none',
+            animation: `dental-float-${i % 3} ${el.duration}s ease-in-out infinite`,
             animationDelay: `${el.delay}s`,
           }}
         >
           {renderDentalElement(
             el.type, 
             el.size, 
-            getColor('rgba(0, 188, 212, 0.12)', 'rgba(251, 146, 60, 0.12)', 'rgba(0, 188, 212, 0.08)')
+            getColor('rgb(0, 188, 212)', 'rgb(251, 146, 60)', 'rgb(0, 188, 212)')
           )}
         </div>
       ))}
 
       <style>{`
+        @keyframes dental-float-0 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-12px) rotate(3deg); }
+        }
+        @keyframes dental-float-1 {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-8px) rotate(-2deg); }
+        }
+        @keyframes dental-float-2 {
+          0%, 100% { transform: translateX(0px) translateY(0px); }
+          33% { transform: translateX(6px) translateY(-6px); }
+          66% { transform: translateX(-4px) translateY(-10px); }
+        }
         @keyframes dental-rotate-0 {
           0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.6; }
           25% { transform: rotate(15deg) scale(1.05); opacity: 0.8; }
