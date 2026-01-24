@@ -25,9 +25,13 @@ import {
   FileScan,
   Pill,
   ChevronLeft,
+  ChevronDown,
   File,
   Printer,
   Download,
+  FileJson,
+  FileCode,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +47,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -2612,6 +2622,319 @@ export default function PatientDetail() {
     : null;
   const initials = `${patient.firstName.charAt(0)}${patient.lastName.charAt(0)}`;
 
+  const generateProfileHtml = (forDownload: boolean = false): string => {
+    const patientAge = patient.dateOfBirth 
+      ? differenceInYears(new Date(), new Date(patient.dateOfBirth))
+      : null;
+    
+    const allergiesArray = patient.allergies || [];
+    const conditionsArray = patient.medicalConditions || [];
+    const medicationsArray = patient.currentMedications || [];
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Patient Profile - ${patient.firstName} ${patient.lastName}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            padding: 40px; 
+            color: #1a1a1a;
+            background: #fff;
+          }
+          .header { 
+            background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+          }
+          .header h1 { font-size: 28px; margin-bottom: 5px; }
+          .header p { opacity: 0.9; }
+          .logo-text { font-size: 14px; font-weight: 600; letter-spacing: 2px; margin-bottom: 15px; }
+          .patient-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-top: 15px;
+          }
+          .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+            overflow: hidden;
+          }
+          .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .patient-info h2 { font-size: 24px; margin-bottom: 5px; }
+          .patient-info p { opacity: 0.9; font-size: 14px; }
+          .section { 
+            background: #f8f9fa; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+          }
+          .section-title { 
+            font-size: 16px; 
+            font-weight: 600; 
+            color: #12a3b0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #12a3b0;
+          }
+          .info-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 15px; 
+          }
+          .info-item label { 
+            font-size: 11px; 
+            color: #666; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .info-item p { 
+            font-size: 14px; 
+            font-weight: 500;
+            margin-top: 3px;
+          }
+          .badge-list { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 8px; 
+          }
+          .badge { 
+            background: #e9ecef; 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            font-size: 12px;
+            color: #495057;
+          }
+          .badge.allergy { 
+            background: #fee2e2; 
+            color: #991b1b; 
+          }
+          .badge.condition { 
+            background: #fef3c7; 
+            color: #92400e; 
+          }
+          .badge.medication { 
+            background: #dbeafe; 
+            color: #1e40af; 
+          }
+          .footer { 
+            text-align: center; 
+            color: #999; 
+            font-size: 11px; 
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+          }
+          .notes-box {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+          }
+          @media print {
+            body { padding: 20px; }
+            .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo-text">GLAZER DENTAL CLINIC</div>
+          <div class="patient-header">
+            <div class="avatar">
+              ${patient.photo ? `<img src="${patient.photo}" alt="Patient Photo" />` : `${patient.firstName[0]}${patient.lastName[0]}`}
+            </div>
+            <div class="patient-info">
+              <h2>${patient.firstName} ${patient.lastName}</h2>
+              <p>Patient ID: ${patient.id} ${patientAge ? ` | Age: ${patientAge} years` : ''} ${patient.gender ? ` | ${patient.gender}` : ''}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Contact Information</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Phone</label>
+              <p>${patient.phone || '-'}</p>
+            </div>
+            <div class="info-item">
+              <label>Email</label>
+              <p>${patient.email || '-'}</p>
+            </div>
+            <div class="info-item">
+              <label>Address</label>
+              <p>${patient.address || '-'}</p>
+            </div>
+            <div class="info-item">
+              <label>Date of Birth</label>
+              <p>${patient.dateOfBirth ? format(new Date(patient.dateOfBirth), "PPP") : '-'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Medical Information</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Blood Type</label>
+              <p>${patient.bloodType || '-'}</p>
+            </div>
+            <div class="info-item">
+              <label>Emergency Contact</label>
+              <p>${patient.emergencyContact || '-'}</p>
+            </div>
+          </div>
+          
+          <div style="margin-top: 20px;">
+            <label style="font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Allergies</label>
+            <div class="badge-list" style="margin-top: 8px;">
+              ${allergiesArray.length > 0 
+                ? allergiesArray.map((a: string) => `<span class="badge allergy">${a}</span>`).join('')
+                : '<span style="color: #999; font-size: 13px;">No known allergies</span>'
+              }
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <label style="font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Medical Conditions</label>
+            <div class="badge-list" style="margin-top: 8px;">
+              ${conditionsArray.length > 0 
+                ? conditionsArray.map((c: string) => `<span class="badge condition">${c}</span>`).join('')
+                : '<span style="color: #999; font-size: 13px;">No known conditions</span>'
+              }
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <label style="font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Current Medications</label>
+            <div class="badge-list" style="margin-top: 8px;">
+              ${medicationsArray.length > 0 
+                ? medicationsArray.map((m: string) => `<span class="badge medication">${m}</span>`).join('')
+                : '<span style="color: #999; font-size: 13px;">No current medications</span>'
+              }
+            </div>
+          </div>
+        </div>
+
+        ${patient.medicalNotes ? `
+        <div class="section">
+          <div class="section-title">Medical Notes</div>
+          <div class="notes-box">${patient.medicalNotes}</div>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <div class="section-title">Insurance Information</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <label>Insurance Provider</label>
+              <p>${patient.insuranceProvider || '-'}</p>
+            </div>
+            <div class="info-item">
+              <label>Policy Number</label>
+              <p>${patient.insurancePolicyNumber || '-'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p>Generated on ${format(new Date(), "PPP 'at' p")}</p>
+          <p style="margin-top: 5px;">GLAZER Dental Clinic Management System</p>
+        </div>
+        ${forDownload ? '' : `
+        <script>
+          window.onload = function() { window.print(); }
+        </script>
+        `}
+      </body>
+      </html>
+    `;
+  };
+
+  const handleExportProfileJson = () => {
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      exportedFrom: "GLAZER Dental Clinic",
+      patient: {
+        id: patient.id,
+        firstName: patient.firstName,
+        lastName: patient.lastName,
+        email: patient.email,
+        phone: patient.phone,
+        dateOfBirth: patient.dateOfBirth,
+        gender: patient.gender,
+        address: patient.address,
+        bloodType: patient.bloodType,
+        allergies: patient.allergies,
+        medicalConditions: patient.medicalConditions,
+        currentMedications: patient.currentMedications,
+        medicalNotes: patient.medicalNotes,
+        emergencyContact: patient.emergencyContact,
+        insuranceProvider: patient.insuranceProvider,
+        insurancePolicyNumber: patient.insurancePolicyNumber,
+        createdAt: patient.createdAt,
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Patient_${patient.firstName}_${patient.lastName}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportProfileHtml = () => {
+    const profileHtml = generateProfileHtml(true);
+    if (!profileHtml) return;
+    
+    const blob = new Blob([profileHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Patient_Profile_${patient.firstName}_${patient.lastName}_${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintProfile = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    const profileHtml = generateProfileHtml(false);
+    if (!profileHtml) return;
+    
+    printWindow.document.write(profileHtml);
+    printWindow.document.close();
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
@@ -2628,10 +2951,29 @@ export default function PatientDetail() {
           <p className="text-muted-foreground">View and manage patient information</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" onClick={() => window.print()} data-testid="button-print-profile">
-            <FileText className="h-4 w-4 mr-2" />
-            Print Profile
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" data-testid="button-export-profile">
+                <Share2 className="h-4 w-4 mr-2" />
+                Export
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportProfileJson} data-testid="menu-export-json">
+                <FileJson className="h-4 w-4 mr-2" />
+                Download as JSON
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportProfileHtml} data-testid="menu-export-html">
+                <FileCode className="h-4 w-4 mr-2" />
+                Download as HTML
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handlePrintProfile} data-testid="menu-print-profile">
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="outline" onClick={() => setQuickAppointmentOpen(true)} data-testid="button-quick-appointment">
             <Calendar className="h-4 w-4 mr-2" />
             Add Appointment
