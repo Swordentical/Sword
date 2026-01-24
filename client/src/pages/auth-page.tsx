@@ -127,50 +127,6 @@ export default function AuthPage() {
       {/* Live Animated Background */}
       <AnimatedBackground />
       
-      {/* Dental Illustrations - Blending with background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-[1]">
-        {/* Large tooth - top left area */}
-        <svg className="absolute top-[8%] left-[26%] w-32 h-32 text-primary/10 dark:text-primary/5 animate-pulse" viewBox="0 0 100 100" fill="currentColor">
-          <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
-        </svg>
-        
-        {/* Smile curve - top right */}
-        <svg className="absolute top-[12%] right-[28%] w-24 h-16 text-primary/8 dark:text-primary/4" viewBox="0 0 100 50" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round">
-          <path d="M10 15 Q50 45 90 15"/>
-        </svg>
-        
-        {/* Small tooth - bottom left */}
-        <svg className="absolute bottom-[15%] left-[28%] w-20 h-20 text-primary/8 dark:text-primary/4 rotate-12" viewBox="0 0 100 100" fill="currentColor">
-          <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
-        </svg>
-        
-        {/* Dental mirror - bottom right */}
-        <svg className="absolute bottom-[18%] right-[30%] w-16 h-24 text-primary/10 dark:text-primary/5 -rotate-45" viewBox="0 0 40 80" fill="currentColor">
-          <circle cx="20" cy="15" r="12" fill="none" stroke="currentColor" strokeWidth="3"/>
-          <rect x="18" y="27" width="4" height="45" rx="2"/>
-        </svg>
-        
-        {/* Sparkle stars scattered */}
-        <svg className="absolute top-[25%] left-[32%] w-6 h-6 text-primary/15 dark:text-primary/8 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
-        </svg>
-        <svg className="absolute bottom-[28%] right-[34%] w-5 h-5 text-primary/12 dark:text-primary/6 animate-pulse" style={{animationDelay: '1s'}} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
-        </svg>
-        <svg className="absolute top-[60%] left-[30%] w-4 h-4 text-primary/10 dark:text-primary/5 animate-pulse" style={{animationDelay: '0.5s'}} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0L14.5 9.5L24 12L14.5 14.5L12 24L9.5 14.5L0 12L9.5 9.5L12 0Z"/>
-        </svg>
-        
-        {/* Floating plus signs (medical) */}
-        <svg className="absolute top-[40%] left-[25%] w-8 h-8 text-primary/8 dark:text-primary/4" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="10" y="4" width="4" height="16" rx="1"/>
-          <rect x="4" y="10" width="16" height="4" rx="1"/>
-        </svg>
-        <svg className="absolute bottom-[35%] right-[26%] w-6 h-6 text-primary/10 dark:text-primary/5" viewBox="0 0 24 24" fill="currentColor">
-          <rect x="10" y="4" width="4" height="16" rx="1"/>
-          <rect x="4" y="10" width="16" height="4" rx="1"/>
-        </svg>
-      </div>
       
       {/* Theme Toggle */}
       <div className="absolute top-4 right-4 z-50">

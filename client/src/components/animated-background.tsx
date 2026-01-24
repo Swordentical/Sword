@@ -90,6 +90,44 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
     }
   };
 
+  const dentalElements = [
+    { type: 'tooth', size: 48, left: '5%', top: '8%', delay: 0, duration: 25 },
+    { type: 'mirror', size: 36, left: '85%', top: '12%', delay: 3, duration: 30 },
+    { type: 'tooth', size: 32, left: '92%', top: '45%', delay: 1, duration: 28 },
+    { type: 'probe', size: 40, left: '8%', top: '55%', delay: 5, duration: 22 },
+    { type: 'tooth', size: 28, left: '88%', top: '78%', delay: 2, duration: 26 },
+    { type: 'mirror', size: 30, left: '12%', top: '85%', delay: 4, duration: 24 },
+    { type: 'probe', size: 24, left: '75%', top: '5%', delay: 6, duration: 32 },
+    { type: 'tooth', size: 22, left: '3%', top: '35%', delay: 7, duration: 27 },
+  ];
+
+  const renderDentalElement = (type: string, size: number, color: string) => {
+    switch (type) {
+      case 'tooth':
+        return (
+          <svg width={size} height={size} viewBox="0 0 100 100" fill={color}>
+            <path d="M50 10c-15 0-25 8-28 20-2 8 0 15 3 22 2 5 5 10 7 18 3 12 5 20 8 25 2 3 5 5 10 5s8-2 10-5c3-5 5-13 8-25 2-8 5-13 7-18 3-7 5-14 3-22-3-12-13-20-28-20z"/>
+          </svg>
+        );
+      case 'mirror':
+        return (
+          <svg width={size} height={size * 1.5} viewBox="0 0 40 60" fill={color}>
+            <circle cx="20" cy="12" r="10" fill="none" stroke={color} strokeWidth="2.5"/>
+            <rect x="18" y="22" width="4" height="35" rx="2"/>
+          </svg>
+        );
+      case 'probe':
+        return (
+          <svg width={size * 0.4} height={size * 1.5} viewBox="0 0 16 60" fill={color}>
+            <path d="M8 0 C6 3 4 8 4 12 L4 50 C4 54 6 56 8 56 C10 56 12 54 12 50 L12 12 C12 8 10 3 8 0z"/>
+            <circle cx="8" cy="4" r="2"/>
+          </svg>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
       <svg 
@@ -99,57 +137,25 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
         <defs>
           <pattern 
             id="grid-pattern" 
-            width="40" 
-            height="40" 
+            width="60" 
+            height="60" 
             patternUnits="userSpaceOnUse"
           >
             <circle 
-              cx="20" 
-              cy="20" 
-              r="1.5" 
-              fill={getColor('rgba(0, 188, 212, 0.12)', 'rgba(251, 146, 60, 0.12)', 'rgba(0, 188, 212, 0.10)')}
-            />
-          </pattern>
-          
-          <pattern 
-            id="hex-pattern" 
-            width="56" 
-            height="100" 
-            patternUnits="userSpaceOnUse"
-            patternTransform="scale(1.5)"
-          >
-            <path 
-              d="M28 66L0 50L0 16L28 0L56 16L56 50L28 66L28 100" 
-              fill="none" 
-              stroke={getColor('rgba(0, 188, 212, 0.10)', 'rgba(251, 146, 60, 0.10)', 'rgba(0, 188, 212, 0.08)')}
-              strokeWidth="1.5"
-            />
-            <path 
-              d="M28 0L28 34L0 50L0 84L28 100L56 84L56 50L28 34" 
-              fill="none" 
-              stroke={getColor('rgba(156, 39, 176, 0.08)', 'rgba(251, 146, 60, 0.08)', 'rgba(156, 39, 176, 0.06)')}
-              strokeWidth="1"
+              cx="30" 
+              cy="30" 
+              r="1" 
+              fill={getColor('rgba(0, 188, 212, 0.08)', 'rgba(251, 146, 60, 0.08)', 'rgba(0, 188, 212, 0.06)')}
             />
           </pattern>
 
           <linearGradient id="fade-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.08)', 'rgba(251, 146, 60, 0.10)', 'rgba(0, 188, 212, 0.08)')} />
+            <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.06)', 'rgba(251, 146, 60, 0.08)', 'rgba(0, 188, 212, 0.06)')} />
             <stop offset="50%" stopColor="transparent" />
-            <stop offset="100%" stopColor={getColor('rgba(156, 39, 176, 0.08)', 'rgba(236, 72, 153, 0.10)', 'rgba(156, 39, 176, 0.08)')} />
+            <stop offset="100%" stopColor={getColor('rgba(156, 39, 176, 0.06)', 'rgba(236, 72, 153, 0.08)', 'rgba(156, 39, 176, 0.06)')} />
           </linearGradient>
-
-          <radialGradient id="glow-1" cx="20%" cy="30%" r="40%">
-            <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.15)', 'rgba(251, 146, 60, 0.15)', 'rgba(0, 188, 212, 0.12)')} />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-
-          <radialGradient id="glow-2" cx="80%" cy="70%" r="40%">
-            <stop offset="0%" stopColor={getColor('rgba(156, 39, 176, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(156, 39, 176, 0.12)')} />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
         </defs>
 
-        <rect width="100%" height="100%" fill="url(#hex-pattern)" />
         <rect width="100%" height="100%" fill="url(#grid-pattern)" />
         <rect width="100%" height="100%" fill="url(#fade-gradient)" />
       </svg>
@@ -161,7 +167,7 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="glow-anim-1" cx="20%" cy="30%" r="40%">
-              <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.15)', 'rgba(251, 146, 60, 0.15)', 'rgba(0, 188, 212, 0.12)')} />
+              <stop offset="0%" stopColor={getColor('rgba(0, 188, 212, 0.12)', 'rgba(251, 146, 60, 0.12)', 'rgba(0, 188, 212, 0.10)')} />
               <stop offset="100%" stopColor="transparent" />
             </radialGradient>
           </defs>
@@ -176,7 +182,7 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="glow-anim-2" cx="80%" cy="70%" r="40%">
-              <stop offset="0%" stopColor={getColor('rgba(156, 39, 176, 0.15)', 'rgba(236, 72, 153, 0.15)', 'rgba(156, 39, 176, 0.12)')} />
+              <stop offset="0%" stopColor={getColor('rgba(156, 39, 176, 0.12)', 'rgba(236, 72, 153, 0.12)', 'rgba(156, 39, 176, 0.10)')} />
               <stop offset="100%" stopColor="transparent" />
             </radialGradient>
           </defs>
@@ -184,23 +190,38 @@ function GeometricPattern({ themeMode }: { themeMode: ThemeMode }) {
         </svg>
       </div>
 
-      <div className="floating-particles">
-        {[...Array(6)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute rounded-full transition-colors duration-500"
-            style={{
-              backgroundColor: getColor('rgba(0, 188, 212, 0.06)', 'rgba(251, 146, 60, 0.06)', 'rgba(0, 188, 212, 0.04)'),
-              width: `${100 + i * 50}px`,
-              height: `${100 + i * 50}px`,
-              left: `${(i * 20) % 100}%`,
-              top: `${(i * 15 + 10) % 100}%`,
-              animation: `float-${i % 3} ${15 + i * 3}s ease-in-out infinite`,
-              animationDelay: `${i * 2}s`,
-            }}
-          />
-        ))}
-      </div>
+      {dentalElements.map((el, i) => (
+        <div
+          key={i}
+          className="absolute transition-colors duration-500"
+          style={{
+            left: el.left,
+            top: el.top,
+            animation: `dental-rotate-${i % 2} ${el.duration}s ease-in-out infinite`,
+            animationDelay: `${el.delay}s`,
+          }}
+        >
+          {renderDentalElement(
+            el.type, 
+            el.size, 
+            getColor('rgba(0, 188, 212, 0.12)', 'rgba(251, 146, 60, 0.12)', 'rgba(0, 188, 212, 0.08)')
+          )}
+        </div>
+      ))}
+
+      <style>{`
+        @keyframes dental-rotate-0 {
+          0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.6; }
+          25% { transform: rotate(15deg) scale(1.05); opacity: 0.8; }
+          50% { transform: rotate(0deg) scale(1); opacity: 0.6; }
+          75% { transform: rotate(-15deg) scale(0.95); opacity: 0.7; }
+        }
+        @keyframes dental-rotate-1 {
+          0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.5; }
+          33% { transform: rotate(-20deg) scale(1.08); opacity: 0.7; }
+          66% { transform: rotate(10deg) scale(0.92); opacity: 0.6; }
+        }
+      `}</style>
     </>
   );
 }
