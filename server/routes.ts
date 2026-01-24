@@ -24,6 +24,7 @@ import {
   insertUserSchema,
   insertExternalLabSchema,
   insertLabServiceSchema,
+  insertNotificationPreferencesSchema,
   patients,
   appointments,
   invoices,
@@ -35,9 +36,13 @@ import {
   organizations,
   promoCodes,
   passwordResetTokens,
+  notifications,
+  notificationPreferences,
   type PlanFeatures,
+  type InsertNotification,
 } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
+import { notifyAdminsPasswordResetRequest, notifyPasswordResetByAdmin, notifyLowStock } from "./notificationService";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -407,6 +412,17 @@ export async function registerRoutes(
         details: `Admin ${adminUser.firstName} ${adminUser.lastName} reset password for ${targetUser.firstName} ${targetUser.lastName}`,
       });
 
+      // Notify user that their password was reset by admin
+      try {
+        await notifyPasswordResetByAdmin(
+          id, 
+          `${adminUser.firstName} ${adminUser.lastName}`,
+          targetUser.organizationId ?? undefined
+        );
+      } catch (notifyError) {
+        console.error("Failed to notify user:", notifyError);
+      }
+
       res.json({ message: `Password reset successfully for ${targetUser.firstName} ${targetUser.lastName}` });
     } catch (error) {
       console.error("Admin password reset error:", error);
@@ -455,6 +471,13 @@ export async function registerRoutes(
         resetMethod,
         expiresAt,
       });
+
+      // Notify admins about the password reset request
+      try {
+        await notifyAdminsPasswordResetRequest(user.id, identifier, user.organizationId ?? undefined);
+      } catch (notifyError) {
+        console.error("Failed to notify admins:", notifyError);
+      }
 
       // For now, without email/SMS integration, return info for admin reset
       // In production, this would send an email or SMS
@@ -530,6 +553,195 @@ export async function registerRoutes(
   });
 
   // ==================== END PASSWORD MANAGEMENT ====================
+
+  // ==================== NOTIFICATIONS ====================
+
+  // Get user notifications
+  app.get("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { unreadOnly } = req.query;
+      
+      const whereCondition = unreadOnly === "true" 
+        ? and(eq(notifications.userId, user.id), eq(notifications.isRead, false))
+        : eq(notifications.userId, user.id);
+      
+      const userNotifications = await db.select()
+        .from(notifications)
+        .where(whereCondition)
+        .orderBy(desc(notifications.createdAt))
+        .limit(50);
+      
+      res.json(userNotifications);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Get unread notification count
+  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      const result = await db.select({ count: sql<number>`count(*)` })
+        .from(notifications)
+        .where(and(eq(notifications.userId, user.id), eq(notifications.isRead, false)));
+      
+      res.json({ count: Number(result[0]?.count || 0) });
+    } catch (error) {
+      console.error("Failed to get unread count:", error);
+      res.status(500).json({ message: "Failed to get unread count" });
+    }
+  });
+
+  // Mark notification as read
+  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { id } = req.params;
+      
+      // Verify ownership
+      const notification = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+      if (!notification.length || notification[0].userId !== user.id) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      await db.update(notifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(eq(notifications.id, id));
+      
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  // Mark all notifications as read
+  app.patch("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      await db.update(notifications)
+        .set({ isRead: true, readAt: new Date() })
+        .where(and(eq(notifications.userId, user.id), eq(notifications.isRead, false)));
+      
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Delete notification
+  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { id } = req.params;
+      
+      // Verify ownership
+      const notification = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+      if (!notification.length || notification[0].userId !== user.id) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      await db.delete(notifications).where(eq(notifications.id, id));
+      
+      res.json({ message: "Notification deleted" });
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+      res.status(500).json({ message: "Failed to delete notification" });
+    }
+  });
+
+  // Clear all notifications
+  app.delete("/api/notifications", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      await db.delete(notifications).where(eq(notifications.userId, user.id));
+      
+      res.json({ message: "All notifications cleared" });
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+      res.status(500).json({ message: "Failed to clear notifications" });
+    }
+  });
+
+  // Get notification preferences
+  app.get("/api/notification-preferences", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      let prefs = await db.select().from(notificationPreferences)
+        .where(eq(notificationPreferences.userId, user.id))
+        .limit(1);
+      
+      // Create default preferences if none exist
+      if (!prefs.length) {
+        const newPrefs = await db.insert(notificationPreferences)
+          .values({ userId: user.id })
+          .returning();
+        prefs = newPrefs;
+      }
+      
+      res.json(prefs[0]);
+    } catch (error) {
+      console.error("Failed to fetch notification preferences:", error);
+      res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
+  // Update notification preferences
+  app.patch("/api/notification-preferences", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      // Validate request body with strict schema
+      const updateSchema = insertNotificationPreferencesSchema.pick({
+        passwordResetInApp: true,
+        lowStockInApp: true,
+        appointmentReminderInApp: true,
+        securityAlertInApp: true,
+        passwordResetEmail: true,
+        lowStockEmail: true,
+        appointmentReminderEmail: true,
+        securityAlertEmail: true,
+        passwordResetSms: true,
+        lowStockSms: true,
+        appointmentReminderSms: true,
+        securityAlertSms: true,
+      }).partial().strict();
+      
+      const parsed = updateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+      
+      // Ensure preferences exist
+      let prefs = await db.select().from(notificationPreferences)
+        .where(eq(notificationPreferences.userId, user.id))
+        .limit(1);
+      
+      if (!prefs.length) {
+        await db.insert(notificationPreferences).values({ userId: user.id });
+      }
+      
+      // Update preferences with validated data only
+      const updated = await db.update(notificationPreferences)
+        .set({ ...parsed.data, updatedAt: new Date() })
+        .where(eq(notificationPreferences.userId, user.id))
+        .returning();
+      
+      res.json(updated[0]);
+    } catch (error) {
+      console.error("Failed to update notification preferences:", error);
+      res.status(500).json({ message: "Failed to update notification preferences" });
+    }
+  });
+
+  // ==================== END NOTIFICATIONS ====================
 
   // Patients
   app.get("/api/patients", requireAuth, async (req, res) => {
@@ -2215,6 +2427,29 @@ export async function registerRoutes(
         description: `Updated inventory item: ${item.name}`,
         ipAddress: req.ip || null,
       });
+
+      // Check if item is low on stock and notify admins
+      const currentQty = item.currentQuantity ?? 0;
+      const minQty = item.minimumQuantity ?? 0;
+      if (currentQty <= minQty) {
+        try {
+          // Get all admins to notify
+          const allUsers = await storage.getUsers();
+          const admins = allUsers.filter((u: any) => u.role === "admin");
+          for (const admin of admins) {
+            await notifyLowStock(
+              admin.id,
+              item.name,
+              currentQty,
+              minQty,
+              item.id,
+              admin.organizationId ?? undefined
+            );
+          }
+        } catch (notifyError) {
+          console.error("Failed to send low stock notification:", notifyError);
+        }
+      }
 
       res.json(item);
     } catch (error) {

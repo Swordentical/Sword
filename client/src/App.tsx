@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationCenter } from "@/components/notification-center";
 
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
@@ -48,7 +49,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col flex-1 overflow-hidden">
           <header className="flex items-center justify-between gap-4 h-14 px-4 border-b shrink-0 bg-background backdrop-blur-[var(--elements-blur,3px)] [background-color:hsl(var(--background)/var(--elements-transparency,0.85))]">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <NotificationCenter />
               <ThemeToggle />
             </div>
           </header>

@@ -28,6 +28,7 @@ import {
   Camera,
   KeyRound,
   Lock,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1601,6 +1602,148 @@ function EditUserDialog({
   );
 }
 
+// Notification Settings Component
+function NotificationSettings() {
+  const { toast } = useToast();
+  
+  const { data: preferences, isLoading, refetch } = useQuery({
+    queryKey: ["/api/notification-preferences"],
+  });
+
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (updates: Record<string, boolean>) => {
+      const response = await apiRequest("PATCH", "/api/notification-preferences", updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notification-preferences"] });
+      toast({
+        title: "Preferences Updated",
+        description: "Your notification preferences have been saved.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update notification preferences.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleToggle = (key: string, value: boolean) => {
+    updatePreferencesMutation.mutate({ [key]: value });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const notificationTypes = [
+    {
+      id: "password_reset",
+      title: "Password Reset Requests",
+      description: "Get notified when a password reset is requested",
+      inAppKey: "passwordResetInApp",
+      emailKey: "passwordResetEmail",
+      smsKey: "passwordResetSms",
+    },
+    {
+      id: "low_stock",
+      title: "Low Stock Alerts",
+      description: "Receive alerts when inventory items are running low",
+      inAppKey: "lowStockInApp",
+      emailKey: "lowStockEmail",
+      smsKey: "lowStockSms",
+    },
+    {
+      id: "appointment_reminder",
+      title: "Appointment Reminders",
+      description: "Get reminders about upcoming appointments",
+      inAppKey: "appointmentReminderInApp",
+      emailKey: "appointmentReminderEmail",
+      smsKey: "appointmentReminderSms",
+    },
+    {
+      id: "security_alert",
+      title: "Security Alerts",
+      description: "Receive alerts about unusual account activity",
+      inAppKey: "securityAlertInApp",
+      emailKey: "securityAlertEmail",
+      smsKey: "securityAlertSms",
+    },
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bell className="h-5 w-5" />
+          Notification Preferences
+        </CardTitle>
+        <CardDescription>
+          Choose how you want to receive notifications. Email and SMS notifications will be available in a future update.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {notificationTypes.map((type) => (
+          <div key={type.id} className="space-y-4 pb-4 border-b last:border-b-0 last:pb-0">
+            <div>
+              <h4 className="font-medium">{type.title}</h4>
+              <p className="text-sm text-muted-foreground">{type.description}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">In-App</span>
+                </div>
+                <Switch
+                  checked={(preferences as Record<string, boolean>)?.[type.inAppKey] ?? true}
+                  onCheckedChange={(checked) => handleToggle(type.inAppKey, checked)}
+                  data-testid={`switch-${type.id}-inapp`}
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 opacity-60">
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium">Email</span>
+                  <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                </div>
+                <Switch
+                  disabled
+                  checked={(preferences as Record<string, boolean>)?.[type.emailKey] ?? false}
+                  data-testid={`switch-${type.id}-email`}
+                />
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 opacity-60">
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm font-medium">SMS</span>
+                  <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                </div>
+                <Switch
+                  disabled
+                  checked={(preferences as Record<string, boolean>)?.[type.smsKey] ?? false}
+                  data-testid={`switch-${type.id}-sms`}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 type SortField = "name" | "role" | "status";
 type SortDirection = "asc" | "desc";
 
@@ -2015,6 +2158,10 @@ export default function SettingsPage() {
             <Lock className="h-4 w-4 mr-2" />
             Security
           </TabsTrigger>
+          <TabsTrigger value="notifications" data-testid="tab-notifications">
+            <Bell className="h-4 w-4 mr-2" />
+            Notifications
+          </TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">
             <Users className="h-4 w-4 mr-2" />
             Users
@@ -2035,6 +2182,10 @@ export default function SettingsPage() {
 
         <TabsContent value="security">
           <SecuritySettings />
+        </TabsContent>
+
+        <TabsContent value="notifications">
+          <NotificationSettings />
         </TabsContent>
 
         <TabsContent value="users">
