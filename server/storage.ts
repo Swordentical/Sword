@@ -986,7 +986,7 @@ export class DatabaseStorage implements IStorage {
 
     // Service costs (from completed patient treatments - using treatment cost field)
     const serviceCostsResult = await db.select({
-      total: sql<string>`COALESCE(SUM(CAST(t.cost AS DECIMAL)), 0)`
+      total: sql<string>`COALESCE(SUM(CAST(${treatments.cost} AS DECIMAL)), 0)`
     }).from(patientTreatments)
       .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
       .where(and(
@@ -1027,7 +1027,7 @@ export class DatabaseStorage implements IStorage {
 
     const monthlyServiceCosts = await db.select({
       month: sql<string>`TO_CHAR(completion_date, 'YYYY-MM')`,
-      costs: sql<string>`COALESCE(SUM(CAST(t.cost AS DECIMAL)), 0)`
+      costs: sql<string>`COALESCE(SUM(CAST(${treatments.cost} AS DECIMAL)), 0)`
     }).from(patientTreatments)
       .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
       .where(and(
