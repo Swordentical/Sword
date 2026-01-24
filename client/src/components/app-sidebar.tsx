@@ -211,17 +211,12 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg overflow-hidden bg-white">
-            <img src={glazerLogo} alt="GLAZER" className="h-10 w-10 object-contain" />
-          </div>
+          <img src={glazerLogo} alt="GLAZER" className="h-12 w-auto object-contain" />
           <div className="flex flex-col">
-            <span className="text-base font-semibold text-sidebar-foreground">
-              GLAZER
+            <span className="text-xs text-muted-foreground">
+              By Dr. Ahmad Saleh
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                By Dr. Ahmad Saleh
-              </span>
               {planType && (
                 <Badge 
                   variant="outline" 

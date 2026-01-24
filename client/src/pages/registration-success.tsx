@@ -58,14 +58,9 @@ export default function RegistrationSuccessPage() {
       
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-lg overflow-hidden">
-              <img src={glazerLogo} alt="GLAZER" className="h-12 w-12 object-contain" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">GLAZER</h1>
-              <p className="text-sm text-muted-foreground">By Dr. Ahmad Saleh</p>
-            </div>
+          <div className="flex flex-col items-center mb-8">
+            <img src={glazerLogo} alt="GLAZER" className="h-20 w-auto object-contain" />
+            <p className="text-sm text-muted-foreground mt-1">By Dr. Ahmad Saleh</p>
           </div>
 
           <Card>
