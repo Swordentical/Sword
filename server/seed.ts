@@ -517,6 +517,49 @@ export async function seedDatabase() {
       }
     }
 
+    console.log("Seeding future appointments for next week...");
+    for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
+      const futureDate = new Date(now);
+      futureDate.setDate(futureDate.getDate() + dayOffset);
+      
+      // Skip weekends
+      if (futureDate.getDay() === 0 || futureDate.getDay() === 6) continue;
+      
+      // 10-18 appointments per day
+      const appointmentsPerDay = 10 + Math.floor(Math.random() * 9);
+      
+      for (let i = 0; i < appointmentsPerDay; i++) {
+        const patientId = randomItem(patientIds);
+        const doctorId = doctorIds.length > 0 ? randomItem(doctorIds) : null;
+        const hour = 8 + Math.floor(i / 2);
+        const minute = (i % 2) * 30;
+        
+        const startTime = new Date(futureDate);
+        startTime.setHours(hour, minute, 0, 0);
+        
+        const duration = randomItem([30, 45, 60]);
+        const endTime = new Date(startTime.getTime() + duration * 60000);
+        
+        const categories = ["checkup", "cleaning", "follow_up", "new_visit"] as const;
+        const category = randomItem(categories);
+        const statuses: ("confirmed" | "pending")[] = ["confirmed", "pending"];
+        
+        await db.insert(appointments).values({
+          patientId,
+          doctorId,
+          title: category === "checkup" ? "Regular Checkup" : 
+                 category === "cleaning" ? "Dental Cleaning" :
+                 category === "new_visit" ? "New Patient Exam" : "Follow-up Visit",
+          startTime: startTime,
+          endTime: endTime,
+          status: randomItem(statuses),
+          category,
+          roomNumber: Math.floor(Math.random() * 6) + 1,
+          notes: Math.random() > 0.8 ? "Scheduled appointment" : null,
+        });
+      }
+    }
+
     console.log("Seeding lab cases...");
     for (let i = 0; i < 50; i++) {
       const sentDate = randomDate(sixMonthsAgo, now);
@@ -569,9 +612,11 @@ export async function seedDatabase() {
     }
 
     console.log("Database seeding completed successfully!");
-    console.log(`Created: ~100 patients, ~1000+ appointments, invoices, payments, expenses`);
+    console.log(`Created: ~100 patients, ~1000+ appointments (past year + next week future appointments)`);
+    console.log(`Financial data: invoices, payments, payment plans, expenses, insurance claims`);
     console.log(`Users: 1 admin, 5 doctors, 3 staff, 2 students`);
     console.log(`Password for all users: password123`);
+    console.log(`All data is backupable via /api/backup endpoint`);
 
   } catch (error) {
     console.error("Error seeding database:", error);
