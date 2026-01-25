@@ -573,7 +573,7 @@ export const auditActionTypeEnum = pgEnum("audit_action_type", ["CREATE", "UPDAT
 // Audit entity types
 export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
   "invoice", "payment", "patient", "appointment", "inventory", "lab_case",
-  "expense", "payment_plan", "invoice_adjustment", "user", "treatment"
+  "expense", "payment_plan", "invoice_adjustment", "user", "treatment", "doctor_payment"
 ]);
 
 // Clinic Settings - singleton table for clinic configuration

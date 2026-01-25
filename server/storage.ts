@@ -3,7 +3,7 @@ import { db } from "./db";
 import {
   users, patients, treatments, patientTreatments, appointments,
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
-  invoiceAdjustments, expenses, insuranceClaims, inventoryItems, labCases,
+  invoiceAdjustments, expenses, doctorPayments, insuranceClaims, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog, auditLogs, clinicSettings, clinicRooms,
   externalLabs, labServices,
   type User, type InsertUser,
@@ -18,6 +18,7 @@ import {
   type PaymentPlanInstallment, type InsertPaymentPlanInstallment,
   type InvoiceAdjustment, type InsertInvoiceAdjustment,
   type Expense, type InsertExpense,
+  type DoctorPayment, type InsertDoctorPayment,
   type InsuranceClaim, type InsertInsuranceClaim,
   type InventoryItem, type InsertInventoryItem,
   type LabCase, type InsertLabCase,
@@ -108,6 +109,13 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined>;
   deleteExpense(id: string): Promise<boolean>;
+
+  // Doctor Payments
+  getDoctorPayment(id: string): Promise<DoctorPayment | undefined>;
+  getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }): Promise<(DoctorPayment & { doctor?: User })[]>;
+  createDoctorPayment(payment: InsertDoctorPayment): Promise<DoctorPayment>;
+  updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>): Promise<DoctorPayment | undefined>;
+  deleteDoctorPayment(id: string): Promise<boolean>;
 
   // Insurance Claims
   getInsuranceClaim(id: string): Promise<InsuranceClaim | undefined>;
@@ -714,6 +722,59 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpense(id: string): Promise<boolean> {
     const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Doctor Payments
+  async getDoctorPayment(id: string): Promise<DoctorPayment | undefined> {
+    const result = await db.select().from(doctorPayments).where(eq(doctorPayments.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }): Promise<(DoctorPayment & { doctor?: User })[]> {
+    let query = db.select({
+      payment: doctorPayments,
+      doctor: users,
+    }).from(doctorPayments)
+      .leftJoin(users, eq(doctorPayments.doctorId, users.id));
+
+    const conditions = [];
+    if (filters?.doctorId) {
+      conditions.push(eq(doctorPayments.doctorId, filters.doctorId));
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(doctorPayments.paymentDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(doctorPayments.paymentDate, filters.endDate));
+    }
+    if (filters?.paymentType) {
+      conditions.push(eq(doctorPayments.paymentType, filters.paymentType as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as typeof query;
+    }
+
+    const results = await query.orderBy(desc(doctorPayments.paymentDate));
+    return results.map(r => ({
+      ...r.payment,
+      doctor: r.doctor || undefined,
+    }));
+  }
+
+  async createDoctorPayment(payment: InsertDoctorPayment): Promise<DoctorPayment> {
+    const result = await db.insert(doctorPayments).values(payment).returning();
+    return result[0];
+  }
+
+  async updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>): Promise<DoctorPayment | undefined> {
+    const result = await db.update(doctorPayments).set(data).where(eq(doctorPayments.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteDoctorPayment(id: string): Promise<boolean> {
+    const result = await db.delete(doctorPayments).where(eq(doctorPayments.id, id)).returning();
     return result.length > 0;
   }
 

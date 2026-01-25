@@ -17,6 +17,7 @@ import {
   insertPaymentPlanInstallmentSchema,
   insertInvoiceAdjustmentSchema,
   insertExpenseSchema,
+  insertDoctorPaymentSchema,
   insertInsuranceClaimSchema,
   insertInventoryItemSchema,
   insertLabCaseSchema,
@@ -43,6 +44,7 @@ import {
   externalLabs,
   labServices,
   expenses,
+  doctorPayments,
   clinicRooms,
   activityLog,
   subscriptionPlans,
@@ -2182,6 +2184,172 @@ export async function registerRoutes(
       res.json({ message: "Expense deleted" });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete expense" });
+    }
+  });
+
+  // Doctor Payments - restricted to admin only
+  app.get("/api/doctor-payments", requireRole("admin"), async (req, res) => {
+    try {
+      const { doctorId, startDate, endDate, paymentType } = req.query;
+      const paymentsList = await storage.getDoctorPayments({
+        doctorId: doctorId as string,
+        startDate: startDate as string,
+        endDate: endDate as string,
+        paymentType: paymentType as string,
+      });
+      res.json(paymentsList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch doctor payments" });
+    }
+  });
+
+  app.get("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const payment = await storage.getDoctorPayment(req.params.id);
+      if (!payment) {
+        return res.status(404).json({ message: "Doctor payment not found" });
+      }
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch doctor payment" });
+    }
+  });
+
+  app.post("/api/doctor-payments", requireRole("admin"), async (req, res) => {
+    try {
+      const user = req.user as any;
+      const parsed = insertDoctorPaymentSchema.safeParse({
+        ...req.body,
+        createdById: user.id,
+      });
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.message });
+      }
+
+      const payment = await storage.createDoctorPayment(parsed.data);
+
+      await storage.logActivity({
+        userId: user.id,
+        action: "created",
+        entityType: "doctor_payment",
+        entityId: payment.id,
+        details: `Created doctor payment: $${payment.amount}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "CREATE",
+        entityType: "doctor_payment",
+        entityId: payment.id,
+        previousValue: null,
+        newValue: payment,
+        description: `Created doctor payment: $${payment.amount}`,
+        ipAddress: req.ip || null,
+      });
+
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error("Error creating doctor payment:", error);
+      res.status(500).json({ message: "Failed to create doctor payment" });
+    }
+  });
+
+  app.patch("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      const previousPayment = await storage.getDoctorPayment(req.params.id);
+      if (!previousPayment) {
+        return res.status(404).json({ message: "Doctor payment not found" });
+      }
+
+      const payment = await storage.updateDoctorPayment(req.params.id, req.body);
+      if (!payment) {
+        return res.status(404).json({ message: "Doctor payment not found" });
+      }
+
+      await storage.logActivity({
+        userId: user.id,
+        action: "updated",
+        entityType: "doctor_payment",
+        entityId: payment.id,
+        details: `Updated doctor payment: $${payment.amount}`,
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "UPDATE",
+        entityType: "doctor_payment",
+        entityId: payment.id,
+        previousValue: previousPayment,
+        newValue: payment,
+        description: `Updated doctor payment: $${payment.amount}`,
+        ipAddress: req.ip || null,
+      });
+
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update doctor payment" });
+    }
+  });
+
+  app.delete("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+    try {
+      const user = req.user as any;
+      
+      const previousPayment = await storage.getDoctorPayment(req.params.id);
+      if (!previousPayment) {
+        return res.status(404).json({ message: "Doctor payment not found" });
+      }
+
+      const success = await storage.deleteDoctorPayment(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "Doctor payment not found" });
+      }
+
+      await storage.logActivity({
+        userId: user.id,
+        action: "deleted",
+        entityType: "doctor_payment",
+        entityId: req.params.id,
+        details: "Deleted doctor payment record",
+      });
+
+      await storage.createAuditLog({
+        userId: user.id,
+        userRole: user.role,
+        actionType: "DELETE",
+        entityType: "doctor_payment",
+        entityId: req.params.id,
+        previousValue: previousPayment,
+        newValue: null,
+        description: `Deleted doctor payment: $${previousPayment.amount}`,
+        ipAddress: req.ip || null,
+      });
+
+      res.json({ message: "Doctor payment deleted" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete doctor payment" });
+    }
+  });
+
+  // My Payments endpoint - doctors can view their own payments
+  app.get("/api/my-payments", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { startDate, endDate } = req.query;
+      
+      const paymentsList = await storage.getDoctorPayments({
+        doctorId: user.id,
+        startDate: startDate as string,
+        endDate: endDate as string,
+      });
+      
+      res.json(paymentsList);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch your payments" });
     }
   });
 
