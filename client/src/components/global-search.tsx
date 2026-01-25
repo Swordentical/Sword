@@ -76,17 +76,17 @@ export function GlobalSearch() {
       <PopoverTrigger asChild>
         <Button 
           variant="outline" 
-          className="justify-start text-muted-foreground gap-2 w-10 sm:w-auto px-2 sm:px-3"
+          className="w-full justify-start text-muted-foreground gap-2"
           data-testid="button-global-search"
         >
           <Search className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline truncate">Search...</span>
-          <kbd className="hidden lg:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground">
+          <span className="flex-1 text-left truncate">Search patients, appointments...</span>
+          <kbd className="hidden sm:inline-flex pointer-events-none select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-xs font-medium text-muted-foreground">
             Ctrl+K
           </kbd>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[90vw] max-w-md p-0" align="end">
+      <PopoverContent className="w-[90vw] max-w-md p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput 
             placeholder="Search patients, appointments, inventory..." 
