@@ -415,18 +415,30 @@ function GlobalSearch() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start text-muted-foreground gap-2"
-          data-testid="button-global-search"
-        >
-          <Search className="h-4 w-4" />
-          <span className="hidden sm:inline">Search patients, appointments...</span>
-          <span className="sm:hidden">Search...</span>
-          <kbd className="hidden md:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground">
-            Ctrl+K
-          </kbd>
-        </Button>
+        <div className="flex">
+          {/* Icon-only button for intermediate screens (sm to md) */}
+          <Button 
+            variant="outline" 
+            size="icon"
+            className="hidden sm:flex md:hidden"
+            data-testid="button-global-search-icon"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+          {/* Full search bar for mobile and larger screens */}
+          <Button 
+            variant="outline" 
+            className="w-full justify-start text-muted-foreground gap-2 sm:hidden md:flex"
+            data-testid="button-global-search"
+          >
+            <Search className="h-4 w-4" />
+            <span className="hidden md:inline">Search patients, appointments...</span>
+            <span className="md:hidden">Search...</span>
+            <kbd className="hidden lg:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground">
+              Ctrl+K
+            </kbd>
+          </Button>
+        </div>
       </PopoverTrigger>
       <PopoverContent className="w-[90vw] max-w-md p-0" align="start">
         <Command shouldFilter={false}>
@@ -1226,8 +1238,8 @@ export default function Dashboard() {
       <LiveWallpaper />
       <div className="shrink-0 border-b p-3 sm:p-4 backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
         <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3 min-w-0 shrink-0 relative z-10">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
@@ -1269,13 +1281,13 @@ export default function Dashboard() {
                     </SheetContent>
                   </Sheet>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden md:block">
+                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden sm:block">
                   Here's your clinic overview
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="flex-1 md:flex-none md:w-80 lg:w-96">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex-1 sm:flex-none md:w-80 lg:w-96">
                 <GlobalSearch />
               </div>
               <div className="hidden lg:flex items-center gap-3">
