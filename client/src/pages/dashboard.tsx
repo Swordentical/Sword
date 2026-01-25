@@ -1226,8 +1226,8 @@ export default function Dashboard() {
       <LiveWallpaper />
       <div className="shrink-0 border-b p-3 sm:p-4 backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
         <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3 min-w-0 shrink-0 relative z-10">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
@@ -1269,13 +1269,13 @@ export default function Dashboard() {
                     </SheetContent>
                   </Sheet>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden sm:block">
+                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden md:block">
                   Here's your clinic overview
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex-1 sm:flex-none sm:w-80 lg:w-96">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex-1 md:flex-none md:w-80 lg:w-96">
                 <GlobalSearch />
               </div>
               <div className="hidden lg:flex items-center gap-3">
