@@ -42,7 +42,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -121,6 +121,7 @@ function DraggableAppointment({
         )}
       />
       <Avatar className="h-8 w-8 shrink-0">
+        <AvatarImage src={appointment.patient.photoUrl || undefined} alt={`${appointment.patient.firstName} ${appointment.patient.lastName}`} />
         <AvatarFallback className="bg-primary/10 text-primary text-xs">
           {initials}
         </AvatarFallback>
@@ -691,6 +692,7 @@ export default function AppointmentsPage() {
                         onClick={() => setEditingAppointment(apt)}
                       >
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={apt.patient.photoUrl || undefined} alt={`${apt.patient.firstName} ${apt.patient.lastName}`} />
                           <AvatarFallback className="bg-primary/10 text-primary text-xs">
                             {initials}
                           </AvatarFallback>

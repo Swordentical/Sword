@@ -30,7 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -1899,6 +1899,7 @@ export default function FinancialsPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4">
                         <Avatar className="h-10 w-10 hidden sm:flex">
+                          <AvatarImage src={invoice.patient?.photoUrl || undefined} alt={`${invoice.patient?.firstName} ${invoice.patient?.lastName}`} />
                           <AvatarFallback className="bg-primary/10 text-primary text-sm">
                             {initials}
                           </AvatarFallback>

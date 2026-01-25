@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Dialog,
@@ -1303,6 +1303,7 @@ export default function LabWorkPage() {
                         <CardContent className="p-4">
                           <div className="flex items-center gap-4">
                             <Avatar className="h-10 w-10">
+                              <AvatarImage src={labCase.patient?.photoUrl || undefined} alt={`${labCase.patient?.firstName} ${labCase.patient?.lastName}`} />
                               <AvatarFallback className="bg-primary/10 text-primary text-sm">
                                 {initials}
                               </AvatarFallback>

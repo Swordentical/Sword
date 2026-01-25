@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,6 +139,7 @@ function PatientPreviewPanel({
         <CardContent className="space-y-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
+              <AvatarImage src={patient.photoUrl || undefined} alt={`${patient.firstName} ${patient.lastName}`} />
               <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
                 {initials}
               </AvatarFallback>
@@ -447,6 +448,7 @@ export default function PatientsList() {
                               <TableCell>
                                 <div className="flex items-center gap-3">
                                   <Avatar className="h-9 w-9">
+                                    <AvatarImage src={patient.photoUrl || undefined} alt={`${patient.firstName} ${patient.lastName}`} />
                                     <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
                                       {initials}
                                     </AvatarFallback>

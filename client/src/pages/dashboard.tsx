@@ -34,7 +34,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -102,6 +102,7 @@ function TodayAppointmentCard({
         </div>
       </div>
       <Avatar className="h-9 w-9 shrink-0">
+        <AvatarImage src={appointment.patient.photoUrl || undefined} alt={`${appointment.patient.firstName} ${appointment.patient.lastName}`} />
         <AvatarFallback className="bg-primary/10 text-foreground text-sm font-semibold">
           {initials}
         </AvatarFallback>
@@ -447,6 +448,7 @@ function GlobalSearch() {
                     data-testid={`search-result-patient-${patient.id}`}
                   >
                     <Avatar className="h-7 w-7">
+                      <AvatarImage src={patient.photoUrl || undefined} alt={`${patient.firstName} ${patient.lastName}`} />
                       <AvatarFallback className="bg-primary/10 text-foreground text-xs">
                         {patient.firstName.charAt(0)}{patient.lastName.charAt(0)}
                       </AvatarFallback>
