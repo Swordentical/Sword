@@ -3307,6 +3307,9 @@ export async function registerRoutes(
       const externalLabsList = await storage.getExternalLabs();
       const labServicesList = await storage.getLabServices();
       
+      // Doctor payments
+      const doctorPaymentsList = await storage.getDoctorPayments({});
+      
       // Users (exclude password hash for security)
       const usersList = await storage.getUsers({});
       const usersWithoutPasswords = usersList.map(({ password, ...user }) => user);
@@ -3316,7 +3319,7 @@ export async function registerRoutes(
       const clinicRooms = await storage.getClinicRooms();
 
       const backupData = {
-        version: "2.1",
+        version: "2.2",
         exportedAt: new Date().toISOString(),
         data: {
           // Core clinical data
@@ -3341,6 +3344,7 @@ export async function registerRoutes(
           paymentPlanInstallments: paymentPlanInstallmentsMap,
           expenses: expensesList,
           insuranceClaims: insuranceClaimsList,
+          doctorPayments: doctorPaymentsList,
           
           // Users and settings
           users: usersWithoutPasswords,
@@ -3355,6 +3359,7 @@ export async function registerRoutes(
           payments: paymentsList.length,
           paymentPlans: paymentPlansList.length,
           expenses: expensesList.length,
+          doctorPayments: doctorPaymentsList.length,
           users: usersWithoutPasswords.length,
           inventory: inventoryList.length,
           labCases: labCasesList.length,
@@ -3436,17 +3441,31 @@ export async function registerRoutes(
         }
       }
 
+      // Import doctor payments
+      let doctorPaymentsCount = 0;
+      if (data.doctorPayments && Array.isArray(data.doctorPayments)) {
+        for (const payment of data.doctorPayments) {
+          try {
+            const { id, createdAt, doctor, ...paymentData } = payment;
+            await storage.createDoctorPayment(paymentData);
+            doctorPaymentsCount++;
+          } catch (e) {
+            // Skip duplicates or invalid entries
+          }
+        }
+      }
+
       await storage.logActivity({
         userId: (req.user as any).id,
         action: "restored",
         entityType: "backup",
         entityId: null,
-        details: `Restored backup: ${counts.patients} patients, ${counts.treatments} services, ${counts.inventory} inventory items`,
+        details: `Restored backup: ${counts.patients} patients, ${counts.treatments} services, ${counts.inventory} inventory items, ${doctorPaymentsCount} doctor payments`,
       });
 
       res.json({
         message: "Backup restored successfully",
-        counts,
+        counts: { ...counts, doctorPayments: doctorPaymentsCount },
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to restore backup" });
@@ -3501,6 +3520,7 @@ export async function registerRoutes(
         await tx.delete(labServices);
         await tx.delete(externalLabs);
         await tx.delete(expenses);
+        await tx.delete(doctorPayments); // Delete doctor payments
         await tx.delete(clinicRooms);
         await tx.delete(activityLog);
         await tx.delete(notifications);
