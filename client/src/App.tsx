@@ -13,6 +13,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationCenter } from "@/components/notification-center";
+import { GlobalSearch } from "@/components/global-search";
 
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
@@ -49,9 +50,10 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 h-14 px-4 border-b shrink-0 backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))]">
+          <header className="flex items-center justify-between gap-2 sm:gap-4 h-14 px-2 sm:px-4 border-b shrink-0 backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))]">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex items-center gap-2">
+              <GlobalSearch />
               <NotificationCenter />
               <ThemeToggle />
             </div>
