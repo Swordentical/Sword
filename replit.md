@@ -57,6 +57,8 @@ The system is a full-stack TypeScript application, emphasizing type safety, modu
 - **Payment-First Registration System**: A three-step registration flow requiring payment before account creation, with role-specific forms and promo code validation. Ensures multi-tenant data isolation.
 - **Password Management System**: Forgot password flow via email/phone/username, password reset tokens, logged-in user password change, and admin-initiated password resets with audit logging.
 - **Notification Center**: In-app notification system for alerts (e.g., password reset requests, low stock, appointments, security), with user-configurable preferences.
+- **Flexible Data Export**: ExportDropdown component provides three export options for reports: HTML file download, JSON data download, and browser print. Available in financial reports and doctor production pages.
+- **Comprehensive Data Backup**: Full system backup (v2.1) includes all clinical data (patients, treatments, appointments, documents), financial data (invoices, payments, payment plans with installments, expenses, insurance claims), lab data, users (without passwords), and clinic settings/rooms.
 
 ## External Dependencies
 
