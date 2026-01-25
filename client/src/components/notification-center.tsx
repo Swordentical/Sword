@@ -12,6 +12,7 @@ import {
   Calendar,
   Shield,
   Loader2,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,7 @@ import { formatDistanceToNow } from "date-fns";
 interface Notification {
   id: string;
   userId: string;
-  type: "password_reset" | "low_stock" | "appointment_reminder" | "security_alert";
+  type: "password_reset" | "low_stock" | "appointment_reminder" | "security_alert" | "payment_received";
   title: string;
   message: string;
   priority: "low" | "medium" | "high" | "urgent";
@@ -44,6 +45,7 @@ const notificationIcons: Record<Notification["type"], typeof Bell> = {
   low_stock: Package,
   appointment_reminder: Calendar,
   security_alert: Shield,
+  payment_received: DollarSign,
 };
 
 const priorityColors: Record<Notification["priority"], string> = {
@@ -71,6 +73,8 @@ function getNotificationRoute(notification: Notification): string {
       return "/appointments";
     case "security_alert":
       return "/settings?tab=security";
+    case "payment_received":
+      return "/financials/my-production";
     default:
       return "/dashboard";
   }
