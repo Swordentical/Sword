@@ -26,12 +26,25 @@ import {
   insertLabServiceSchema,
   insertNotificationPreferencesSchema,
   patients,
+  documents,
+  patientTreatments,
   appointments,
   invoices,
+  invoiceItems,
+  invoiceAdjustments,
+  payments,
+  paymentPlans,
+  paymentPlanInstallments,
+  insuranceClaims,
+  treatments,
+  inventoryItems,
   labCases,
   users,
   externalLabs,
   labServices,
+  expenses,
+  clinicRooms,
+  activityLog,
   subscriptionPlans,
   organizations,
   promoCodes,
@@ -42,6 +55,7 @@ import {
   type InsertNotification,
 } from "@shared/schema";
 import { eq, sql, desc, and } from "drizzle-orm";
+import { z } from "zod";
 import { notifyAdminsPasswordResetRequest, notifyPasswordResetByAdmin, notifyLowStock } from "./notificationService";
 
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -3253,6 +3267,76 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to restore backup" });
+    }
+  });
+
+  // Delete all data with password verification (admin only)
+  const deleteAllDataSchema = z.object({
+    password: z.string().min(1, "Password is required"),
+  });
+
+  app.post("/api/delete-all-data", requireRole("admin"), async (req, res) => {
+    try {
+      // Validate request body
+      const parsed = deleteAllDataSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.errors[0]?.message || "Invalid request" });
+      }
+
+      const { password } = parsed.data;
+      const userId = (req.user as any).id;
+
+      // Verify the user's password
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Incorrect password" });
+      }
+
+      // Delete all data in a transaction for atomicity
+      await db.transaction(async (tx) => {
+        // Delete in correct order (respecting foreign key constraints)
+        // Start with dependent tables first
+        await tx.delete(documents);
+        await tx.delete(patientTreatments);
+        await tx.delete(invoiceItems);
+        await tx.delete(invoiceAdjustments);
+        await tx.delete(paymentPlanInstallments);
+        await tx.delete(payments);
+        await tx.delete(paymentPlans);
+        await tx.delete(invoices);
+        await tx.delete(insuranceClaims);
+        await tx.delete(appointments);
+        await tx.delete(labCases);
+        await tx.delete(patients);
+        await tx.delete(treatments);
+        await tx.delete(inventoryItems);
+        await tx.delete(labServices);
+        await tx.delete(externalLabs);
+        await tx.delete(expenses);
+        await tx.delete(clinicRooms);
+        await tx.delete(activityLog);
+        await tx.delete(notifications);
+        await tx.delete(notificationPreferences);
+      });
+
+      // Log the destructive action (after transaction completes)
+      await storage.logActivity({
+        userId,
+        action: "deleted_all_data",
+        entityType: "system",
+        entityId: null,
+        details: "All clinic data was permanently deleted",
+      });
+
+      res.json({ message: "All data has been permanently deleted" });
+    } catch (error) {
+      console.error("Delete all data error:", error);
+      res.status(500).json({ message: "Failed to delete all data" });
     }
   });
 

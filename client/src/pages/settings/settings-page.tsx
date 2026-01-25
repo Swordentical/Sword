@@ -1328,6 +1328,181 @@ function DataBackup() {
   );
 }
 
+function DangerZone() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+
+  const deleteAllDataMutation = useMutation({
+    mutationFn: async (password: string) => {
+      const res = await apiRequest("POST", "/api/delete-all-data", { password });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "All Data Deleted",
+        description: "All clinic data has been permanently deleted.",
+      });
+      setDeleteDialogOpen(false);
+      setPassword("");
+      setConfirmText("");
+      queryClient.invalidateQueries();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteAllData = () => {
+    if (confirmText !== "DELETE ALL DATA") {
+      toast({
+        title: "Confirmation Required",
+        description: "Please type 'DELETE ALL DATA' to confirm.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!password) {
+      toast({
+        title: "Password Required",
+        description: "Please enter your password to confirm.",
+        variant: "destructive",
+      });
+      return;
+    }
+    deleteAllDataMutation.mutate(password);
+  };
+
+  // Only show for admins
+  if (user?.role !== "admin") {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-red-200 dark:border-red-900">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertTriangle className="h-5 w-5" />
+            Danger Zone
+          </CardTitle>
+          <CardDescription>
+            Irreversible and destructive actions. Proceed with extreme caution.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/20">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">Delete All Data</p>
+              <p className="text-xs text-red-600/80 dark:text-red-500/80">
+                Permanently delete all patients, appointments, invoices, treatments, inventory, and other clinic data.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+              data-testid="button-delete-all-data"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete All Data
+            </Button>
+          </div>
+
+          <div className="mt-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+            <div className="flex gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-red-800 dark:text-red-400">Warning</p>
+                <p className="text-red-700 dark:text-red-500">
+                  This action cannot be undone. Make sure to export a backup before deleting all data.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Delete All Data
+            </DialogTitle>
+            <DialogDescription>
+              This action will permanently delete all clinic data including patients, appointments, invoices, treatments, inventory, lab cases, and expenses.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-text">
+                Type <span className="font-mono font-bold">DELETE ALL DATA</span> to confirm
+              </Label>
+              <Input
+                id="confirm-text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE ALL DATA"
+                data-testid="input-confirm-delete"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">
+                <Lock className="h-4 w-4 inline mr-1" />
+                Enter your password
+              </Label>
+              <Input
+                id="delete-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Your password"
+                data-testid="input-delete-password"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setPassword("");
+                setConfirmText("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteAllData}
+              disabled={deleteAllDataMutation.isPending || confirmText !== "DELETE ALL DATA" || !password}
+              data-testid="button-confirm-delete-all"
+            >
+              {deleteAllDataMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Everything
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function SecuritySettings() {
   const { toast } = useToast();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -2303,6 +2478,9 @@ export default function SettingsPage() {
 
         <TabsContent value="data">
           <DataBackup />
+          <div className="mt-8">
+            <DangerZone />
+          </div>
         </TabsContent>
 
         <TabsContent value="about">

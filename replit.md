@@ -59,6 +59,7 @@ The system is a full-stack TypeScript application, emphasizing type safety, modu
 - **Notification Center**: In-app notification system for alerts (e.g., password reset requests, low stock, appointments, security), with user-configurable preferences.
 - **Flexible Data Export**: ExportDropdown component provides three export options for reports: HTML file download, JSON data download, and browser print. Available in financial reports and doctor production pages.
 - **Comprehensive Data Backup**: Full system backup (v2.1) includes all clinical data (patients, treatments, appointments, documents), financial data (invoices, payments, payment plans with installments, expenses, insurance claims), lab data, users (without passwords), and clinic settings/rooms.
+- **Delete All Data**: Admin-only destructive action in Settings > Data that permanently deletes all clinic data with double confirmation (type "DELETE ALL DATA" + re-enter password). Uses database transaction for atomicity.
 
 ## External Dependencies
 
