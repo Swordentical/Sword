@@ -16,6 +16,8 @@ import {
   Printer,
   Minus,
 } from "lucide-react";
+import { ExportDropdown } from "@/components/export-dropdown";
+import glazerLogo from "@/assets/glazer-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -740,6 +742,170 @@ export default function InventoryPage() {
   ).length;
   const outOfStockCount = items.filter((item) => item.currentQuantity === 0).length;
 
+  const handleExportHTML = () => {
+    const groupedByCategory = filteredItems.reduce((acc: Record<string, typeof filteredItems>, item) => {
+      const cat = item.category || "Other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {});
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GLAZER - Inventory Report</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8fafc; padding: 40px; }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #12a3b0; }
+    .logo { height: 60px; margin-bottom: 10px; }
+    .brand { font-size: 28px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #64748b; font-size: 14px; margin-top: 5px; }
+    .stats { display: flex; gap: 20px; margin-bottom: 30px; justify-content: center; }
+    .stat-card { background: white; padding: 15px 25px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+    .stat-value { font-size: 24px; font-weight: bold; color: #1e293b; }
+    .stat-label { font-size: 12px; color: #64748b; }
+    .stat-warning { color: #f59e0b; }
+    .stat-danger { color: #ef4444; }
+    .category-section { margin-bottom: 30px; }
+    .category-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 15px; padding: 10px; background: linear-gradient(90deg, #12a3b0, #2089de); color: white; border-radius: 6px; text-transform: capitalize; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    th { background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 12px 15px; font-size: 12px; text-transform: uppercase; }
+    td { padding: 12px 15px; border-top: 1px solid #e2e8f0; }
+    tr:hover { background: #f8fafc; }
+    .status-ok { color: #16a34a; }
+    .status-low { color: #f59e0b; }
+    .status-out { color: #ef4444; font-weight: 600; }
+    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+    @media print { body { padding: 20px; } .stats { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${glazerLogo}" class="logo" alt="GLAZER" onerror="this.style.display='none'" />
+    <div class="brand">GLAZER</div>
+    <div class="subtitle">Inventory Report | Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+  </div>
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value">${items.length}</div>
+      <div class="stat-label">Total Items</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-warning">${lowStockCount}</div>
+      <div class="stat-label">Low Stock</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value stat-danger">${outOfStockCount}</div>
+      <div class="stat-label">Out of Stock</div>
+    </div>
+  </div>
+  ${Object.entries(groupedByCategory).map(([category, categoryItems]) => `
+    <div class="category-section">
+      <div class="category-title">${category.replace(/_/g, ' ')}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Location</th>
+            <th>Supplier</th>
+            <th style="text-align: right">Quantity</th>
+            <th style="text-align: right">Min. Qty</th>
+            <th style="text-align: right">Unit Cost</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(categoryItems as typeof filteredItems).map(item => {
+            const status = item.currentQuantity === 0 ? 'out' : item.currentQuantity <= item.minimumQuantity ? 'low' : 'ok';
+            const statusText = status === 'out' ? 'Out of Stock' : status === 'low' ? 'Low Stock' : 'In Stock';
+            return `
+              <tr>
+                <td>${item.name}</td>
+                <td>${item.location || '-'}</td>
+                <td>${item.supplier || '-'}</td>
+                <td style="text-align: right">${item.currentQuantity} ${item.unit}</td>
+                <td style="text-align: right">${item.minimumQuantity} ${item.unit}</td>
+                <td style="text-align: right">$${Number(item.unitCost).toFixed(2)}</td>
+                <td class="status-${status}">${statusText}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('')}
+  <div class="footer">
+    <p>GLAZER - Dental Clinic Management System</p>
+    <p>This document was generated automatically. For questions, contact your administrator.</p>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory-report-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintInventory = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GLAZER - Inventory</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+    h1 { text-align: center; color: #12a3b0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    .low { color: #f59e0b; }
+    .out { color: #ef4444; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>GLAZER - Inventory Report</h1>
+  <p style="text-align: center; color: #666;">Generated: ${new Date().toLocaleDateString()}</p>
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Category</th>
+      <th>Quantity</th>
+      <th>Min. Qty</th>
+      <th>Unit Cost</th>
+      <th>Status</th>
+    </tr>
+    ${filteredItems.map(item => {
+      const status = item.currentQuantity === 0 ? 'out' : item.currentQuantity <= item.minimumQuantity ? 'low' : '';
+      const statusText = item.currentQuantity === 0 ? 'Out of Stock' : item.currentQuantity <= item.minimumQuantity ? 'Low Stock' : 'In Stock';
+      return `<tr>
+        <td>${item.name}</td>
+        <td>${item.category}</td>
+        <td>${item.currentQuantity} ${item.unit}</td>
+        <td>${item.minimumQuantity}</td>
+        <td>$${Number(item.unitCost).toFixed(2)}</td>
+        <td class="${status}">${statusText}</td>
+      </tr>`;
+    }).join('')}
+  </table>
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -750,6 +916,24 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <ExportDropdown
+            onExportHTML={handleExportHTML}
+            onExportJSON={() => {
+              const jsonContent = JSON.stringify(filteredItems, null, 2);
+              const blob = new Blob([jsonContent], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `inventory-${new Date().toISOString().split('T')[0]}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            onPrint={handlePrintInventory}
+            data={filteredItems}
+            filename="inventory-report"
+          />
           <Button variant="outline" onClick={() => setPrintDialogOpen(true)} data-testid="button-print-low-stock">
             <Printer className="h-4 w-4 mr-2" />
             Print Low Stock

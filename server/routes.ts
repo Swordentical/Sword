@@ -58,7 +58,7 @@ import {
 } from "@shared/schema";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { z } from "zod";
-import { notifyAdminsPasswordResetRequest, notifyPasswordResetByAdmin, notifyLowStock } from "./notificationService";
+import { notifyAdminsPasswordResetRequest, notifyPasswordResetByAdmin, notifyLowStock, notifyDoctorPaymentIssued } from "./notificationService";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -2247,6 +2247,21 @@ export async function registerRoutes(
         description: `Created doctor payment: $${payment.amount}`,
         ipAddress: req.ip || null,
       });
+
+      // Send notification to doctor about the payment
+      try {
+        await notifyDoctorPaymentIssued(
+          payment.doctorId,
+          payment.amount,
+          payment.paymentType,
+          payment.paymentDate,
+          payment.id,
+          user.organizationId
+        );
+      } catch (notifyError) {
+        console.error("Failed to send payment notification:", notifyError);
+        // Don't fail the request if notification fails
+      }
 
       res.status(201).json(payment);
     } catch (error) {

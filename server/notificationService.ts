@@ -2,7 +2,7 @@ import { db } from "./db";
 import { notifications, notificationPreferences, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
-type NotificationType = "password_reset" | "low_stock" | "appointment_reminder" | "security_alert";
+type NotificationType = "password_reset" | "low_stock" | "appointment_reminder" | "security_alert" | "payment_received";
 type NotificationPriority = "low" | "medium" | "high" | "urgent";
 
 interface CreateNotificationParams {
@@ -22,6 +22,7 @@ const preferenceKeys: Record<NotificationType, string> = {
   low_stock: "lowStockInApp",
   appointment_reminder: "appointmentReminderInApp",
   security_alert: "securityAlertInApp",
+  payment_received: "paymentReceivedInApp",
 };
 
 async function shouldSendNotification(userId: string, type: NotificationType): Promise<boolean> {
@@ -178,4 +179,36 @@ export async function notifyAdminsPasswordResetRequest(
       metadata: { identifier },
     });
   }
+}
+
+export async function notifyDoctorPaymentIssued(
+  doctorId: string,
+  amount: string,
+  paymentType: string,
+  paymentDate: string,
+  paymentId: string,
+  organizationId?: string
+): Promise<void> {
+  const paymentTypeLabels: Record<string, string> = {
+    salary: "Salary",
+    bonus: "Bonus",
+    commission: "Commission",
+    deduction: "Deduction",
+    reimbursement: "Reimbursement",
+    other: "Payment",
+  };
+  
+  const typeLabel = paymentTypeLabels[paymentType] || "Payment";
+  
+  await createNotification({
+    userId: doctorId,
+    organizationId,
+    type: "payment_received",
+    title: `${typeLabel} Issued`,
+    message: `A ${typeLabel.toLowerCase()} of $${amount} has been issued to you on ${paymentDate}.`,
+    priority: "medium",
+    relatedEntityType: "doctor_payment",
+    relatedEntityId: paymentId,
+    metadata: { amount, paymentType, paymentDate },
+  });
 }

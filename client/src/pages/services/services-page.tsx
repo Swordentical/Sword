@@ -12,8 +12,10 @@ import {
   Trash2,
   Loader2,
   ClipboardList,
-  Printer,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { ExportDropdown } from "@/components/export-dropdown";
+import glazerLogo from "@/assets/glazer-logo.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -714,6 +716,8 @@ function printServices(services: Treatment[]) {
 }
 
 export default function ServicesPage() {
+  const { user } = useAuth();
+  const isDoctor = user?.role === "doctor";
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -724,6 +728,97 @@ export default function ServicesPage() {
   const { data: services = [], isLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments"],
   });
+
+  const handleExportHTML = () => {
+    const groupedByCategory = filteredServices.reduce((acc: Record<string, typeof filteredServices>, service) => {
+      const cat = service.category || "Other";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(service);
+      return acc;
+    }, {});
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GLAZER - Services & Price List</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f8fafc; padding: 40px; }
+    .header { text-align: center; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #12a3b0; }
+    .logo { height: 60px; margin-bottom: 10px; }
+    .brand { font-size: 28px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #64748b; font-size: 14px; margin-top: 5px; }
+    .category-section { margin-bottom: 30px; }
+    .category-title { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 15px; padding: 10px; background: linear-gradient(90deg, #12a3b0, #2089de); color: white; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th { background: #f1f5f9; color: #475569; font-weight: 600; text-align: left; padding: 12px 15px; font-size: 12px; text-transform: uppercase; }
+    td { padding: 12px 15px; border-top: 1px solid #e2e8f0; }
+    tr:hover { background: #f8fafc; }
+    .code { font-family: monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .price { font-weight: 600; color: #12a3b0; }
+    .profit-positive { color: #16a34a; }
+    .profit-negative { color: #dc2626; }
+    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${glazerLogo}" class="logo" alt="GLAZER" onerror="this.style.display='none'" />
+    <div class="brand">GLAZER</div>
+    <div class="subtitle">Services & Price List | Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</div>
+  </div>
+  ${Object.entries(groupedByCategory).map(([category, items]) => `
+    <div class="category-section">
+      <div class="category-title">${category.replace(/_/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase())}</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Service Name</th>
+            <th>Duration</th>
+            <th style="text-align: right">Cost</th>
+            <th style="text-align: right">Price</th>
+            <th style="text-align: right">Profit</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(items as Treatment[]).map(service => {
+            const profit = Number(service.defaultPrice) - Number(service.cost || 0);
+            return `
+              <tr>
+                <td><span class="code">${service.code || '-'}</span></td>
+                <td>${service.name}</td>
+                <td>${service.durationMinutes} min</td>
+                <td style="text-align: right">$${Number(service.cost || 0).toFixed(2)}</td>
+                <td style="text-align: right" class="price">$${Number(service.defaultPrice).toFixed(2)}</td>
+                <td style="text-align: right" class="${profit >= 0 ? 'profit-positive' : 'profit-negative'}">$${profit.toFixed(2)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('')}
+  <div class="footer">
+    <p>GLAZER - Dental Clinic Management System</p>
+    <p>This document was generated automatically. For questions, contact your administrator.</p>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `services-price-list-${new Date().toISOString().split('T')[0]}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   const filteredServices = services.filter((service) => {
     const matchesSearch =
@@ -754,18 +849,30 @@ export default function ServicesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => printServices(filteredServices)}
-            data-testid="button-print-services"
-          >
-            <Printer className="h-4 w-4 mr-2" />
-            Print
-          </Button>
-          <Button onClick={() => setDialogOpen(true)} data-testid="button-add-service">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Service
-          </Button>
+          <ExportDropdown
+            onExportHTML={handleExportHTML}
+            onExportJSON={() => {
+              const jsonContent = JSON.stringify(filteredServices, null, 2);
+              const blob = new Blob([jsonContent], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `services-${new Date().toISOString().split('T')[0]}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+            onPrint={() => printServices(filteredServices)}
+            data={filteredServices}
+            filename="services-price-list"
+          />
+          {!isDoctor && (
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-add-service">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Service
+            </Button>
+          )}
         </div>
       </div>
 
@@ -815,7 +922,7 @@ export default function ServicesPage() {
                     <TableHead className="text-right">Cost</TableHead>
                     <TableHead className="text-right">Price</TableHead>
                     <TableHead className="text-right">Profit</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {!isDoctor && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -857,36 +964,38 @@ export default function ServicesPage() {
                         >
                           ${profit.toFixed(2)}
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                data-testid={`button-service-menu-${service.id}`}
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleEdit(service)}
-                                data-testid={`button-edit-service-${service.id}`}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(service)}
-                                className="text-destructive"
-                                data-testid={`button-delete-service-${service.id}`}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                        {!isDoctor && (
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  data-testid={`button-service-menu-${service.id}`}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleEdit(service)}
+                                  data-testid={`button-edit-service-${service.id}`}
+                                >
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(service)}
+                                  className="text-destructive"
+                                  data-testid={`button-delete-service-${service.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -902,7 +1011,7 @@ export default function ServicesPage() {
                   ? "Try adjusting your search or filters"
                   : "Get started by adding your first service"}
               </p>
-              {!searchTerm && categoryFilter === "all" && (
+              {!searchTerm && categoryFilter === "all" && !isDoctor && (
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Service

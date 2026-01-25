@@ -127,14 +127,14 @@ const mainNavItems: NavItem[] = [
     title: "Expenses",
     url: "/expenses",
     icon: Receipt,
-    roles: ["admin", "doctor", "staff", "student"],
+    roles: ["admin", "staff", "student"],
     feature: "expenses",
   },
   {
     title: "Insurance Claims",
     url: "/insurance-claims",
     icon: Shield,
-    roles: ["admin", "doctor", "staff"],
+    roles: ["admin", "staff"],
     feature: "insuranceClaims",
   },
   {

@@ -2415,6 +2415,8 @@ function UserManagement() {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -2424,12 +2426,14 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="clinic" className="space-y-6">
+      <Tabs defaultValue={user?.role === "doctor" ? "appearance" : "clinic"} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="clinic" data-testid="tab-clinic">
-            <Building2 className="h-4 w-4 mr-2" />
-            Clinic
-          </TabsTrigger>
+          {user?.role !== "doctor" && (
+            <TabsTrigger value="clinic" data-testid="tab-clinic">
+              <Building2 className="h-4 w-4 mr-2" />
+              Clinic
+            </TabsTrigger>
+          )}
           <TabsTrigger value="appearance" data-testid="tab-appearance">
             <Palette className="h-4 w-4 mr-2" />
             Appearance
@@ -2442,23 +2446,29 @@ export default function SettingsPage() {
             <Bell className="h-4 w-4 mr-2" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="users" data-testid="tab-users">
-            <Users className="h-4 w-4 mr-2" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="data" data-testid="tab-data">
-            <Database className="h-4 w-4 mr-2" />
-            Data
-          </TabsTrigger>
+          {user?.role !== "doctor" && (
+            <TabsTrigger value="users" data-testid="tab-users">
+              <Users className="h-4 w-4 mr-2" />
+              Users
+            </TabsTrigger>
+          )}
+          {user?.role !== "doctor" && (
+            <TabsTrigger value="data" data-testid="tab-data">
+              <Database className="h-4 w-4 mr-2" />
+              Data
+            </TabsTrigger>
+          )}
           <TabsTrigger value="about" data-testid="tab-about">
             <Info className="h-4 w-4 mr-2" />
             About
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="clinic">
-          <ClinicSettings />
-        </TabsContent>
+        {user?.role !== "doctor" && (
+          <TabsContent value="clinic">
+            <ClinicSettings />
+          </TabsContent>
+        )}
 
         <TabsContent value="appearance">
           <AppearanceSettings />
@@ -2472,16 +2482,20 @@ export default function SettingsPage() {
           <NotificationSettings />
         </TabsContent>
 
-        <TabsContent value="users">
-          <UserManagement />
-        </TabsContent>
+        {user?.role !== "doctor" && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
 
-        <TabsContent value="data">
-          <DataBackup />
-          <div className="mt-8">
-            <DangerZone />
-          </div>
-        </TabsContent>
+        {user?.role !== "doctor" && (
+          <TabsContent value="data">
+            <DataBackup />
+            <div className="mt-8">
+              <DangerZone />
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="about">
           <AboutSection />

@@ -151,7 +151,7 @@ export const pendingRegistrations = pgTable("pending_registrations", {
 
 // Notification type enum
 export const notificationTypeEnum = pgEnum("notification_type", [
-  "password_reset", "low_stock", "appointment_reminder", "security_alert"
+  "password_reset", "low_stock", "appointment_reminder", "security_alert", "payment_received"
 ]);
 
 // Notification priority enum
