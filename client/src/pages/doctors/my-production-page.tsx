@@ -102,6 +102,212 @@ export default function MyProductionPage() {
     }).format(amount);
   };
 
+  const handleExportHTML = () => {
+    if (!report) return;
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Production Report - Dr. ${user?.firstName} ${user?.lastName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 900px; margin: 0 auto; background: #fff; }
+    
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid; border-image: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6) 1; padding-bottom: 20px; margin-bottom: 30px; }
+    .logo-section { }
+    .brand-text { font-size: 32px; font-weight: bold; background: linear-gradient(90deg, #12a3b0, #2089de, #9b59b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .brand-subtitle { font-size: 12px; color: #666; margin-top: 4px; }
+    .report-title { text-align: right; }
+    .report-title h1 { margin: 0; font-size: 24px; color: #333; letter-spacing: 1px; text-transform: uppercase; }
+    .report-title p { margin: 5px 0 0; color: #666; font-size: 13px; }
+    
+    .doctor-info { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; padding: 20px; margin-bottom: 30px; border-left: 4px solid #12a3b0; }
+    .doctor-info h2 { font-size: 20px; color: #12a3b0; margin-bottom: 8px; }
+    .doctor-info .period { color: #666; font-size: 14px; }
+    
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; }
+    .summary-card.production { border-left: 4px solid #22c55e; }
+    .summary-card.collected { border-left: 4px solid #3b82f6; }
+    .summary-card.patients { border-left: 4px solid #f59e0b; }
+    .summary-card.treatments { border-left: 4px solid #9b59b6; }
+    .summary-label { font-size: 12px; text-transform: uppercase; color: #666; margin-bottom: 8px; font-weight: 600; }
+    .summary-value { font-size: 28px; font-weight: bold; color: #333; }
+    .summary-card.production .summary-value { color: #22c55e; }
+    .summary-card.collected .summary-value { color: #3b82f6; }
+    
+    .section { margin-bottom: 30px; }
+    .section-title { font-size: 16px; font-weight: 600; text-transform: uppercase; color: #12a3b0; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; border-bottom: 2px solid #e0e0e0; padding: 12px 10px; font-size: 11px; color: #666; text-transform: uppercase; background: #f8f9fa; font-weight: 600; }
+    td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tr:hover { background: #fafafa; }
+    .text-right { text-align: right; }
+    .font-bold { font-weight: 600; }
+    .currency { color: #22c55e; font-weight: 600; }
+    .currency-blue { color: #3b82f6; font-weight: 600; }
+    
+    .totals-row { background: #f8f9fa; font-weight: bold; }
+    .totals-row td { border-top: 2px solid #12a3b0; padding-top: 15px; }
+    
+    .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+    
+    .footer { margin-top: 50px; border-top: 1px solid #e0e0e0; padding-top: 20px; text-align: center; color: #999; font-size: 11px; }
+    .footer p { margin: 3px 0; }
+    
+    @media print {
+      body { padding: 20px; }
+      .summary-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-section">
+      <div class="brand-text">GLAZER</div>
+      <div class="brand-subtitle">Dental Clinic Management</div>
+    </div>
+    <div class="report-title">
+      <h1>Production Report</h1>
+      <p>Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+    </div>
+  </div>
+  
+  <div class="doctor-info">
+    <h2>Dr. ${user?.firstName} ${user?.lastName}</h2>
+    <div class="period">Report Period: ${format(new Date(dateRange.startDate), "MMMM d, yyyy")} - ${format(new Date(dateRange.endDate), "MMMM d, yyyy")}</div>
+  </div>
+  
+  <div class="summary-grid">
+    <div class="summary-card production">
+      <div class="summary-label">Total Production</div>
+      <div class="summary-value">${formatCurrency(report.totalProduction)}</div>
+    </div>
+    <div class="summary-card collected">
+      <div class="summary-label">Total Collected</div>
+      <div class="summary-value">${formatCurrency(report.totalCollected)}</div>
+    </div>
+    <div class="summary-card patients">
+      <div class="summary-label">Patients Treated</div>
+      <div class="summary-value">${report.patientCount}</div>
+    </div>
+    <div class="summary-card treatments">
+      <div class="summary-label">Treatments Done</div>
+      <div class="summary-value">${report.treatmentCount}</div>
+    </div>
+  </div>
+  
+  ${report.treatmentBreakdown.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Treatment Breakdown</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Treatment</th>
+          <th class="text-right">Count</th>
+          <th class="text-right">Revenue</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${report.treatmentBreakdown.map(t => `
+        <tr>
+          <td>${t.treatmentName}</td>
+          <td class="text-right">${t.count}</td>
+          <td class="text-right currency">${formatCurrency(t.revenue)}</td>
+        </tr>
+        `).join('')}
+        <tr class="totals-row">
+          <td>Total</td>
+          <td class="text-right">${report.treatmentBreakdown.reduce((sum, t) => sum + t.count, 0)}</td>
+          <td class="text-right currency">${formatCurrency(report.treatmentBreakdown.reduce((sum, t) => sum + t.revenue, 0))}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+  
+  ${report.monthlyBreakdown.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Monthly Performance</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th class="text-right">Production</th>
+          <th class="text-right">Treatments</th>
+          <th class="text-right">Patients</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${report.monthlyBreakdown.map(m => `
+        <tr>
+          <td class="font-bold">${m.month}</td>
+          <td class="text-right currency">${formatCurrency(m.production)}</td>
+          <td class="text-right">${m.treatments}</td>
+          <td class="text-right">${m.patients}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+  
+  ${report.patientDetails.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Patient Details</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Patient Name</th>
+          <th class="text-right">Treatments</th>
+          <th class="text-right">Total Amount</th>
+          <th class="text-right">Amount Paid</th>
+          <th class="text-right">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${report.patientDetails.map(p => `
+        <tr>
+          <td class="font-bold">${p.patientName}</td>
+          <td class="text-right">${p.treatments.length}</td>
+          <td class="text-right currency">${formatCurrency(p.totalAmount)}</td>
+          <td class="text-right currency-blue">${formatCurrency(p.amountPaid)}</td>
+          <td class="text-right" style="color: ${p.totalAmount - p.amountPaid > 0 ? '#f59e0b' : '#22c55e'};">${formatCurrency(p.totalAmount - p.amountPaid)}</td>
+        </tr>
+        `).join('')}
+        <tr class="totals-row">
+          <td>Total</td>
+          <td class="text-right">${report.patientDetails.reduce((sum, p) => sum + p.treatments.length, 0)}</td>
+          <td class="text-right currency">${formatCurrency(report.patientDetails.reduce((sum, p) => sum + p.totalAmount, 0))}</td>
+          <td class="text-right currency-blue">${formatCurrency(report.patientDetails.reduce((sum, p) => sum + p.amountPaid, 0))}</td>
+          <td class="text-right">${formatCurrency(report.patientDetails.reduce((sum, p) => sum + (p.totalAmount - p.amountPaid), 0))}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+  
+  <div class="footer">
+    <p>GLAZER Dental Clinic Management System</p>
+    <p>This report was generated automatically. For questions, please contact clinic administration.</p>
+  </div>
+</body>
+</html>`;
+    
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Production-Report-${user?.firstName}-${user?.lastName}-${dateRange.startDate}-to-${dateRange.endDate}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -129,6 +335,7 @@ export default function MyProductionPage() {
               </Select>
             </div>
             <ExportDropdown 
+              onExportHTML={handleExportHTML}
               data={{
                 period: { start: dateRange.startDate, end: dateRange.endDate },
                 doctorName: `${user?.firstName} ${user?.lastName}`,
