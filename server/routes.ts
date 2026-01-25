@@ -3491,8 +3491,8 @@ export async function registerRoutes(
         await tx.delete(paymentPlanInstallments);
         await tx.delete(payments);
         await tx.delete(paymentPlans);
+        await tx.delete(insuranceClaims); // Must be before invoices (FK to invoices)
         await tx.delete(invoices);
-        await tx.delete(insuranceClaims);
         await tx.delete(appointments);
         await tx.delete(labCases);
         await tx.delete(patients);
