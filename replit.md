@@ -46,6 +46,7 @@ The system is a full-stack TypeScript application, emphasizing type safety, modu
 - **Appointment Scheduling**: Categorized appointments with status tracking and room assignment.
 - **Treatment Management**: Service catalog, treatment plans linked to teeth, cost/price/profit tracking.
 - **Financial Management**: Invoicing, payments, refunds, payment plans, adjustments, and comprehensive financial reporting (Revenue, AR Aging, Production by Doctor, Expense reports, Net Profit). Includes full CRUD for clinic expenses and insurance claims.
+- **Doctor Payment Management**: Admin interface for managing doctor salary payments (salary, bonus, commission, deduction, reimbursement). Payments are automatically included as expenses in financial reports (Expense Report and Net Profit). Deductions reduce total expenses while other payment types add to expenses. Doctors can view their own payments in the My Production page.
 - **Inventory Control**: Stock management with low-stock alerts.
 - **Lab Work Coordination**: Management of external labs and services.
 - **User & Role Management**: CRUD for users, role assignment, activation/deactivation, profile management.

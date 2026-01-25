@@ -1180,7 +1180,7 @@ export class DatabaseStorage implements IStorage {
     byCategory: { category: string; amount: number }[];
     byMonth: { month: string; amount: number }[];
   }> {
-    // Total expenses
+    // Total regular expenses
     const totalResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
@@ -1189,7 +1189,16 @@ export class DatabaseStorage implements IStorage {
         lte(expenses.expenseDate, endDate)
       ));
 
-    // By category
+    // Total doctor payments (salary, bonus, commission, reimbursement - but not deductions which reduce expenses)
+    const doctorPaymentsResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
+    }).from(doctorPayments)
+      .where(and(
+        gte(doctorPayments.paymentDate, startDate),
+        lte(doctorPayments.paymentDate, endDate)
+      ));
+
+    // By category (regular expenses)
     const byCategory = await db.select({
       category: expenses.category,
       amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
@@ -1201,7 +1210,19 @@ export class DatabaseStorage implements IStorage {
       .groupBy(expenses.category)
       .orderBy(sql`SUM(CAST(amount AS DECIMAL)) DESC`);
 
-    // By month
+    // Doctor payments by type as categories
+    const doctorPaymentsByType = await db.select({
+      category: doctorPayments.paymentType,
+      amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+    }).from(doctorPayments)
+      .where(and(
+        gte(doctorPayments.paymentDate, startDate),
+        lte(doctorPayments.paymentDate, endDate)
+      ))
+      .groupBy(doctorPayments.paymentType)
+      .orderBy(sql`SUM(CAST(amount AS DECIMAL)) DESC`);
+
+    // By month (regular expenses)
     const byMonth = await db.select({
       month: sql<string>`TO_CHAR(expense_date, 'YYYY-MM')`,
       amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
@@ -1213,10 +1234,47 @@ export class DatabaseStorage implements IStorage {
       .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
 
+    // Doctor payments by month
+    const doctorPaymentsByMonth = await db.select({
+      month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
+      amount: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
+    }).from(doctorPayments)
+      .where(and(
+        gte(doctorPayments.paymentDate, startDate),
+        lte(doctorPayments.paymentDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
+
+    // Merge categories - add doctor payment types with "Doctor: " prefix
+    const allCategories = [
+      ...byCategory.map(c => ({ category: c.category, amount: Number(c.amount) })),
+      ...doctorPaymentsByType.map(c => ({ 
+        category: `Doctor ${c.category.charAt(0).toUpperCase() + c.category.slice(1).replace('_', ' ')}`, 
+        amount: c.category === 'deduction' ? -Number(c.amount) : Number(c.amount) 
+      }))
+    ].sort((a, b) => b.amount - a.amount);
+
+    // Merge monthly data
+    const monthsSet = new Set<string>();
+    byMonth.forEach(m => monthsSet.add(m.month));
+    doctorPaymentsByMonth.forEach(m => monthsSet.add(m.month));
+
+    const expensesMap = new Map(byMonth.map(m => [m.month, Number(m.amount)]));
+    const doctorPaymentsMap = new Map(doctorPaymentsByMonth.map(m => [m.month, Number(m.amount)]));
+
+    const mergedByMonth = Array.from(monthsSet).sort().map(month => ({
+      month,
+      amount: (expensesMap.get(month) || 0) + (doctorPaymentsMap.get(month) || 0)
+    }));
+
+    const totalExpenses = Number(totalResult[0]?.total || 0);
+    const totalDoctorPayments = Number(doctorPaymentsResult[0]?.total || 0);
+
     return {
-      total: Number(totalResult[0]?.total || 0),
-      byCategory: byCategory.map(c => ({ category: c.category, amount: Number(c.amount) })),
-      byMonth: byMonth.map(m => ({ month: m.month, amount: Number(m.amount) })),
+      total: totalExpenses + totalDoctorPayments,
+      byCategory: allCategories,
+      byMonth: mergedByMonth,
     };
   }
 
@@ -1269,10 +1327,21 @@ export class DatabaseStorage implements IStorage {
         lte(expenses.expenseDate, endDate)
       ));
 
+    // Doctor payments (salary, bonus, commission, reimbursement - deductions reduce expenses)
+    const doctorPaymentsExpenseResult = await db.select({
+      total: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
+    }).from(doctorPayments)
+      .where(and(
+        gte(doctorPayments.paymentDate, startDate),
+        lte(doctorPayments.paymentDate, endDate)
+      ));
+
     const grossRevenue = Number(revenueResult[0]?.total || 0);
     const totalCollections = Number(collectionsResult[0]?.total || 0);
     const serviceCosts = Number(serviceCostsResult[0]?.total || 0);
-    const operatingExpenses = Number(expensesResult[0]?.total || 0);
+    const regularExpenses = Number(expensesResult[0]?.total || 0);
+    const doctorPaymentsExpense = Number(doctorPaymentsExpenseResult[0]?.total || 0);
+    const operatingExpenses = regularExpenses + doctorPaymentsExpense;
     const grossProfit = totalCollections - serviceCosts;
     const netProfit = grossProfit - operatingExpenses;
     const profitMargin = totalCollections > 0 ? (netProfit / totalCollections) * 100 : 0;
@@ -1314,20 +1383,34 @@ export class DatabaseStorage implements IStorage {
       .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
 
+    // Monthly doctor payments
+    const monthlyDoctorPayments = await db.select({
+      month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
+      amount: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
+    }).from(doctorPayments)
+      .where(and(
+        gte(doctorPayments.paymentDate, startDate),
+        lte(doctorPayments.paymentDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
+
     // Merge monthly data
     const monthsSet = new Set<string>();
     monthlyCollections.forEach(m => monthsSet.add(m.month));
     monthlyServiceCosts.forEach(m => monthsSet.add(m.month));
     monthlyExpenses.forEach(m => monthsSet.add(m.month));
+    monthlyDoctorPayments.forEach(m => monthsSet.add(m.month));
 
     const collectionsMap = new Map(monthlyCollections.map(m => [m.month, Number(m.collections)]));
     const costsMap = new Map(monthlyServiceCosts.map(m => [m.month, Number(m.costs)]));
     const expensesMap = new Map(monthlyExpenses.map(m => [m.month, Number(m.expenses)]));
+    const doctorPaymentsMap = new Map(monthlyDoctorPayments.map(m => [m.month, Number(m.amount)]));
 
     const byMonth = Array.from(monthsSet).sort().map(month => {
       const collections = collectionsMap.get(month) || 0;
       const costs = costsMap.get(month) || 0;
-      const exp = expensesMap.get(month) || 0;
+      const exp = (expensesMap.get(month) || 0) + (doctorPaymentsMap.get(month) || 0);
       return {
         month,
         collections,
