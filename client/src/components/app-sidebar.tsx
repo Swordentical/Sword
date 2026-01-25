@@ -109,6 +109,13 @@ const mainNavItems: NavItem[] = [
     feature: "financials",
   },
   {
+    title: "My Production",
+    url: "/my-production",
+    icon: BarChart3,
+    roles: ["doctor"],
+    feature: "reports",
+  },
+  {
     title: "Reports",
     url: "/reports",
     icon: BarChart3,

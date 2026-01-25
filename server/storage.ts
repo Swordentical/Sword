@@ -137,7 +137,28 @@ export interface IStorage {
     doctorName: string;
     totalProduction: number;
     treatmentCount: number;
+    patientCount: number;
+    avgProductionPerPatient: number;
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
   }[]>;
+  
+  getDoctorDetailedReport(doctorId: string, startDate: string, endDate: string): Promise<{
+    doctorId: string;
+    doctorName: string;
+    totalProduction: number;
+    totalCollected: number;
+    treatmentCount: number;
+    patientCount: number;
+    patientDetails: {
+      patientId: string;
+      patientName: string;
+      treatments: { name: string; date: string; price: number; status: string }[];
+      totalAmount: number;
+      amountPaid: number;
+    }[];
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
+    monthlyBreakdown: { month: string; production: number; treatments: number; patients: number }[];
+  }>;
   getExpenseReport(startDate: string, endDate: string): Promise<{
     total: number;
     byCategory: { category: string; amount: number }[];
@@ -878,36 +899,219 @@ export class DatabaseStorage implements IStorage {
     doctorName: string;
     totalProduction: number;
     treatmentCount: number;
+    patientCount: number;
+    avgProductionPerPatient: number;
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
   }[]> {
-    // Get completed treatments with their doctor info
-    const result = await db.select({
-      doctorId: patientTreatments.doctorId,
-      totalProduction: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`,
-      treatmentCount: sql<number>`COUNT(*)`
+    // Get all doctors (including those with zero production)
+    const allDoctors = await db.select().from(users).where(eq(users.role, 'doctor'));
+
+    const doctorProductions = [];
+    
+    for (const doctor of allDoctors) {
+      // Get production stats for this doctor
+      const productionResult = await db.select({
+        totalProduction: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`,
+        treatmentCount: sql<number>`COUNT(*)`,
+        patientCount: sql<number>`COUNT(DISTINCT patient_treatments.patient_id)`
+      })
+        .from(patientTreatments)
+        .where(and(
+          eq(patientTreatments.doctorId, doctor.id),
+          eq(patientTreatments.status, 'completed'),
+          gte(patientTreatments.completionDate, startDate),
+          lte(patientTreatments.completionDate, endDate)
+        ));
+
+      const stats = productionResult[0] || { totalProduction: '0', treatmentCount: 0, patientCount: 0 };
+      const totalProduction = Number(stats.totalProduction);
+      const patientCount = Number(stats.patientCount);
+
+      // Get treatment breakdown for this doctor
+      const treatmentBreakdownResult = await db.select({
+        treatmentName: treatments.name,
+        count: sql<number>`COUNT(*)`,
+        revenue: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`
+      })
+        .from(patientTreatments)
+        .leftJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
+        .where(and(
+          eq(patientTreatments.doctorId, doctor.id),
+          eq(patientTreatments.status, 'completed'),
+          gte(patientTreatments.completionDate, startDate),
+          lte(patientTreatments.completionDate, endDate)
+        ))
+        .groupBy(treatments.name);
+
+      doctorProductions.push({
+        doctorId: doctor.id,
+        doctorName: `${doctor.firstName} ${doctor.lastName}`,
+        totalProduction,
+        treatmentCount: Number(stats.treatmentCount),
+        patientCount,
+        avgProductionPerPatient: patientCount > 0 ? totalProduction / patientCount : 0,
+        treatmentBreakdown: treatmentBreakdownResult.map(t => ({
+          treatmentName: t.treatmentName || 'Unknown',
+          count: Number(t.count),
+          revenue: Number(t.revenue)
+        }))
+      });
+    }
+
+    return doctorProductions.sort((a, b) => b.totalProduction - a.totalProduction);
+  }
+  
+  async getDoctorDetailedReport(doctorId: string, startDate: string, endDate: string): Promise<{
+    doctorId: string;
+    doctorName: string;
+    totalProduction: number;
+    totalCollected: number;
+    treatmentCount: number;
+    patientCount: number;
+    patientDetails: {
+      patientId: string;
+      patientName: string;
+      treatments: { name: string; date: string; price: number; status: string }[];
+      totalAmount: number;
+      amountPaid: number;
+    }[];
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
+    monthlyBreakdown: { month: string; production: number; treatments: number; patients: number }[];
+  }> {
+    const doctor = await this.getUser(doctorId);
+    if (!doctor) throw new Error('Doctor not found');
+
+    // Get all treatments by this doctor in the date range
+    const doctorTreatments = await db.select({
+      id: patientTreatments.id,
+      patientId: patientTreatments.patientId,
+      treatmentId: patientTreatments.treatmentId,
+      price: patientTreatments.price,
+      status: patientTreatments.status,
+      completionDate: patientTreatments.completionDate,
+      treatmentName: treatments.name,
     })
       .from(patientTreatments)
+      .leftJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
       .where(and(
+        eq(patientTreatments.doctorId, doctorId),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ))
+      .orderBy(patientTreatments.completionDate);
+
+    // Group by patient
+    const patientMap = new Map<string, {
+      patientId: string;
+      patientName: string;
+      treatments: { name: string; date: string; price: number; status: string }[];
+      totalAmount: number;
+    }>();
+
+    for (const t of doctorTreatments) {
+      if (!t.patientId) continue;
+      
+      if (!patientMap.has(t.patientId)) {
+        const patient = await this.getPatient(t.patientId);
+        patientMap.set(t.patientId, {
+          patientId: t.patientId,
+          patientName: patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown',
+          treatments: [],
+          totalAmount: 0,
+        });
+      }
+      
+      const patientData = patientMap.get(t.patientId)!;
+      patientData.treatments.push({
+        name: t.treatmentName || 'Unknown',
+        date: t.completionDate || '',
+        price: Number(t.price) || 0,
+        status: t.status || 'unknown',
+      });
+      if (t.status === 'completed') {
+        patientData.totalAmount += Number(t.price) || 0;
+      }
+    }
+
+    // Calculate collected amounts per patient (from invoices/payments)
+    const patientDetails = [];
+    for (const [patientId, data] of Array.from(patientMap.entries())) {
+      // Get payments for this patient's invoices
+      const patientInvoices = await db.select({ id: invoices.id })
+        .from(invoices)
+        .where(eq(invoices.patientId, patientId));
+      
+      let amountPaid = 0;
+      for (const inv of patientInvoices) {
+        const paymentsResult = await db.select({
+          total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
+        }).from(payments).where(eq(payments.invoiceId, inv.id));
+        amountPaid += Number(paymentsResult[0]?.total || 0);
+      }
+      
+      patientDetails.push({
+        ...data,
+        amountPaid,
+      });
+    }
+
+    // Treatment breakdown
+    const treatmentBreakdownResult = await db.select({
+      treatmentName: treatments.name,
+      count: sql<number>`COUNT(*)`,
+      revenue: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`
+    })
+      .from(patientTreatments)
+      .leftJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
+      .where(and(
+        eq(patientTreatments.doctorId, doctorId),
         eq(patientTreatments.status, 'completed'),
         gte(patientTreatments.completionDate, startDate),
         lte(patientTreatments.completionDate, endDate)
       ))
-      .groupBy(patientTreatments.doctorId);
+      .groupBy(treatments.name);
 
-    // Fetch doctor names
-    const doctorProductions = [];
-    for (const row of result) {
-      if (row.doctorId) {
-        const doctor = await this.getUser(row.doctorId);
-        doctorProductions.push({
-          doctorId: row.doctorId,
-          doctorName: doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown',
-          totalProduction: Number(row.totalProduction),
-          treatmentCount: Number(row.treatmentCount),
-        });
-      }
-    }
+    // Monthly breakdown
+    const monthlyResult = await db.select({
+      month: sql<string>`TO_CHAR(completion_date, 'YYYY-MM')`,
+      production: sql<string>`COALESCE(SUM(CAST(price AS DECIMAL)), 0)`,
+      treatments: sql<number>`COUNT(*)`,
+      patients: sql<number>`COUNT(DISTINCT patient_id)`
+    })
+      .from(patientTreatments)
+      .where(and(
+        eq(patientTreatments.doctorId, doctorId),
+        eq(patientTreatments.status, 'completed'),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ))
+      .groupBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`);
 
-    return doctorProductions.sort((a, b) => b.totalProduction - a.totalProduction);
+    // Calculate totals
+    const totalProduction = patientDetails.reduce((sum, p) => sum + p.totalAmount, 0);
+    const totalCollected = patientDetails.reduce((sum, p) => sum + p.amountPaid, 0);
+
+    return {
+      doctorId,
+      doctorName: `${doctor.firstName} ${doctor.lastName}`,
+      totalProduction,
+      totalCollected,
+      treatmentCount: doctorTreatments.filter(t => t.status === 'completed').length,
+      patientCount: patientMap.size,
+      patientDetails,
+      treatmentBreakdown: treatmentBreakdownResult.map(t => ({
+        treatmentName: t.treatmentName || 'Unknown',
+        count: Number(t.count),
+        revenue: Number(t.revenue)
+      })),
+      monthlyBreakdown: monthlyResult.map(m => ({
+        month: m.month,
+        production: Number(m.production),
+        treatments: Number(m.treatments),
+        patients: Number(m.patients)
+      }))
+    };
   }
 
   async getExpenseReport(startDate: string, endDate: string): Promise<{

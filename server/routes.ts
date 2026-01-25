@@ -2207,6 +2207,45 @@ export async function registerRoutes(
     }
   });
 
+  // Detailed doctor report (for sending to doctors or admin viewing)
+  app.get("/api/reports/doctor/:doctorId", requireRole("admin", "doctor"), async (req, res) => {
+    try {
+      const { doctorId } = req.params;
+      const { startDate, endDate } = req.query;
+      
+      // Doctors can only view their own report
+      if (req.user?.role === 'doctor' && req.user.id !== doctorId) {
+        return res.status(403).json({ message: "You can only view your own report" });
+      }
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      
+      const report = await storage.getDoctorDetailedReport(doctorId, startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating doctor report:", error);
+      res.status(500).json({ message: "Failed to generate doctor report" });
+    }
+  });
+
+  // Endpoint for doctor to view their own financial dashboard
+  app.get("/api/my-production", requireRole("doctor"), async (req, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start and end dates are required" });
+      }
+      
+      const report = await storage.getDoctorDetailedReport(req.user!.id, startDate as string, endDate as string);
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating my production report:", error);
+      res.status(500).json({ message: "Failed to generate production report" });
+    }
+  });
+
   app.get("/api/reports/expenses", requireRole("admin"), async (req, res) => {
     try {
       const { startDate, endDate } = req.query;

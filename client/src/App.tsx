@@ -21,6 +21,7 @@ import PatientsList from "@/pages/patients/patients-list";
 import PatientDetail from "@/pages/patients/patient-detail";
 import AppointmentsPage from "@/pages/appointments/appointments-page";
 import DoctorsPage from "@/pages/doctors/doctors-page";
+import MyProductionPage from "@/pages/doctors/my-production-page";
 import ServicesPage from "@/pages/services/services-page";
 import InventoryPage from "@/pages/inventory/inventory-page";
 import LabWorkPage from "@/pages/lab-work/lab-work-page";
@@ -175,6 +176,14 @@ function DoctorsPageWrapper() {
   );
 }
 
+function MyProductionPageWrapper() {
+  return (
+    <MainLayout>
+      <MyProductionPage />
+    </MainLayout>
+  );
+}
+
 function AuditLogsPageWrapper() {
   return (
     <MainLayout>
@@ -207,6 +216,7 @@ function Router() {
       <ProtectedRoute path="/patients/:id" component={PatientDetailPage} />
       <ProtectedRoute path="/appointments" component={AppointmentsPageWrapper} />
       <ProtectedRoute path="/doctors" component={DoctorsPageWrapper} />
+      <ProtectedRoute path="/my-production" component={MyProductionPageWrapper} />
       <ProtectedRoute path="/services" component={ServicesPageWrapper} />
       <ProtectedRoute path="/inventory" component={InventoryPageWrapper} />
       <ProtectedRoute path="/lab-work" component={LabWorkPageWrapper} />

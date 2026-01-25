@@ -12,6 +12,12 @@ import {
   BarChart3,
   Calendar,
   Download,
+  Printer,
+  FileText,
+  Eye,
+  Mail,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -106,8 +112,47 @@ export default function ReportsPage() {
     doctorName: string;
     totalProduction: number;
     treatmentCount: number;
+    patientCount: number;
+    avgProductionPerPatient: number;
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
   }[]>({
     queryKey: ["/api/reports/production-by-doctor", queryParams],
+  });
+
+  const [expandedDoctors, setExpandedDoctors] = useState<Set<string>>(new Set());
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+
+  const toggleDoctorExpanded = (doctorId: string) => {
+    setExpandedDoctors(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(doctorId)) {
+        newSet.delete(doctorId);
+      } else {
+        newSet.add(doctorId);
+      }
+      return newSet;
+    });
+  };
+
+  const { data: selectedDoctorReport, isLoading: isLoadingDoctorReport } = useQuery<{
+    doctorId: string;
+    doctorName: string;
+    totalProduction: number;
+    totalCollected: number;
+    treatmentCount: number;
+    patientCount: number;
+    patientDetails: {
+      patientId: string;
+      patientName: string;
+      treatments: { name: string; date: string; price: number; status: string }[];
+      totalAmount: number;
+      amountPaid: number;
+    }[];
+    treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
+    monthlyBreakdown: { month: string; production: number; treatments: number; patients: number }[];
+  }>({
+    queryKey: ["/api/reports/doctor", selectedDoctorId, queryParams],
+    enabled: !!selectedDoctorId,
   });
 
   const { data: expenseReport, isLoading: isLoadingExpenses } = useQuery<{
@@ -145,7 +190,7 @@ export default function ReportsPage() {
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between print:hidden">
           <div>
             <h1 className="text-2xl font-bold" data-testid="text-reports-title">Financial Reports</h1>
             <p className="text-muted-foreground">Comprehensive financial analytics and reporting</p>
@@ -166,7 +211,22 @@ export default function ReportsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <Button 
+              variant="outline" 
+              onClick={() => window.print()}
+              data-testid="button-print-reports"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print Report
+            </Button>
           </div>
+        </div>
+
+        {/* Print Header */}
+        <div className="hidden print:block print-header">
+          <h1 className="text-2xl font-bold">GLAZER - Financial Report</h1>
+          <p className="text-muted-foreground">Period: {dateRange.startDate} to {dateRange.endDate}</p>
+          <p className="text-sm text-muted-foreground">Generated: {new Date().toLocaleDateString()}</p>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
@@ -549,33 +609,131 @@ export default function ReportsPage() {
 
           <TabsContent value="production" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Production by Doctor
-                </CardTitle>
-                <CardDescription>Completed treatment production for the selected period</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Production by Doctor
+                  </CardTitle>
+                  <CardDescription>Completed treatment production for the selected period (all doctors shown)</CardDescription>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.print()}
+                  data-testid="button-print-production"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Report
+                </Button>
               </CardHeader>
               <CardContent>
                 {isLoadingProduction ? (
                   <p>Loading...</p>
                 ) : productionReport && productionReport.length > 0 ? (
                   <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-muted-foreground">Total Doctors</p>
+                          <p className="text-2xl font-bold">{productionReport.length}</p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-muted-foreground">Total Production</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            {formatCurrency(productionReport.reduce((sum, d) => sum + d.totalProduction, 0))}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-muted-foreground">Total Treatments</p>
+                          <p className="text-2xl font-bold">
+                            {productionReport.reduce((sum, d) => sum + d.treatmentCount, 0)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <p className="text-sm text-muted-foreground">Total Patients</p>
+                          <p className="text-2xl font-bold">
+                            {productionReport.reduce((sum, d) => sum + d.patientCount, 0)}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead></TableHead>
                           <TableHead>Doctor</TableHead>
+                          <TableHead className="text-right">Patients</TableHead>
                           <TableHead className="text-right">Treatments</TableHead>
+                          <TableHead className="text-right">Avg/Patient</TableHead>
                           <TableHead className="text-right">Production</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {productionReport.map((row, idx) => (
-                          <TableRow key={row.doctorId}>
-                            <TableCell className="font-medium">{row.doctorName}</TableCell>
-                            <TableCell className="text-right">{row.treatmentCount}</TableCell>
-                            <TableCell className="text-right font-bold">{formatCurrency(row.totalProduction)}</TableCell>
-                          </TableRow>
+                        {productionReport.map((row) => (
+                          <>
+                            <TableRow key={row.doctorId} className={row.totalProduction === 0 ? "opacity-60" : ""}>
+                              <TableCell>
+                                {row.treatmentBreakdown.length > 0 && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6"
+                                    onClick={() => toggleDoctorExpanded(row.doctorId)}
+                                    data-testid={`button-expand-doctor-${row.doctorId}`}
+                                  >
+                                    {expandedDoctors.has(row.doctorId) ? (
+                                      <ChevronUp className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                  </Button>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">{row.doctorName}</TableCell>
+                              <TableCell className="text-right">{row.patientCount}</TableCell>
+                              <TableCell className="text-right">{row.treatmentCount}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(row.avgProductionPerPatient)}</TableCell>
+                              <TableCell className="text-right font-bold">{formatCurrency(row.totalProduction)}</TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setSelectedDoctorId(row.doctorId)}
+                                  data-testid={`button-view-doctor-report-${row.doctorId}`}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Details
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                            {expandedDoctors.has(row.doctorId) && row.treatmentBreakdown.length > 0 && (
+                              <TableRow key={`${row.doctorId}-breakdown`} className="bg-muted/30">
+                                <TableCell colSpan={7} className="py-2">
+                                  <div className="pl-10 pr-4">
+                                    <p className="text-sm font-medium mb-2">Treatment Breakdown:</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                      {row.treatmentBreakdown.map((t, i) => (
+                                        <div key={i} className="bg-background rounded p-2 text-sm">
+                                          <p className="font-medium truncate">{t.treatmentName}</p>
+                                          <p className="text-muted-foreground">{t.count} × {formatCurrency(t.revenue / t.count)}</p>
+                                          <p className="font-bold">{formatCurrency(t.revenue)}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
                         ))}
                       </TableBody>
                     </Table>
@@ -584,7 +742,7 @@ export default function ReportsPage() {
                       <ResponsiveContainer width="100%" height="100%">
                         <RechartsPieChart>
                           <Pie
-                            data={productionReport.map(d => ({ name: d.doctorName, value: d.totalProduction }))}
+                            data={productionReport.filter(d => d.totalProduction > 0).map(d => ({ name: d.doctorName, value: d.totalProduction }))}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -592,7 +750,7 @@ export default function ReportsPage() {
                             outerRadius={100}
                             dataKey="value"
                           >
-                            {productionReport.map((_, index) => (
+                            {productionReport.filter(d => d.totalProduction > 0).map((_, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -602,10 +760,160 @@ export default function ReportsPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No production data for the selected period</p>
+                  <p className="text-muted-foreground text-center py-8">No doctors found in the system</p>
                 )}
               </CardContent>
             </Card>
+
+            {/* Doctor Detail Modal/Section */}
+            {selectedDoctorId && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      {selectedDoctorReport?.doctorName || "Doctor"} - Detailed Report
+                    </CardTitle>
+                    <CardDescription>
+                      Period: {dateRange.startDate} to {dateRange.endDate}
+                    </CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.print()}
+                      data-testid="button-print-doctor-statement"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print Statement
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setSelectedDoctorId(null)}
+                      data-testid="button-close-doctor-report"
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingDoctorReport ? (
+                    <p>Loading detailed report...</p>
+                  ) : selectedDoctorReport ? (
+                    <div className="space-y-6">
+                      {/* Summary Cards */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card className="bg-green-50 dark:bg-green-950">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-muted-foreground">Total Production</p>
+                            <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedDoctorReport.totalProduction)}</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-blue-50 dark:bg-blue-950">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-muted-foreground">Collected</p>
+                            <p className="text-2xl font-bold text-blue-600">{formatCurrency(selectedDoctorReport.totalCollected)}</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-muted/50">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-muted-foreground">Patients Treated</p>
+                            <p className="text-2xl font-bold">{selectedDoctorReport.patientCount}</p>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-muted/50">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-muted-foreground">Treatments Done</p>
+                            <p className="text-2xl font-bold">{selectedDoctorReport.treatmentCount}</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Monthly Breakdown Chart */}
+                      {selectedDoctorReport.monthlyBreakdown.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-4">Monthly Performance</h4>
+                          <div className="h-[250px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={selectedDoctorReport.monthlyBreakdown}>
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                <XAxis dataKey="month" className="text-xs" />
+                                <YAxis className="text-xs" tickFormatter={(v) => `$${v}`} />
+                                <Tooltip formatter={(value: number, name: string) => 
+                                  name === 'production' ? formatCurrency(value) : value
+                                } />
+                                <Legend />
+                                <Bar dataKey="production" name="Production" fill="hsl(var(--primary))" />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Treatment Breakdown */}
+                      {selectedDoctorReport.treatmentBreakdown.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-4">Treatment Breakdown</h4>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Treatment</TableHead>
+                                <TableHead className="text-right">Count</TableHead>
+                                <TableHead className="text-right">Revenue</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedDoctorReport.treatmentBreakdown.map((t, i) => (
+                                <TableRow key={i}>
+                                  <TableCell className="font-medium">{t.treatmentName}</TableCell>
+                                  <TableCell className="text-right">{t.count}</TableCell>
+                                  <TableCell className="text-right font-bold">{formatCurrency(t.revenue)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+
+                      {/* Patient Details */}
+                      {selectedDoctorReport.patientDetails.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-4">Patient Details</h4>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Patient</TableHead>
+                                <TableHead className="text-right">Treatments</TableHead>
+                                <TableHead className="text-right">Amount</TableHead>
+                                <TableHead className="text-right">Paid</TableHead>
+                                <TableHead className="text-right">Balance</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {selectedDoctorReport.patientDetails.map((p) => (
+                                <TableRow key={p.patientId}>
+                                  <TableCell className="font-medium">{p.patientName}</TableCell>
+                                  <TableCell className="text-right">{p.treatments.length}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(p.totalAmount)}</TableCell>
+                                  <TableCell className="text-right text-green-600">{formatCurrency(p.amountPaid)}</TableCell>
+                                  <TableCell className={`text-right font-bold ${p.totalAmount - p.amountPaid > 0 ? 'text-red-600' : ''}`}>
+                                    {formatCurrency(p.totalAmount - p.amountPaid)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">No data available</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="expenses" className="space-y-4">
