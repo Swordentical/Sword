@@ -51,6 +51,11 @@ export const doctorSpecialtyEnum = pgEnum("doctor_specialty", [
   "implantology", "oral_pathology"
 ]);
 
+// Doctor payment types
+export const doctorPaymentTypeEnum = pgEnum("doctor_payment_type", [
+  "salary", "bonus", "commission", "deduction", "reimbursement", "other"
+]);
+
 // ==================== MULTI-TENANT & SUBSCRIPTION TABLES ====================
 
 // Subscription Plans - defines the available plans and their features
@@ -426,6 +431,22 @@ export const expenses = pgTable("expenses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Doctor payments (salaries, bonuses, commissions)
+export const doctorPayments = pgTable("doctor_payments", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  doctorId: varchar("doctor_id", { length: 36 }).notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentType: doctorPaymentTypeEnum("payment_type").notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  paymentDate: date("payment_date").notNull(),
+  paymentPeriodStart: date("payment_period_start"),
+  paymentPeriodEnd: date("payment_period_end"),
+  referenceNumber: text("reference_number"),
+  notes: text("notes"),
+  createdById: varchar("created_by_id", { length: 36 }).references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insurance claims
 export const insuranceClaims = pgTable("insurance_claims", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
@@ -788,6 +809,7 @@ export const insertPaymentPlanSchema = createInsertSchema(paymentPlans).omit({ i
 export const insertPaymentPlanInstallmentSchema = createInsertSchema(paymentPlanInstallments).omit({ id: true });
 export const insertInvoiceAdjustmentSchema = createInsertSchema(invoiceAdjustments).omit({ id: true, createdAt: true });
 export const insertExpenseSchema = createInsertSchema(expenses).omit({ id: true, createdAt: true });
+export const insertDoctorPaymentSchema = createInsertSchema(doctorPayments).omit({ id: true, createdAt: true });
 export const insertInsuranceClaimSchema = createInsertSchema(insuranceClaims).omit({ id: true, createdAt: true });
 export const insertInventoryItemSchema = createInsertSchema(inventoryItems).omit({ id: true, createdAt: true });
 export const insertLabCaseSchema = createInsertSchema(labCases).omit({ id: true, createdAt: true });
@@ -853,6 +875,9 @@ export type InvoiceAdjustment = typeof invoiceAdjustments.$inferSelect;
 
 export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 export type Expense = typeof expenses.$inferSelect;
+
+export type InsertDoctorPayment = z.infer<typeof insertDoctorPaymentSchema>;
+export type DoctorPayment = typeof doctorPayments.$inferSelect;
 
 export type InsertInsuranceClaim = z.infer<typeof insertInsuranceClaimSchema>;
 export type InsuranceClaim = typeof insuranceClaims.$inferSelect;
