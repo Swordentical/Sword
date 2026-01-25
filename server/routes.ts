@@ -3385,6 +3385,7 @@ export async function registerRoutes(
 
   // Restore - Import data from JSON backup (admin only)
   // This uses direct database inserts to preserve original IDs and relationships
+  // All operations are wrapped in a transaction for consistency
   app.post("/api/restore", requireRole("admin"), async (req, res) => {
     try {
       const { data } = req.body;
@@ -3394,6 +3395,7 @@ export async function registerRoutes(
       }
 
       const counts = {
+        users: 0,
         patients: 0,
         patientTreatments: 0,
         patientDocuments: 0,
@@ -3415,262 +3417,290 @@ export async function registerRoutes(
         clinicRooms: 0,
       };
 
-      // 1. Import external labs first (lab cases depend on them)
-      if (data.externalLabs && Array.isArray(data.externalLabs)) {
-        for (const lab of data.externalLabs) {
-          try {
-            await db.insert(externalLabs).values(lab).onConflictDoNothing();
-            counts.externalLabs++;
-          } catch (e) {
-            console.error("Failed to import external lab:", e);
+      // Wrap all imports in a transaction for consistency
+      await db.transaction(async (tx) => {
+        // 0. Import users first (many entities reference them via doctorId, createdById)
+        // Users are imported without passwords - admin must reset them after restore
+        if (data.users && Array.isArray(data.users)) {
+          for (const user of data.users) {
+            try {
+              // If user doesn't have password, generate a valid bcrypt hash of a random string
+              // Users will need password reset by admin after restore
+              let passwordHash = user.password;
+              if (!passwordHash) {
+                // Generate a valid bcrypt hash for a random password (users must reset)
+                const randomPassword = `RESET_REQUIRED_${Date.now()}_${Math.random().toString(36)}`;
+                passwordHash = await bcrypt.hash(randomPassword, 10);
+              }
+              const userWithPassword = {
+                ...user,
+                password: passwordHash,
+              };
+              await tx.insert(users).values(userWithPassword).onConflictDoNothing();
+              counts.users++;
+            } catch (e) {
+              console.error("Failed to import user:", e);
+            }
           }
         }
-      }
 
-      // 2. Import lab services
-      if (data.labServices && Array.isArray(data.labServices)) {
-        for (const service of data.labServices) {
-          try {
-            await db.insert(labServices).values(service).onConflictDoNothing();
-            counts.labServices++;
+        // 1. Import external labs first (lab cases depend on them)
+        if (data.externalLabs && Array.isArray(data.externalLabs)) {
+          for (const lab of data.externalLabs) {
+            try {
+              await tx.insert(externalLabs).values(lab).onConflictDoNothing();
+              counts.externalLabs++;
+            } catch (e) {
+              console.error("Failed to import external lab:", e);
+            }
+          }
+        }
+
+        // 2. Import lab services
+        if (data.labServices && Array.isArray(data.labServices)) {
+          for (const service of data.labServices) {
+            try {
+              await tx.insert(labServices).values(service).onConflictDoNothing();
+              counts.labServices++;
           } catch (e) {
             console.error("Failed to import lab service:", e);
           }
         }
       }
 
-      // 3. Import treatments/services (they don't depend on other entities)
-      if (data.treatments && Array.isArray(data.treatments)) {
-        for (const treatment of data.treatments) {
-          try {
-            await db.insert(treatments).values(treatment).onConflictDoNothing();
-            counts.treatments++;
-          } catch (e) {
-            console.error("Failed to import treatment:", e);
+        // 3. Import treatments/services (they don't depend on other entities)
+        if (data.treatments && Array.isArray(data.treatments)) {
+          for (const treatment of data.treatments) {
+            try {
+              await tx.insert(treatments).values(treatment).onConflictDoNothing();
+              counts.treatments++;
+            } catch (e) {
+              console.error("Failed to import treatment:", e);
+            }
           }
         }
-      }
 
-      // 4. Import clinic rooms
-      if (data.clinicRooms && Array.isArray(data.clinicRooms)) {
-        for (const room of data.clinicRooms) {
-          try {
-            await db.insert(clinicRooms).values(room).onConflictDoNothing();
-            counts.clinicRooms++;
-          } catch (e) {
-            console.error("Failed to import clinic room:", e);
+        // 4. Import clinic rooms
+        if (data.clinicRooms && Array.isArray(data.clinicRooms)) {
+          for (const room of data.clinicRooms) {
+            try {
+              await tx.insert(clinicRooms).values(room).onConflictDoNothing();
+              counts.clinicRooms++;
+            } catch (e) {
+              console.error("Failed to import clinic room:", e);
+            }
           }
         }
-      }
 
-      // 5. Import patients
-      if (data.patients && Array.isArray(data.patients)) {
-        for (const patient of data.patients) {
-          try {
-            await db.insert(patients).values(patient).onConflictDoNothing();
-            counts.patients++;
-          } catch (e) {
-            console.error("Failed to import patient:", e);
+        // 5. Import patients
+        if (data.patients && Array.isArray(data.patients)) {
+          for (const patient of data.patients) {
+            try {
+              await tx.insert(patients).values(patient).onConflictDoNothing();
+              counts.patients++;
+            } catch (e) {
+              console.error("Failed to import patient:", e);
+            }
           }
         }
-      }
 
-      // 6. Import patient treatments (links patients to treatments)
-      if (data.patientTreatments && typeof data.patientTreatments === 'object') {
-        for (const patientId of Object.keys(data.patientTreatments)) {
-          const ptList = data.patientTreatments[patientId];
-          if (Array.isArray(ptList)) {
-            for (const pt of ptList) {
-              try {
-                await db.insert(patientTreatments).values(pt).onConflictDoNothing();
-                counts.patientTreatments++;
-              } catch (e) {
-                console.error("Failed to import patient treatment:", e);
+        // 6. Import patient treatments (links patients to treatments)
+        if (data.patientTreatments && typeof data.patientTreatments === 'object') {
+          for (const patientId of Object.keys(data.patientTreatments)) {
+            const ptList = data.patientTreatments[patientId];
+            if (Array.isArray(ptList)) {
+              for (const pt of ptList) {
+                try {
+                  await tx.insert(patientTreatments).values(pt).onConflictDoNothing();
+                  counts.patientTreatments++;
+                } catch (e) {
+                  console.error("Failed to import patient treatment:", e);
+                }
               }
             }
           }
         }
-      }
 
-      // 7. Import patient documents
-      if (data.patientDocuments && typeof data.patientDocuments === 'object') {
-        for (const patientId of Object.keys(data.patientDocuments)) {
-          const docList = data.patientDocuments[patientId];
-          if (Array.isArray(docList)) {
-            for (const doc of docList) {
-              try {
-                await db.insert(documents).values(doc).onConflictDoNothing();
-                counts.patientDocuments++;
-              } catch (e) {
-                console.error("Failed to import patient document:", e);
+        // 7. Import patient documents
+        if (data.patientDocuments && typeof data.patientDocuments === 'object') {
+          for (const patientId of Object.keys(data.patientDocuments)) {
+            const docList = data.patientDocuments[patientId];
+            if (Array.isArray(docList)) {
+              for (const doc of docList) {
+                try {
+                  await tx.insert(documents).values(doc).onConflictDoNothing();
+                  counts.patientDocuments++;
+                } catch (e) {
+                  console.error("Failed to import patient document:", e);
+                }
               }
             }
           }
         }
-      }
 
-      // 8. Import appointments
-      if (data.appointments && Array.isArray(data.appointments)) {
-        for (const appointment of data.appointments) {
-          try {
-            await db.insert(appointments).values(appointment).onConflictDoNothing();
-            counts.appointments++;
-          } catch (e) {
-            console.error("Failed to import appointment:", e);
+        // 8. Import appointments
+        if (data.appointments && Array.isArray(data.appointments)) {
+          for (const appointment of data.appointments) {
+            try {
+              await tx.insert(appointments).values(appointment).onConflictDoNothing();
+              counts.appointments++;
+            } catch (e) {
+              console.error("Failed to import appointment:", e);
+            }
           }
         }
-      }
 
-      // 9. Import inventory items
-      if (data.inventory && Array.isArray(data.inventory)) {
-        for (const item of data.inventory) {
-          try {
-            await db.insert(inventoryItems).values(item).onConflictDoNothing();
-            counts.inventory++;
-          } catch (e) {
-            console.error("Failed to import inventory item:", e);
+        // 9. Import inventory items
+        if (data.inventory && Array.isArray(data.inventory)) {
+          for (const item of data.inventory) {
+            try {
+              await tx.insert(inventoryItems).values(item).onConflictDoNothing();
+              counts.inventory++;
+            } catch (e) {
+              console.error("Failed to import inventory item:", e);
+            }
           }
         }
-      }
 
-      // 10. Import lab cases
-      if (data.labCases && Array.isArray(data.labCases)) {
-        for (const labCase of data.labCases) {
-          try {
-            await db.insert(labCases).values(labCase).onConflictDoNothing();
-            counts.labCases++;
-          } catch (e) {
-            console.error("Failed to import lab case:", e);
+        // 10. Import lab cases
+        if (data.labCases && Array.isArray(data.labCases)) {
+          for (const labCase of data.labCases) {
+            try {
+              await tx.insert(labCases).values(labCase).onConflictDoNothing();
+              counts.labCases++;
+            } catch (e) {
+              console.error("Failed to import lab case:", e);
+            }
           }
         }
-      }
 
-      // 11. Import invoices (before payments and claims which reference them)
-      if (data.invoices && Array.isArray(data.invoices)) {
-        for (const invoice of data.invoices) {
-          try {
-            await db.insert(invoices).values(invoice).onConflictDoNothing();
-            counts.invoices++;
-          } catch (e) {
-            console.error("Failed to import invoice:", e);
+        // 11. Import invoices (before payments and claims which reference them)
+        if (data.invoices && Array.isArray(data.invoices)) {
+          for (const invoice of data.invoices) {
+            try {
+              await tx.insert(invoices).values(invoice).onConflictDoNothing();
+              counts.invoices++;
+            } catch (e) {
+              console.error("Failed to import invoice:", e);
+            }
           }
         }
-      }
 
-      // 12. Import invoice items
-      if (data.invoiceItems && typeof data.invoiceItems === 'object') {
-        for (const invoiceId of Object.keys(data.invoiceItems)) {
-          const itemList = data.invoiceItems[invoiceId];
-          if (Array.isArray(itemList)) {
-            for (const item of itemList) {
-              try {
-                await db.insert(invoiceItems).values(item).onConflictDoNothing();
-                counts.invoiceItems++;
-              } catch (e) {
-                console.error("Failed to import invoice item:", e);
+        // 12. Import invoice items
+        if (data.invoiceItems && typeof data.invoiceItems === 'object') {
+          for (const invoiceId of Object.keys(data.invoiceItems)) {
+            const itemList = data.invoiceItems[invoiceId];
+            if (Array.isArray(itemList)) {
+              for (const item of itemList) {
+                try {
+                  await tx.insert(invoiceItems).values(item).onConflictDoNothing();
+                  counts.invoiceItems++;
+                } catch (e) {
+                  console.error("Failed to import invoice item:", e);
+                }
               }
             }
           }
         }
-      }
 
-      // 13. Import invoice adjustments
-      if (data.invoiceAdjustments && typeof data.invoiceAdjustments === 'object') {
-        for (const invoiceId of Object.keys(data.invoiceAdjustments)) {
-          const adjList = data.invoiceAdjustments[invoiceId];
-          if (Array.isArray(adjList)) {
-            for (const adj of adjList) {
-              try {
-                await db.insert(invoiceAdjustments).values(adj).onConflictDoNothing();
-                counts.invoiceAdjustments++;
-              } catch (e) {
-                console.error("Failed to import invoice adjustment:", e);
+        // 13. Import invoice adjustments
+        if (data.invoiceAdjustments && typeof data.invoiceAdjustments === 'object') {
+          for (const invoiceId of Object.keys(data.invoiceAdjustments)) {
+            const adjList = data.invoiceAdjustments[invoiceId];
+            if (Array.isArray(adjList)) {
+              for (const adj of adjList) {
+                try {
+                  await tx.insert(invoiceAdjustments).values(adj).onConflictDoNothing();
+                  counts.invoiceAdjustments++;
+                } catch (e) {
+                  console.error("Failed to import invoice adjustment:", e);
+                }
               }
             }
           }
         }
-      }
 
-      // 14. Import payments
-      if (data.payments && Array.isArray(data.payments)) {
-        for (const payment of data.payments) {
-          try {
-            await db.insert(payments).values(payment).onConflictDoNothing();
-            counts.payments++;
-          } catch (e) {
-            console.error("Failed to import payment:", e);
+        // 14. Import payments
+        if (data.payments && Array.isArray(data.payments)) {
+          for (const payment of data.payments) {
+            try {
+              await tx.insert(payments).values(payment).onConflictDoNothing();
+              counts.payments++;
+            } catch (e) {
+              console.error("Failed to import payment:", e);
+            }
           }
         }
-      }
 
-      // 15. Import payment plans
-      if (data.paymentPlans && Array.isArray(data.paymentPlans)) {
-        for (const plan of data.paymentPlans) {
-          try {
-            await db.insert(paymentPlans).values(plan).onConflictDoNothing();
-            counts.paymentPlans++;
-          } catch (e) {
-            console.error("Failed to import payment plan:", e);
+        // 15. Import payment plans
+        if (data.paymentPlans && Array.isArray(data.paymentPlans)) {
+          for (const plan of data.paymentPlans) {
+            try {
+              await tx.insert(paymentPlans).values(plan).onConflictDoNothing();
+              counts.paymentPlans++;
+            } catch (e) {
+              console.error("Failed to import payment plan:", e);
+            }
           }
         }
-      }
 
-      // 16. Import payment plan installments
-      if (data.paymentPlanInstallments && typeof data.paymentPlanInstallments === 'object') {
-        for (const planId of Object.keys(data.paymentPlanInstallments)) {
-          const installmentList = data.paymentPlanInstallments[planId];
-          if (Array.isArray(installmentList)) {
-            for (const installment of installmentList) {
-              try {
-                await db.insert(paymentPlanInstallments).values(installment).onConflictDoNothing();
-                counts.paymentPlanInstallments++;
-              } catch (e) {
-                console.error("Failed to import payment plan installment:", e);
+        // 16. Import payment plan installments
+        if (data.paymentPlanInstallments && typeof data.paymentPlanInstallments === 'object') {
+          for (const planId of Object.keys(data.paymentPlanInstallments)) {
+            const installmentList = data.paymentPlanInstallments[planId];
+            if (Array.isArray(installmentList)) {
+              for (const installment of installmentList) {
+                try {
+                  await tx.insert(paymentPlanInstallments).values(installment).onConflictDoNothing();
+                  counts.paymentPlanInstallments++;
+                } catch (e) {
+                  console.error("Failed to import payment plan installment:", e);
+                }
               }
             }
           }
         }
-      }
 
-      // 17. Import expenses
-      if (data.expenses && Array.isArray(data.expenses)) {
-        for (const expense of data.expenses) {
-          try {
-            await db.insert(expenses).values(expense).onConflictDoNothing();
-            counts.expenses++;
-          } catch (e) {
-            console.error("Failed to import expense:", e);
+        // 17. Import expenses
+        if (data.expenses && Array.isArray(data.expenses)) {
+          for (const expense of data.expenses) {
+            try {
+              await tx.insert(expenses).values(expense).onConflictDoNothing();
+              counts.expenses++;
+            } catch (e) {
+              console.error("Failed to import expense:", e);
+            }
           }
         }
-      }
 
-      // 18. Import doctor payments
-      if (data.doctorPayments && Array.isArray(data.doctorPayments)) {
-        for (const payment of data.doctorPayments) {
-          try {
-            // Remove joined doctor data if present
-            const { doctor, ...paymentData } = payment;
-            await db.insert(doctorPayments).values(paymentData).onConflictDoNothing();
-            counts.doctorPayments++;
-          } catch (e) {
-            console.error("Failed to import doctor payment:", e);
+        // 18. Import doctor payments
+        if (data.doctorPayments && Array.isArray(data.doctorPayments)) {
+          for (const payment of data.doctorPayments) {
+            try {
+              // Remove joined doctor data if present
+              const { doctor, ...paymentData } = payment;
+              await tx.insert(doctorPayments).values(paymentData).onConflictDoNothing();
+              counts.doctorPayments++;
+            } catch (e) {
+              console.error("Failed to import doctor payment:", e);
+            }
           }
         }
-      }
 
-      // 19. Import insurance claims
-      if (data.insuranceClaims && Array.isArray(data.insuranceClaims)) {
-        for (const claim of data.insuranceClaims) {
-          try {
-            await db.insert(insuranceClaims).values(claim).onConflictDoNothing();
-            counts.insuranceClaims++;
-          } catch (e) {
-            console.error("Failed to import insurance claim:", e);
+        // 19. Import insurance claims
+        if (data.insuranceClaims && Array.isArray(data.insuranceClaims)) {
+          for (const claim of data.insuranceClaims) {
+            try {
+              await tx.insert(insuranceClaims).values(claim).onConflictDoNothing();
+              counts.insuranceClaims++;
+            } catch (e) {
+              console.error("Failed to import insurance claim:", e);
+            }
           }
         }
-      }
+      }); // End transaction
 
-      // 20. Update clinic settings if provided
+      // Update clinic settings outside transaction (uses storage method)
       if (data.clinicSettings) {
         try {
           await storage.updateClinicSettings(data.clinicSettings);
@@ -3679,12 +3709,13 @@ export async function registerRoutes(
         }
       }
 
+      // Log activity after successful transaction
       await storage.logActivity({
         userId: (req.user as any).id,
         action: "restored",
         entityType: "backup",
         entityId: null,
-        details: `Full restore: ${counts.patients} patients, ${counts.patientTreatments} patient treatments, ${counts.appointments} appointments, ${counts.treatments} services, ${counts.invoices} invoices, ${counts.payments} payments, ${counts.expenses} expenses, ${counts.doctorPayments} doctor payments, ${counts.insuranceClaims} claims, ${counts.labCases} lab cases, ${counts.inventory} inventory`,
+        details: `Full restore: ${counts.users} users, ${counts.patients} patients, ${counts.patientTreatments} patient treatments, ${counts.appointments} appointments, ${counts.treatments} services, ${counts.invoices} invoices, ${counts.payments} payments, ${counts.expenses} expenses, ${counts.doctorPayments} doctor payments, ${counts.insuranceClaims} claims, ${counts.labCases} lab cases, ${counts.inventory} inventory`,
       });
 
       res.json({
