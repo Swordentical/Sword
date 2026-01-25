@@ -1,3 +1,4 @@
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -25,6 +26,7 @@ import { Link, useLocation } from "wouter";
 import glazerLogo from "@/assets/glazer-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
+import { ArcadeMode } from "@/components/arcade-mode";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -189,6 +191,35 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { hasFeature, subscriptionContext, getPlanType } = useSubscription();
+  
+  const [arcadeOpen, setArcadeOpen] = useState(false);
+  const clickCountRef = useRef(0);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  const handleLogoClick = useCallback(() => {
+    clickCountRef.current += 1;
+    
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+    
+    if (clickCountRef.current >= 5) {
+      clickCountRef.current = 0;
+      setArcadeOpen(true);
+    } else {
+      clickTimeoutRef.current = setTimeout(() => {
+        clickCountRef.current = 0;
+      }, 2000);
+    }
+  }, []);
 
   const userRole = (user?.role as UserRole) || "staff";
   const planType = getPlanType();
@@ -225,9 +256,13 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
-          <span className="text-2xl font-bold bg-gradient-to-r from-[#12a3b0] via-[#2089de] to-[#9b59b6] bg-clip-text text-transparent">
+          <button
+            onClick={handleLogoClick}
+            className="text-2xl font-bold bg-gradient-to-r from-[#12a3b0] via-[#2089de] to-[#9b59b6] bg-clip-text text-transparent cursor-pointer select-none"
+            data-testid="button-logo"
+          >
             GLAZER
-          </span>
+          </button>
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
               By Dr. Ahmad Saleh
@@ -398,6 +433,8 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </div>
       </SidebarFooter>
+      
+      <ArcadeMode isOpen={arcadeOpen} onClose={() => setArcadeOpen(false)} />
     </Sidebar>
   );
 }
