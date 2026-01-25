@@ -415,30 +415,18 @@ function GlobalSearch() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="flex">
-          {/* Icon-only button for intermediate screens (sm to md) */}
-          <Button 
-            variant="outline" 
-            size="icon"
-            className="hidden sm:flex md:hidden"
-            data-testid="button-global-search-icon"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-          {/* Full search bar for mobile and larger screens */}
-          <Button 
-            variant="outline" 
-            className="w-full justify-start text-muted-foreground gap-2 sm:hidden md:flex"
-            data-testid="button-global-search"
-          >
-            <Search className="h-4 w-4" />
-            <span className="hidden md:inline">Search patients, appointments...</span>
-            <span className="md:hidden">Search...</span>
-            <kbd className="hidden lg:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground">
-              Ctrl+K
-            </kbd>
-          </Button>
-        </div>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-muted-foreground gap-2"
+          data-testid="button-global-search"
+        >
+          <Search className="h-4 w-4" />
+          <span className="hidden sm:inline">Search patients, appointments...</span>
+          <span className="sm:hidden">Search...</span>
+          <kbd className="hidden md:inline-flex pointer-events-none ml-auto select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono font-medium text-muted-foreground">
+            Ctrl+K
+          </kbd>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[90vw] max-w-md p-0" align="start">
         <Command shouldFilter={false}>
@@ -1287,7 +1275,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex-1 sm:flex-none md:w-80 lg:w-96">
+              <div className="flex-1 sm:flex-none sm:w-80 lg:w-96">
                 <GlobalSearch />
               </div>
               <div className="hidden lg:flex items-center gap-3">
