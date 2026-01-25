@@ -11,13 +11,11 @@ import {
   PieChart,
   BarChart3,
   Calendar,
-  Download,
-  Printer,
-  FileText,
   Eye,
   Mail,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ExportDropdown } from "@/components/export-dropdown";
 import {
   ResponsiveContainer,
   BarChart,
@@ -211,14 +210,17 @@ export default function ReportsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => window.print()}
-              data-testid="button-print-reports"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print Report
-            </Button>
+            <ExportDropdown 
+              data={{
+                period: { start: dateRange.startDate, end: dateRange.endDate },
+                revenue: revenueReport,
+                expenses: expenseReport,
+                production: productionReport,
+                arAging: arAgingReport,
+                netProfit: netProfitReport,
+              }}
+              filename="Financial-Report"
+            />
           </div>
         </div>
 
@@ -617,15 +619,13 @@ export default function ReportsPage() {
                   </CardTitle>
                   <CardDescription>Completed treatment production for the selected period (all doctors shown)</CardDescription>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => window.print()}
-                  data-testid="button-print-production"
-                >
-                  <Printer className="h-4 w-4 mr-2" />
-                  Print Report
-                </Button>
+                <ExportDropdown 
+                  data={{
+                    period: { start: dateRange.startDate, end: dateRange.endDate },
+                    production: productionReport,
+                  }}
+                  filename="Production-Report"
+                />
               </CardHeader>
               <CardContent>
                 {isLoadingProduction ? (
@@ -779,15 +779,13 @@ export default function ReportsPage() {
                     </CardDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.print()}
-                      data-testid="button-print-doctor-statement"
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Print Statement
-                    </Button>
+                    <ExportDropdown 
+                      data={{
+                        period: { start: dateRange.startDate, end: dateRange.endDate },
+                        doctor: selectedDoctorReport,
+                      }}
+                      filename={`Doctor-Statement-${selectedDoctorReport?.doctorName || 'Doctor'}`}
+                    />
                     <Button 
                       variant="ghost" 
                       size="sm"

@@ -7,14 +7,13 @@ import {
   Stethoscope,
   TrendingUp,
   Calendar,
-  Printer,
   FileText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ExportDropdown } from "@/components/export-dropdown";
 import {
   ResponsiveContainer,
   BarChart,
@@ -103,10 +102,6 @@ export default function MyProductionPage() {
     }).format(amount);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -133,10 +128,14 @@ export default function MyProductionPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={handlePrint} data-testid="button-print-my-production">
-              <Printer className="h-4 w-4 mr-2" />
-              Print Report
-            </Button>
+            <ExportDropdown 
+              data={{
+                period: { start: dateRange.startDate, end: dateRange.endDate },
+                doctorName: `${user?.firstName} ${user?.lastName}`,
+                ...report,
+              }}
+              filename="My-Production-Report"
+            />
           </div>
         </div>
 

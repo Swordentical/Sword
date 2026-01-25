@@ -3070,25 +3070,99 @@ export async function registerRoutes(
   // Backup - Export all data as JSON (admin only)
   app.post("/api/backup", requireRole("admin"), async (req, res) => {
     try {
+      // Core clinical data
       const patientsList = await storage.getPatients({});
       const appointmentsList = await storage.getAppointments({});
       const treatmentsList = await storage.getTreatments();
-      const invoicesList = await storage.getInvoices({});
-      const paymentsList = await storage.getPayments({});
       const inventoryList = await storage.getInventoryItems({});
       const labCasesList = await storage.getLabCases({});
+      
+      // Financial data
+      const invoicesList = await storage.getInvoices({});
+      const paymentsList = await storage.getPayments({});
+      const paymentPlansList = await storage.getPaymentPlans({});
+      const expensesList = await storage.getExpenses({});
+      const insuranceClaimsList = await storage.getInsuranceClaims({});
+      
+      // Get invoice items and adjustments for each invoice
+      const invoiceItemsMap: Record<string, any[]> = {};
+      const invoiceAdjustmentsMap: Record<string, any[]> = {};
+      for (const invoice of invoicesList) {
+        invoiceItemsMap[invoice.id] = await storage.getInvoiceItems(invoice.id);
+        invoiceAdjustmentsMap[invoice.id] = await storage.getInvoiceAdjustments(invoice.id);
+      }
+      
+      // Get patient treatments and documents for each patient
+      const patientTreatmentsMap: Record<string, any[]> = {};
+      const patientDocumentsMap: Record<string, any[]> = {};
+      for (const patient of patientsList) {
+        patientTreatmentsMap[patient.id] = await storage.getPatientTreatments(patient.id);
+        patientDocumentsMap[patient.id] = await storage.getPatientDocuments(patient.id);
+      }
+      
+      // Get payment plan installments for each payment plan
+      const paymentPlanInstallmentsMap: Record<string, any[]> = {};
+      for (const plan of paymentPlansList) {
+        paymentPlanInstallmentsMap[plan.id] = await storage.getPaymentPlanInstallments(plan.id);
+      }
+      
+      // Lab and external services
+      const externalLabsList = await storage.getExternalLabs();
+      const labServicesList = await storage.getLabServices();
+      
+      // Users (exclude password hash for security)
+      const usersList = await storage.getUsers({});
+      const usersWithoutPasswords = usersList.map(({ password, ...user }) => user);
+      
+      // Settings and clinic configuration
+      const clinicSettings = await storage.getClinicSettings();
+      const clinicRooms = await storage.getClinicRooms();
 
       const backupData = {
-        version: "1.0",
+        version: "2.1",
         exportedAt: new Date().toISOString(),
         data: {
+          // Core clinical data
           patients: patientsList,
+          patientTreatments: patientTreatmentsMap,
+          patientDocuments: patientDocumentsMap,
           appointments: appointmentsList,
           treatments: treatmentsList,
-          invoices: invoicesList,
-          payments: paymentsList,
           inventory: inventoryList,
+          
+          // Lab data
           labCases: labCasesList,
+          externalLabs: externalLabsList,
+          labServices: labServicesList,
+          
+          // Financial data
+          invoices: invoicesList,
+          invoiceItems: invoiceItemsMap,
+          invoiceAdjustments: invoiceAdjustmentsMap,
+          payments: paymentsList,
+          paymentPlans: paymentPlansList,
+          paymentPlanInstallments: paymentPlanInstallmentsMap,
+          expenses: expensesList,
+          insuranceClaims: insuranceClaimsList,
+          
+          // Users and settings
+          users: usersWithoutPasswords,
+          clinicSettings: clinicSettings,
+          clinicRooms: clinicRooms,
+        },
+        summary: {
+          patients: patientsList.length,
+          appointments: appointmentsList.length,
+          treatments: treatmentsList.length,
+          invoices: invoicesList.length,
+          payments: paymentsList.length,
+          paymentPlans: paymentPlansList.length,
+          expenses: expensesList.length,
+          users: usersWithoutPasswords.length,
+          inventory: inventoryList.length,
+          labCases: labCasesList.length,
+          insuranceClaims: insuranceClaimsList.length,
+          rooms: clinicRooms.length,
         },
       };
 
@@ -3097,11 +3171,12 @@ export async function registerRoutes(
         action: "exported",
         entityType: "backup",
         entityId: null,
-        details: `Exported backup with ${patientsList.length} patients, ${appointmentsList.length} appointments, ${treatmentsList.length} services`,
+        details: `Full backup exported: ${patientsList.length} patients, ${appointmentsList.length} appointments, ${treatmentsList.length} services, ${invoicesList.length} invoices, ${paymentsList.length} payments, ${expensesList.length} expenses, ${usersWithoutPasswords.length} users`,
       });
 
       res.json(backupData);
     } catch (error) {
+      console.error("Backup error:", error);
       res.status(500).json({ message: "Failed to create backup" });
     }
   });
