@@ -17,6 +17,9 @@ declare global {
 const PgSession = connectPgSimple(session);
 
 export function setupAuth(app: Express) {
+  // Trust proxy for Replit environment (needed for secure cookies over HTTPS proxy)
+  app.set("trust proxy", 1);
+
   const sessionSettings: session.SessionOptions = {
     store: new PgSession({
       pool: pool,
@@ -27,15 +30,12 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: true, // Always use secure cookies (Replit always uses HTTPS)
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: "none" as const, // Required for cross-origin cookies in Replit iframe
     },
   };
-
-  if (app.get("env") === "production") {
-    app.set("trust proxy", 1);
-  }
 
   app.use(session(sessionSettings));
   app.use(passport.initialize());
