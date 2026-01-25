@@ -8,6 +8,7 @@ import {
   TrendingUp,
   Calendar,
   FileText,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,8 +29,19 @@ import {
   Cell,
 } from "recharts";
 import { useAuth } from "@/hooks/use-auth";
+import { Badge } from "@/components/ui/badge";
+import type { DoctorPayment } from "@shared/schema";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+const PAYMENT_TYPES: Record<string, { label: string; color: string }> = {
+  salary: { label: "Salary", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
+  bonus: { label: "Bonus", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300" },
+  commission: { label: "Commission", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" },
+  deduction: { label: "Deduction", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
+  reimbursement: { label: "Reimbursement", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300" },
+  other: { label: "Other", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300" },
+};
 
 type DateRange = {
   startDate: string;
@@ -95,6 +107,19 @@ export default function MyProductionPage() {
     queryKey: ["/api/my-production", queryParams],
   });
 
+  const { data: myPayments } = useQuery<DoctorPayment[]>({
+    queryKey: ["/api/my-payments", queryParams],
+  });
+
+  const totalPaymentsReceived = useMemo(() => {
+    if (!myPayments) return 0;
+    return myPayments.reduce((sum, p) => {
+      const amount = Number(p.amount);
+      if (p.paymentType === "deduction") return sum - amount;
+      return sum + amount;
+    }, 0);
+  }, [myPayments]);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -127,7 +152,7 @@ export default function MyProductionPage() {
     .doctor-info h2 { font-size: 20px; color: #12a3b0; margin-bottom: 8px; }
     .doctor-info .period { color: #666; font-size: 14px; }
     
-    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 30px; }
     .summary-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; text-align: center; }
     .summary-card.production { border-left: 4px solid #22c55e; }
     .summary-card.collected { border-left: 4px solid #3b82f6; }
@@ -160,7 +185,7 @@ export default function MyProductionPage() {
     
     @media print {
       body { padding: 20px; }
-      .summary-grid { grid-template-columns: repeat(4, 1fr); }
+      .summary-grid { grid-template-columns: repeat(5, 1fr); }
     }
   </style>
 </head>
@@ -197,6 +222,10 @@ export default function MyProductionPage() {
     <div class="summary-card treatments">
       <div class="summary-label">Treatments Done</div>
       <div class="summary-value">${report.treatmentCount}</div>
+    </div>
+    <div class="summary-card" style="border-left: 4px solid #9333ea;">
+      <div class="summary-label">Payments Received</div>
+      <div class="summary-value" style="color: #9333ea;">${formatCurrency(totalPaymentsReceived)}</div>
     </div>
   </div>
   
@@ -290,6 +319,38 @@ export default function MyProductionPage() {
   </div>
   ` : ''}
   
+  ${myPayments && myPayments.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Payments Received</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Type</th>
+          <th>Method</th>
+          <th>Period</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${myPayments.map(p => `
+        <tr>
+          <td>${format(new Date(p.paymentDate), "MMM d, yyyy")}</td>
+          <td><span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: ${p.paymentType === 'salary' ? '#dcfce7' : p.paymentType === 'bonus' ? '#dbeafe' : p.paymentType === 'deduction' ? '#fee2e2' : '#f3f4f6'}; color: ${p.paymentType === 'salary' ? '#166534' : p.paymentType === 'bonus' ? '#1e40af' : p.paymentType === 'deduction' ? '#991b1b' : '#374151'};">${PAYMENT_TYPES[p.paymentType]?.label || p.paymentType}</span></td>
+          <td style="text-transform: capitalize;">${p.paymentMethod?.replace("_", " ") || "-"}</td>
+          <td style="font-size: 12px; color: #666;">${p.paymentPeriodStart && p.paymentPeriodEnd ? `${format(new Date(p.paymentPeriodStart), "MMM d")} - ${format(new Date(p.paymentPeriodEnd), "MMM d, yyyy")}` : "-"}</td>
+          <td class="text-right" style="font-weight: bold; color: ${p.paymentType === 'deduction' ? '#dc2626' : '#16a34a'};">${p.paymentType === 'deduction' ? '-' : ''}${formatCurrency(Number(p.amount))}</td>
+        </tr>
+        `).join('')}
+        <tr class="totals-row">
+          <td colspan="4">Total Payments Received</td>
+          <td class="text-right" style="color: #9333ea; font-size: 18px;">${formatCurrency(totalPaymentsReceived)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+  
   <div class="footer">
     <p>GLAZER Dental Clinic Management System</p>
     <p>This report was generated automatically. For questions, please contact clinic administration.</p>
@@ -361,7 +422,7 @@ export default function MyProductionPage() {
         ) : report ? (
           <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -414,6 +475,23 @@ export default function MyProductionPage() {
                 <CardContent>
                   <p className="text-3xl font-bold" data-testid="text-treatment-count">
                     {report.treatmentCount}
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Payments Received
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-payments-received">
+                    {formatCurrency(totalPaymentsReceived)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {myPayments?.length || 0} payment{myPayments?.length !== 1 ? 's' : ''}
                   </p>
                 </CardContent>
               </Card>
@@ -543,6 +621,69 @@ export default function MyProductionPage() {
                 </Card>
               )}
             </div>
+
+            {/* Payments Received Section */}
+            {myPayments && myPayments.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5" />
+                    Payments Received
+                  </CardTitle>
+                  <CardDescription>Salary, bonuses, and other payments during this period</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Period</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {myPayments.map((payment) => (
+                        <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                          <TableCell className="whitespace-nowrap">
+                            {format(new Date(payment.paymentDate), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={PAYMENT_TYPES[payment.paymentType]?.color || PAYMENT_TYPES.other.color}>
+                              {PAYMENT_TYPES[payment.paymentType]?.label || payment.paymentType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground capitalize">
+                            {payment.paymentMethod?.replace("_", " ") || "-"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">
+                            {payment.paymentPeriodStart && payment.paymentPeriodEnd ? (
+                              <>
+                                {format(new Date(payment.paymentPeriodStart), "MMM d")} -{" "}
+                                {format(new Date(payment.paymentPeriodEnd), "MMM d, yyyy")}
+                              </>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell className={`text-right font-bold ${payment.paymentType === "deduction" ? "text-red-600" : "text-green-600"}`}>
+                            {payment.paymentType === "deduction" && "-"}
+                            {formatCurrency(Number(payment.amount))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="flex justify-end mt-4 pt-4 border-t">
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Total Payments</p>
+                      <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalPaymentsReceived)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Full Patient Details (for print) */}
             <div className="hidden print:block">

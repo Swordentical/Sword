@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Lock,
   CreditCard,
+  Wallet,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -135,6 +136,12 @@ const mainNavItems: NavItem[] = [
     icon: Shield,
     roles: ["admin", "doctor", "staff"],
     feature: "insuranceClaims",
+  },
+  {
+    title: "Doctor Payments",
+    url: "/doctor-payments",
+    icon: Wallet,
+    roles: ["admin"],
   },
   {
     title: "Audit Logs",
