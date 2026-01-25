@@ -20,6 +20,9 @@ export function setupAuth(app: Express) {
   // Trust proxy for Replit environment (needed for secure cookies over HTTPS proxy)
   app.set("trust proxy", 1);
 
+  // Determine if running in Replit (accessed via proxy)
+  const isReplit = process.env.REPL_ID || process.env.REPLIT_DEV_DOMAIN;
+
   const sessionSettings: session.SessionOptions = {
     store: new PgSession({
       pool: pool,
@@ -30,10 +33,10 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true, // Always use secure cookies (Replit always uses HTTPS)
+      secure: isReplit ? true : process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "none" as const, // Required for cross-origin cookies in Replit iframe
+      sameSite: isReplit ? "none" as const : "lax" as const,
     },
   };
 
@@ -139,7 +142,13 @@ export function setupAuth(app: Express) {
         if (err) {
           return next(err);
         }
-        res.json(user);
+        // Explicitly save session to ensure cookie is set
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            return next(saveErr);
+          }
+          res.json(user);
+        });
       });
     })(req, res, next);
   });
