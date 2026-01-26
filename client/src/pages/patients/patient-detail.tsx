@@ -33,6 +33,8 @@ import {
   FileCode,
   Share2,
   Eye,
+  Minus,
+  ZoomIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1537,6 +1539,8 @@ function getFileIcon(fileType: string | null, category: string | null) {
 }
 
 function DocumentViewer({ document, onClose }: { document: PatientDocument | null; onClose: () => void }) {
+  const [zoom, setZoom] = useState(1);
+  
   if (!document) return null;
 
   const isImage = document.fileType?.startsWith("image/");
@@ -1545,22 +1549,44 @@ function DocumentViewer({ document, onClose }: { document: PatientDocument | nul
     ? document.fileUrl 
     : document.fileUrl;
 
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
+  const handleResetZoom = () => setZoom(1);
+
   return (
-    <Dialog open={!!document} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+    <Dialog open={!!document} onOpenChange={() => { onClose(); setZoom(1); }}>
+      <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
             {document.fileName}
           </DialogTitle>
         </DialogHeader>
+        
+        {isImage && (
+          <div className="flex items-center justify-center gap-2 py-2 border-b">
+            <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.5}>
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleResetZoom}>
+              {Math.round(zoom * 100)}%
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoom >= 3}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        
         <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/50 rounded-lg p-4">
           {isImage ? (
-            <img 
-              src={fileUrl} 
-              alt={document.fileName}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
-            />
+            <div className="overflow-auto max-h-[70vh] max-w-full">
+              <img 
+                src={fileUrl} 
+                alt={document.fileName}
+                className="rounded-lg shadow-lg transition-transform duration-200"
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+              />
+            </div>
           ) : isPdf ? (
             <iframe 
               src={fileUrl}
@@ -1581,7 +1607,7 @@ function DocumentViewer({ document, onClose }: { document: PatientDocument | nul
           )}
         </div>
         <DialogFooter className="flex-shrink-0">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={() => { onClose(); setZoom(1); }}>
             Close
           </Button>
           <Button asChild>
@@ -1768,24 +1794,42 @@ function DocumentsSection({ patientId }: { patientId: string }) {
               return (
                 <Card 
                   key={doc.id} 
-                  className="hover-elevate cursor-pointer" 
+                  className="hover-elevate cursor-pointer group" 
                   onClick={() => setViewingDocument(doc)}
                   data-testid={`card-document-${doc.id}`}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex flex-col items-center text-center gap-2">
-                      <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-muted">
-                        <DocIcon className={`h-6 w-6 ${color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0 w-full">
-                        <p className="text-sm font-medium truncate" title={doc.fileName}>
+                  <CardContent className="p-2">
+                    {doc.fileType?.startsWith("image/") ? (
+                      <div className="relative">
+                        <div className="aspect-square w-full overflow-hidden rounded-lg bg-muted">
+                          <img 
+                            src={doc.fileUrl} 
+                            alt={doc.fileName}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        </div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center">
+                          <ZoomIn className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2 truncate text-center" title={doc.fileName}>
                           {doc.fileName}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {doc.createdAt && format(new Date(doc.createdAt), "MMM d, yyyy")}
-                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center gap-2 py-2">
+                        <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-muted">
+                          <DocIcon className={`h-6 w-6 ${color}`} />
+                        </div>
+                        <div className="flex-1 min-w-0 w-full">
+                          <p className="text-sm font-medium truncate" title={doc.fileName}>
+                            {doc.fileName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {doc.createdAt && format(new Date(doc.createdAt), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
