@@ -599,8 +599,10 @@ function InvoiceDetailsDialog({
     if (!printWindow) return;
 
     // Filter payments for this specific invoice
-    const invoicePayments = (invoice.payments || []).filter((p: any) => !p.isRefunded);
-    const totalPaid = invoicePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const activePayments = (invoice.payments || []).filter((p: any) => !p.isRefunded);
+    const refundedPayments = (invoice.payments || []).filter((p: any) => p.isRefunded);
+    const totalPaid = activePayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const totalRefunded = refundedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
     const balanceRemaining = parseFloat(invoice.finalAmount) - totalPaid;
 
     const invoiceHtml = `
@@ -608,34 +610,40 @@ function InvoiceDetailsDialog({
         <head>
           <title>Invoice ${invoice.invoiceNumber}</title>
           <style>
-            body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.5; }
-            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: start; }
-            .clinic-info h1 { margin: 0; color: #19585d; font-size: 24px; }
-            .clinic-info p { margin: 5px 0 0; color: #666; }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 40px; color: #333; line-height: 1.6; max-width: 800px; margin: 0 auto; background: #fff; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #12a3b0; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 32px; font-weight: bold; color: #12a3b0; }
+            .logo-subtitle { font-size: 12px; color: #666; margin-top: 2px; }
             .invoice-title { text-align: right; }
-            .invoice-title h2 { margin: 0; color: #333; font-size: 28px; letter-spacing: 1px; }
+            .invoice-title h2 { margin: 0; font-size: 28px; color: #333; letter-spacing: 2px; }
             .invoice-title p { margin: 5px 0 0; color: #666; font-weight: bold; }
             .details { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }
-            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #999; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+            .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; color: #12a3b0; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 13px; color: #333; text-transform: uppercase; }
+            th { text-align: left; border-bottom: 2px solid #eee; padding: 12px 10px; font-size: 12px; color: #666; text-transform: uppercase; background: #f8f9fa; }
             td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-            .totals { margin-left: auto; width: 300px; }
+            .totals { margin-left: auto; width: 320px; background: #f8f9fa; border-radius: 8px; padding: 15px 20px; }
             .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-            .grand-total { border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
+            .grand-total { border-top: 2px solid #12a3b0; margin-top: 10px; padding-top: 10px; font-weight: bold; font-size: 18px; color: #000; }
             .payment-row { color: #1e7e34; font-size: 13px; }
+            .refunded-row { background: #fdf2f2; }
+            .refunded-row td { color: #c81e1e; text-decoration: line-through; }
+            .refund-badge { display: inline-block; background: #c81e1e; color: white; font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-left: 8px; text-transform: uppercase; font-weight: bold; text-decoration: none; }
             .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; }
             .status-paid { background: #e6f4ea; color: #1e7e34; border: 1px solid #1e7e34; }
             .status-pending { background: #fff4e5; color: #b7791f; border: 1px solid #b7791f; }
             .status-overdue { background: #fdf2f2; color: #c81e1e; border: 1px solid #c81e1e; }
-            @media print { .no-print { display: none; } }
+            .status-draft { background: #f0f0f0; color: #666; border: 1px solid #999; }
+            .footer { margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px; font-size: 11px; color: #999; text-align: center; }
+            @media print { .no-print { display: none; } body { padding: 20px; } }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="clinic-info">
-              <h1>GLAZER</h1>
-              <p>By Dr. Ahmad Saleh</p>
+            <div>
+              <div class="logo">GLAZER</div>
+              <div class="logo-subtitle">Dental Clinic Management</div>
             </div>
             <div class="invoice-title">
               <h2>INVOICE</h2>
@@ -646,7 +654,7 @@ function InvoiceDetailsDialog({
           <div class="details">
             <div>
               <div class="section-title">Bill To</div>
-              <div style="font-size: 18px; font-weight: bold; color: #000;">${invoice.patient?.firstName} ${invoice.patient?.lastName}</div>
+              <div style="font-size: 18px; font-weight: bold; color: #12a3b0;">${invoice.patient?.firstName} ${invoice.patient?.lastName}</div>
               <div style="color: #666; margin-top: 4px;">Patient ID: ${invoice.patientId}</div>
             </div>
             <div style="text-align: right;">
@@ -673,10 +681,20 @@ function InvoiceDetailsDialog({
                   <td style="text-align: right;">$${parseFloat(item.totalPrice).toFixed(2)}</td>
                 </tr>
               `).join('')}
-              ${invoicePayments.map((p: any) => `
+              ${activePayments.map((p: any) => `
                 <tr class="payment-row">
-                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${p.paymentMethod.replace(/_/g, ' ')})</td>
+                  <td style="font-style: italic;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</td>
                   <td style="text-align: right;">-$${parseFloat(p.amount).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+              ${refundedPayments.map((p: any) => `
+                <tr class="refunded-row">
+                  <td>
+                    <span style="text-decoration: line-through;">Payment - ${new Date(p.paymentDate).toLocaleDateString()} (${(p.paymentMethod || '').replace(/_/g, ' ')})</span>
+                    <span class="refund-badge">Refunded</span>
+                    ${p.refundReason ? `<div style="font-size: 11px; color: #c81e1e; text-decoration: none; margin-top: 4px;">Reason: ${p.refundReason}</div>` : ''}
+                  </td>
+                  <td style="text-align: right; text-decoration: line-through;">-$${parseFloat(p.amount).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -691,15 +709,21 @@ function InvoiceDetailsDialog({
               <span>Total Paid</span>
               <span>-$${totalPaid.toFixed(2)}</span>
             </div>
+            ${totalRefunded > 0 ? `
+            <div class="total-row" style="color: #c81e1e;">
+              <span>Refunded</span>
+              <span>$${totalRefunded.toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="total-row grand-total">
               <span>Balance Remaining</span>
               <span>$${Math.max(0, balanceRemaining).toFixed(2)}</span>
             </div>
           </div>
 
-          <div style="margin-top: 80px; border-top: 1px solid #eee; padding-top: 20px; font-size: 12px; color: #999; text-align: center;">
-            Please include the invoice number ${invoice.invoiceNumber} with your payment.<br>
-            Thank you for your business!
+          <div class="footer">
+            <p>Please include the invoice number ${invoice.invoiceNumber} with your payment.</p>
+            <p>Thank you for choosing GLAZER Dental Clinic!</p>
           </div>
 
           <script>
