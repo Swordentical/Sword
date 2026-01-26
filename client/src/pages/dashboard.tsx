@@ -54,6 +54,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useArcade } from "@/contexts/arcade-context";
 import { ArcadeEmbedded } from "@/components/arcade-mode";
 import { MountainScene } from "@/components/mountain-scene";
+import { PrayerTimesWidget } from "@/components/prayer-times-widget";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -577,8 +578,9 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "stats", label: "Statistics Cards", slot: "fullWidth", enabled: true, order: 0 },
   { id: "appointments", label: "Upcoming Appointments", slot: "main", enabled: true, order: 0 },
   { id: "quickActions", label: "Quick Actions", slot: "sidebar", enabled: true, order: 0 },
-  { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 1 },
-  { id: "productivity", label: "Daily Inspiration", slot: "sidebar", enabled: true, order: 2 },
+  { id: "prayerTimes", label: "Prayer Times", slot: "sidebar", enabled: false, order: 1 },
+  { id: "lowStock", label: "Low Stock Alerts", slot: "sidebar", enabled: true, order: 2 },
+  { id: "productivity", label: "Daily Inspiration", slot: "sidebar", enabled: true, order: 3 },
 ];
 
 const SLOT_LABELS: Record<WidgetSlot, string> = {
@@ -1065,6 +1067,7 @@ export default function Dashboard() {
       case "stats": return renderStatsWidget();
       case "appointments": return arcadeOpen ? renderArcadeWidget() : renderAppointmentsWidget();
       case "quickActions": return renderQuickActionsWidget();
+      case "prayerTimes": return <PrayerTimesWidget />;
       case "lowStock": return renderLowStockWidget();
       case "productivity": return renderProductivityWidget();
       default: return null;
