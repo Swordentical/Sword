@@ -16,8 +16,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  ArrowUpAZ,
-  ArrowDownAZ,
+  ArrowUpDown,
   Calendar,
   AlertCircle,
   X,
@@ -275,6 +274,7 @@ export default function PatientsList() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<"name" | "age" | "date">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(showNewDialog);
@@ -321,9 +321,25 @@ export default function PatientsList() {
   });
 
   const sortedPatients = [...(filteredPatients || [])].sort((a, b) => {
-    const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-    const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-    return sortOrder === "asc" ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    let comparison = 0;
+    switch (sortField) {
+      case "name":
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        comparison = nameA.localeCompare(nameB);
+        break;
+      case "age":
+        const ageA = a.dateOfBirth ? differenceInYears(new Date(), new Date(a.dateOfBirth)) : 0;
+        const ageB = b.dateOfBirth ? differenceInYears(new Date(), new Date(b.dateOfBirth)) : 0;
+        comparison = ageA - ageB;
+        break;
+      case "date":
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        comparison = dateA - dateB;
+        break;
+    }
+    return sortOrder === "asc" ? comparison : -comparison;
   });
 
   const totalPages = Math.ceil((sortedPatients?.length || 0) / pageSize);
@@ -387,19 +403,24 @@ export default function PatientsList() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                    data-testid="button-sort-patients"
-                  >
-                    {sortOrder === "asc" ? (
-                      <ArrowUpAZ className="h-4 w-4 sm:mr-2" />
-                    ) : (
-                      <ArrowDownAZ className="h-4 w-4 sm:mr-2" />
-                    )}
-                    <span className="hidden sm:inline">A-Z</span>
-                  </Button>
+                  <Select value={`${sortField}-${sortOrder}`} onValueChange={(v) => {
+                    const [field, order] = v.split("-") as ["name" | "age" | "date", "asc" | "desc"];
+                    setSortField(field);
+                    setSortOrder(order);
+                  }}>
+                    <SelectTrigger className="w-[140px]" data-testid="select-sort-patients">
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="name-asc">Name A-Z</SelectItem>
+                      <SelectItem value="name-desc">Name Z-A</SelectItem>
+                      <SelectItem value="age-asc">Age Young-Old</SelectItem>
+                      <SelectItem value="age-desc">Age Old-Young</SelectItem>
+                      <SelectItem value="date-asc">Date Oldest First</SelectItem>
+                      <SelectItem value="date-desc">Date Newest First</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={genderFilter} onValueChange={setGenderFilter}>
                     <SelectTrigger className="w-[120px] sm:w-[140px]" data-testid="select-gender-filter">
                       <Filter className="h-4 w-4 mr-2" />

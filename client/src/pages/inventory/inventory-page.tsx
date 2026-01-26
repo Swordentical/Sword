@@ -15,6 +15,9 @@ import {
   AlertTriangle,
   Printer,
   Minus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { ExportDropdown } from "@/components/export-dropdown";
 import glazerLogo from "@/assets/glazer-logo.png";
@@ -676,6 +679,9 @@ function PrintLowStockDialog({
   );
 }
 
+type InventorySortField = "name" | "category" | "quantity" | "price";
+type SortDirection = "asc" | "desc";
+
 export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -686,6 +692,8 @@ export default function InventoryPage() {
   const [quantityItem, setQuantityItem] = useState<InventoryItem | null>(null);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<InventorySortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { toast } = useToast();
 
@@ -735,6 +743,34 @@ export default function InventoryPage() {
     const stockStatus = getStockStatus(item.currentQuantity, item.minimumQuantity);
     const matchesStatus = statusFilter === "all" || stockStatus.status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const handleSort = (field: InventorySortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    let comparison = 0;
+    switch (sortField) {
+      case "name":
+        comparison = (a.name || "").localeCompare(b.name || "");
+        break;
+      case "category":
+        comparison = (a.category || "").localeCompare(b.category || "");
+        break;
+      case "quantity":
+        comparison = a.currentQuantity - b.currentQuantity;
+        break;
+      case "price":
+        comparison = Number(a.unitPrice || 0) - Number(b.unitPrice || 0);
+        break;
+    }
+    return sortDirection === "asc" ? comparison : -comparison;
   });
 
   const lowStockCount = items.filter(
@@ -1031,6 +1067,25 @@ export default function InventoryPage() {
                   <SelectItem value="out_of_stock">Out of Stock</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={`${sortField}-${sortDirection}`} onValueChange={(v) => {
+                const [field, dir] = v.split("-") as [InventorySortField, SortDirection];
+                setSortField(field);
+                setSortDirection(dir);
+              }}>
+                <SelectTrigger className="w-[150px]" data-testid="select-sort">
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">Name A-Z</SelectItem>
+                  <SelectItem value="name-desc">Name Z-A</SelectItem>
+                  <SelectItem value="quantity-asc">Quantity Low-High</SelectItem>
+                  <SelectItem value="quantity-desc">Quantity High-Low</SelectItem>
+                  <SelectItem value="category-asc">Category A-Z</SelectItem>
+                  <SelectItem value="price-asc">Price Low-High</SelectItem>
+                  <SelectItem value="price-desc">Price High-Low</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -1039,7 +1094,7 @@ export default function InventoryPage() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : filteredItems.length > 0 ? (
+          ) : sortedItems.length > 0 ? (
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
@@ -1053,7 +1108,7 @@ export default function InventoryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredItems.map((item) => {
+                  {sortedItems.map((item) => {
                     const stockStatus = getStockStatus(item.currentQuantity, item.minimumQuantity);
                     const stockPercent = Math.min((item.currentQuantity / item.minimumQuantity) * 50, 100);
                     return (

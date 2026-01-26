@@ -12,6 +12,9 @@ import {
   Trash2,
   Loader2,
   ClipboardList,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ExportDropdown } from "@/components/export-dropdown";
@@ -715,6 +718,9 @@ function printServices(services: Treatment[]) {
   printWindow.print();
 }
 
+type ServiceSortField = "name" | "category" | "price" | "duration";
+type SortDirection = "asc" | "desc";
+
 export default function ServicesPage() {
   const { user } = useAuth();
   const isDoctor = user?.role === "doctor";
@@ -724,6 +730,8 @@ export default function ServicesPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Treatment | null>(null);
+  const [sortField, setSortField] = useState<ServiceSortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const { data: services = [], isLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments"],
@@ -829,6 +837,25 @@ export default function ServicesPage() {
     return matchesSearch && matchesCategory;
   });
 
+  const sortedServices = [...filteredServices].sort((a, b) => {
+    let comparison = 0;
+    switch (sortField) {
+      case "name":
+        comparison = (a.name || "").localeCompare(b.name || "");
+        break;
+      case "category":
+        comparison = (a.category || "").localeCompare(b.category || "");
+        break;
+      case "price":
+        comparison = Number(a.defaultPrice || 0) - Number(b.defaultPrice || 0);
+        break;
+      case "duration":
+        comparison = (a.durationMinutes || 0) - (b.durationMinutes || 0);
+        break;
+    }
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
   const handleEdit = (service: Treatment) => {
     setSelectedService(service);
     setEditDialogOpen(true);
@@ -903,6 +930,25 @@ export default function ServicesPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={`${sortField}-${sortDirection}`} onValueChange={(v) => {
+              const [field, dir] = v.split("-") as [ServiceSortField, SortDirection];
+              setSortField(field);
+              setSortDirection(dir);
+            }}>
+              <SelectTrigger className="w-[160px]" data-testid="select-sort">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Name A-Z</SelectItem>
+                <SelectItem value="name-desc">Name Z-A</SelectItem>
+                <SelectItem value="price-asc">Price Low-High</SelectItem>
+                <SelectItem value="price-desc">Price High-Low</SelectItem>
+                <SelectItem value="category-asc">Category A-Z</SelectItem>
+                <SelectItem value="duration-asc">Duration Short-Long</SelectItem>
+                <SelectItem value="duration-desc">Duration Long-Short</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -926,7 +972,7 @@ export default function ServicesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServices.map((service) => {
+                  {sortedServices.map((service) => {
                     const profit = calculateProfit(service.defaultPrice, service.cost);
                     return (
                       <TableRow key={service.id} data-testid={`row-service-${service.id}`}>

@@ -15,6 +15,9 @@ import {
   Calendar,
   FileText,
   Loader2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -399,11 +402,16 @@ function DeleteExpenseDialog({
   );
 }
 
+type ExpenseSortField = "date" | "category" | "vendor" | "amount";
+type SortDirection = "asc" | "desc";
+
 export default function ExpensesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editExpense, setEditExpense] = useState<Expense | null>(null);
   const [deleteExpense, setDeleteExpense] = useState<Expense | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<ExpenseSortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const queryParams = useMemo(
     () => (categoryFilter !== "all" ? { category: categoryFilter } : {}),
@@ -413,6 +421,53 @@ export default function ExpensesPage() {
   const { data: expenses, isLoading } = useQuery<Expense[]>({
     queryKey: ["/api/expenses", queryParams],
   });
+
+  const handleSort = (field: ExpenseSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedExpenses = useMemo(() => {
+    if (!expenses) return [];
+    return [...expenses].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.expenseDate).getTime() - new Date(b.expenseDate).getTime();
+          break;
+        case "category":
+          comparison = (a.category || "").localeCompare(b.category || "");
+          break;
+        case "vendor":
+          comparison = (a.vendor || "").localeCompare(b.vendor || "");
+          break;
+        case "amount":
+          comparison = Number(a.amount) - Number(b.amount);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [expenses, sortField, sortDirection]);
+
+  const SortHeader = ({ field, children }: { field: ExpenseSortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field ? (
+          sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        ) : (
+          <ArrowUpDown className="h-4 w-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   const formatCurrency = (amount: string | number) => {
     return new Intl.NumberFormat("en-US", {
@@ -505,16 +560,16 @@ export default function ExpensesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <SortHeader field="date">Date</SortHeader>
                       <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <SortHeader field="category">Category</SortHeader>
+                      <SortHeader field="vendor">Vendor</SortHeader>
+                      <SortHeader field="amount">Amount</SortHeader>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expenses.map((expense) => (
+                    {sortedExpenses.map((expense) => (
                       <TableRow key={expense.id} data-testid={`row-expense-${expense.id}`}>
                         <TableCell className="whitespace-nowrap">
                           {format(new Date(expense.expenseDate), "MMM d, yyyy")}

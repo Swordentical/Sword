@@ -16,6 +16,9 @@ import {
   Loader2,
   TrendingUp,
   TrendingDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -423,6 +426,9 @@ function DeletePaymentDialog({
   );
 }
 
+type SortField = "date" | "doctor" | "type" | "amount";
+type SortDirection = "asc" | "desc";
+
 export default function DoctorPaymentsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -431,6 +437,8 @@ export default function DoctorPaymentsPage() {
   const [deletePayment, setDeletePayment] = useState<DoctorPaymentWithDoctor | null>(null);
   const [doctorFilter, setDoctorFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const { data: doctors } = useQuery<User[]>({
     queryKey: ["/api/doctors"],
@@ -446,6 +454,55 @@ export default function DoctorPaymentsPage() {
   const { data: payments, isLoading } = useQuery<DoctorPaymentWithDoctor[]>({
     queryKey: ["/api/doctor-payments", queryParams],
   });
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedPayments = useMemo(() => {
+    if (!payments) return [];
+    return [...payments].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime();
+          break;
+        case "doctor":
+          const nameA = `${a.doctor?.firstName || ""} ${a.doctor?.lastName || ""}`.toLowerCase();
+          const nameB = `${b.doctor?.firstName || ""} ${b.doctor?.lastName || ""}`.toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case "type":
+          comparison = (a.paymentType || "").localeCompare(b.paymentType || "");
+          break;
+        case "amount":
+          comparison = Number(a.amount) - Number(b.amount);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [payments, sortField, sortDirection]);
+
+  const SortHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field ? (
+          sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        ) : (
+          <ArrowUpDown className="h-4 w-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   const formatCurrency = (amount: string | number) => {
     return new Intl.NumberFormat("en-US", {
@@ -606,17 +663,17 @@ export default function DoctorPaymentsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Doctor</TableHead>
-                      <TableHead>Type</TableHead>
+                      <SortHeader field="date">Date</SortHeader>
+                      <SortHeader field="doctor">Doctor</SortHeader>
+                      <SortHeader field="type">Type</SortHeader>
                       <TableHead>Method</TableHead>
                       <TableHead>Period</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                      <SortHeader field="amount">Amount</SortHeader>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment) => (
+                    {sortedPayments.map((payment) => (
                       <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                         <TableCell className="whitespace-nowrap">
                           {format(new Date(payment.paymentDate), "MMM d, yyyy")}

@@ -20,6 +20,9 @@ import {
   Loader2,
   Search,
   Shield,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -575,12 +578,17 @@ function DeleteClaimDialog({
   );
 }
 
+type ClaimSortField = "date" | "patient" | "status" | "amount";
+type SortDirection = "asc" | "desc";
+
 export default function InsuranceClaimsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editClaim, setEditClaim] = useState<InsuranceClaim | null>(null);
   const [updateStatusClaim, setUpdateStatusClaim] = useState<InsuranceClaim | null>(null);
   const [deleteClaim, setDeleteClaim] = useState<InsuranceClaim | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortField, setSortField] = useState<ClaimSortField>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const queryParams = useMemo(
     () => (statusFilter !== "all" ? { status: statusFilter } : {}),
@@ -631,6 +639,53 @@ export default function InsuranceClaimsPage() {
         .reduce((sum, c) => sum + Number(c.claimAmount), 0),
     };
   }, [claims]);
+
+  const handleSort = (field: ClaimSortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedClaims = useMemo(() => {
+    if (!claims) return [];
+    return [...claims].sort((a, b) => {
+      let comparison = 0;
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.submissionDate || 0).getTime() - new Date(b.submissionDate || 0).getTime();
+          break;
+        case "patient":
+          comparison = getPatientName(a.patientId).localeCompare(getPatientName(b.patientId));
+          break;
+        case "status":
+          comparison = (a.status || "").localeCompare(b.status || "");
+          break;
+        case "amount":
+          comparison = Number(a.claimAmount) - Number(b.claimAmount);
+          break;
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [claims, sortField, sortDirection, patients]);
+
+  const SortHeader = ({ field, children }: { field: ClaimSortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field ? (
+          sortDirection === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+        ) : (
+          <ArrowUpDown className="h-4 w-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-auto">
@@ -730,17 +785,17 @@ export default function InsuranceClaimsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Claim #</TableHead>
-                      <TableHead>Patient</TableHead>
+                      <SortHeader field="patient">Patient</SortHeader>
                       <TableHead>Provider</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Claim Amount</TableHead>
+                      <SortHeader field="status">Status</SortHeader>
+                      <SortHeader field="amount">Claim Amount</SortHeader>
                       <TableHead className="text-right">Approved</TableHead>
-                      <TableHead>Submitted</TableHead>
+                      <SortHeader field="date">Submitted</SortHeader>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {claims.map((claim) => (
+                    {sortedClaims.map((claim) => (
                       <TableRow key={claim.id} data-testid={`row-claim-${claim.id}`}>
                         <TableCell className="font-medium">{claim.claimNumber}</TableCell>
                         <TableCell>{getPatientName(claim.patientId)}</TableCell>
