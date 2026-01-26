@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Gamepad2, Trophy, RotateCcw, Squircle, Grid3X3, Zap, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -178,20 +179,21 @@ export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center md:hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center md:hidden">
       <div 
-        className="absolute inset-0 bg-black/90"
+        className="absolute inset-0 bg-black"
         onClick={() => {
           sounds.arcadeClose();
           onClose();
         }}
       />
       
-      <div className="relative z-10 w-full h-full">
+      <div className="absolute inset-0 z-10">
         <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
