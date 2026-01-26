@@ -8,7 +8,7 @@ export function MountainScene() {
   const isNight = resolvedTheme === "dark";
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ minHeight: '180px' }}>
       <div 
         className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
         style={{

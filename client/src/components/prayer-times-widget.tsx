@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, MapPin, Moon, Sun, Sunrise, Sunset, Clock } from "lucide-react";
+import { Loader2, MapPin, Moon, Sun, Sunrise, Sunset, Clock, Settings2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const PRAYER_LOCATION_KEY = "prayer-times-location";
+const PRAYER_SETTINGS_KEY = "prayer-times-settings";
 
 interface PrayerTimes {
   Fajr: string;
@@ -25,28 +32,55 @@ interface PrayerTimes {
   Isha: string;
 }
 
-interface LocationConfig {
+interface PrayerSettings {
   city: string;
   country: string;
+  method: number;
+  school: number;
 }
 
-const DEFAULT_LOCATION: LocationConfig = {
+const CALCULATION_METHODS = [
+  { value: 1, label: "University of Islamic Sciences, Karachi" },
+  { value: 2, label: "Islamic Society of North America (ISNA)" },
+  { value: 3, label: "Muslim World League" },
+  { value: 4, label: "Umm Al-Qura University, Makkah" },
+  { value: 5, label: "Egyptian General Authority of Survey" },
+  { value: 7, label: "Institute of Geophysics, University of Tehran" },
+  { value: 8, label: "Gulf Region" },
+  { value: 9, label: "Kuwait" },
+  { value: 10, label: "Qatar" },
+  { value: 11, label: "Majlis Ugama Islam Singapura" },
+  { value: 12, label: "Union des Organisations Islamiques de France" },
+  { value: 13, label: "Diyanet İşleri Başkanlığı, Turkey" },
+  { value: 14, label: "Spiritual Administration of Muslims of Russia" },
+  { value: 15, label: "Moonsighting Committee Worldwide" },
+  { value: 16, label: "Dubai (unofficial)" },
+];
+
+const ASR_SCHOOLS = [
+  { value: 0, label: "Shafi'i, Maliki, Hanbali" },
+  { value: 1, label: "Hanafi" },
+];
+
+const DEFAULT_SETTINGS: PrayerSettings = {
   city: "Riyadh",
   country: "Saudi Arabia",
+  method: 4,
+  school: 0,
 };
 
-function getStoredLocation(): LocationConfig {
+function getStoredSettings(): PrayerSettings {
   try {
-    const saved = localStorage.getItem(PRAYER_LOCATION_KEY);
+    const saved = localStorage.getItem(PRAYER_SETTINGS_KEY);
     if (saved) {
-      return JSON.parse(saved);
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
     }
   } catch {}
-  return DEFAULT_LOCATION;
+  return DEFAULT_SETTINGS;
 }
 
-function saveLocation(location: LocationConfig) {
-  localStorage.setItem(PRAYER_LOCATION_KEY, JSON.stringify(location));
+function saveSettings(settings: PrayerSettings) {
+  localStorage.setItem(PRAYER_SETTINGS_KEY, JSON.stringify(settings));
 }
 
 const PRAYER_INFO = [
@@ -59,50 +93,97 @@ const PRAYER_INFO = [
 ] as const;
 
 function formatTime(time24: string): string {
-  const [hours, minutes] = time24.split(":").map(Number);
+  if (!time24) return "--:--";
+  const timePart = time24.split(" ")[0];
+  const [hours, minutes] = timePart.split(":").map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return "--:--";
   const period = hours >= 12 ? "PM" : "AM";
   const hours12 = hours % 12 || 12;
   return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
+function parseTimeToMinutes(time24: string): number {
+  if (!time24) return -1;
+  const timePart = time24.split(" ")[0];
+  const [hours, minutes] = timePart.split(":").map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return -1;
+  return hours * 60 + minutes;
 }
 
 function getNextPrayer(times: PrayerTimes): string | null {
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   
-  for (const prayer of PRAYER_INFO) {
-    if (prayer.key === "Sunrise") continue;
-    const timeStr = times[prayer.key as keyof PrayerTimes];
-    if (!timeStr) continue;
-    
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const prayerMinutes = hours * 60 + minutes;
+  const prayerOrder = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
+  
+  for (const prayerKey of prayerOrder) {
+    if (prayerKey === "Sunrise") continue;
+    const timeStr = times[prayerKey as keyof PrayerTimes];
+    const prayerMinutes = parseTimeToMinutes(timeStr);
     
     if (prayerMinutes > currentMinutes) {
-      return prayer.key;
+      return prayerKey;
     }
   }
   return "Fajr";
 }
 
+function getTimeUntilNext(times: PrayerTimes, nextPrayer: string | null): string {
+  if (!nextPrayer || !times) return "";
+  
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const timeStr = times[nextPrayer as keyof PrayerTimes];
+  let prayerMinutes = parseTimeToMinutes(timeStr);
+  
+  if (prayerMinutes < 0) return "";
+  
+  if (prayerMinutes <= currentMinutes) {
+    prayerMinutes += 24 * 60;
+  }
+  
+  const diff = prayerMinutes - currentMinutes;
+  const hours = Math.floor(diff / 60);
+  const mins = diff % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  return `${mins}m`;
+}
+
 export function PrayerTimesWidget() {
-  const [location, setLocation] = useState<LocationConfig>(getStoredLocation);
-  const [tempLocation, setTempLocation] = useState<LocationConfig>(location);
+  const [settings, setSettings] = useState<PrayerSettings>(getStoredSettings);
+  const [tempSettings, setTempSettings] = useState<PrayerSettings>(settings);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (dialogOpen) {
+      setTempSettings(settings);
+    }
+  }, [dialogOpen, settings]);
+
   const { data: prayerData, isLoading, error, refetch } = useQuery({
-    queryKey: ["/api/prayer-times", location.city, location.country],
+    queryKey: ["/api/prayer-times", settings.city, settings.country, settings.method, settings.school],
     queryFn: async () => {
       const today = new Date();
       const dateStr = `${today.getDate().toString().padStart(2, "0")}-${(today.getMonth() + 1).toString().padStart(2, "0")}-${today.getFullYear()}`;
       
+      const params = new URLSearchParams({
+        city: settings.city,
+        country: settings.country,
+        method: settings.method.toString(),
+        school: settings.school.toString(),
+      });
+      
       const response = await fetch(
-        `https://api.aladhan.com/v1/timingsByCity/${dateStr}?city=${encodeURIComponent(location.city)}&country=${encodeURIComponent(location.country)}&method=2`
+        `https://api.aladhan.com/v1/timingsByCity/${dateStr}?${params.toString()}`
       );
       
       if (!response.ok) {
@@ -110,20 +191,26 @@ export function PrayerTimesWidget() {
       }
       
       const data = await response.json();
+      if (data.code !== 200 || !data.data?.timings) {
+        throw new Error("Invalid response from API");
+      }
+      
       return data.data.timings as PrayerTimes;
     },
-    staleTime: 1000 * 60 * 60,
+    staleTime: 1000 * 60 * 30,
     refetchOnWindowFocus: false,
+    retry: 2,
   });
 
-  const handleSaveLocation = () => {
-    setLocation(tempLocation);
-    saveLocation(tempLocation);
+  const handleSaveSettings = () => {
+    setSettings(tempSettings);
+    saveSettings(tempSettings);
     setDialogOpen(false);
-    refetch();
+    setTimeout(() => refetch(), 100);
   };
 
   const nextPrayer = prayerData ? getNextPrayer(prayerData) : null;
+  const timeUntil = prayerData && nextPrayer ? getTimeUntilNext(prayerData, nextPrayer) : "";
 
   return (
     <Card className="backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
@@ -134,44 +221,90 @@ export function PrayerTimesWidget() {
         </CardTitle>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" data-testid="button-prayer-location">
-              <MapPin className="h-3 w-3 mr-1" />
-              {location.city}
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" data-testid="button-prayer-settings">
+              <Settings2 className="h-3 w-3 mr-1" />
+              Settings
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Set Prayer Times Location</DialogTitle>
+              <DialogTitle>Prayer Times Settings</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={tempLocation.city}
-                  onChange={(e) => setTempLocation({ ...tempLocation, city: e.target.value })}
-                  placeholder="Enter city name"
-                  data-testid="input-prayer-city"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={tempSettings.city}
+                    onChange={(e) => setTempSettings({ ...tempSettings, city: e.target.value })}
+                    placeholder="Enter city"
+                    data-testid="input-prayer-city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={tempSettings.country}
+                    onChange={(e) => setTempSettings({ ...tempSettings, country: e.target.value })}
+                    placeholder="Enter country"
+                    data-testid="input-prayer-country"
+                  />
+                </div>
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={tempLocation.country}
-                  onChange={(e) => setTempLocation({ ...tempLocation, country: e.target.value })}
-                  placeholder="Enter country name"
-                  data-testid="input-prayer-country"
-                />
+                <Label htmlFor="method">Calculation Method</Label>
+                <Select
+                  value={tempSettings.method.toString()}
+                  onValueChange={(v) => setTempSettings({ ...tempSettings, method: parseInt(v) })}
+                >
+                  <SelectTrigger id="method" data-testid="select-prayer-method">
+                    <SelectValue placeholder="Select method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CALCULATION_METHODS.map((method) => (
+                      <SelectItem key={method.value} value={method.value.toString()}>
+                        {method.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Button onClick={handleSaveLocation} className="w-full" data-testid="button-save-prayer-location">
-                Save Location
+              
+              <div className="space-y-2">
+                <Label htmlFor="school">Asr Juristic Method</Label>
+                <Select
+                  value={tempSettings.school.toString()}
+                  onValueChange={(v) => setTempSettings({ ...tempSettings, school: parseInt(v) })}
+                >
+                  <SelectTrigger id="school" data-testid="select-prayer-school">
+                    <SelectValue placeholder="Select school" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASR_SCHOOLS.map((school) => (
+                      <SelectItem key={school.value} value={school.value.toString()}>
+                        {school.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button onClick={handleSaveSettings} className="w-full" data-testid="button-save-prayer-settings">
+                Save Settings
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </CardHeader>
       <CardContent className="pb-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-2">
+          <MapPin className="h-3 w-3" />
+          <span className="truncate">{settings.city}, {settings.country}</span>
+        </div>
+        
         {isLoading ? (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -207,9 +340,9 @@ export function PrayerTimesWidget() {
                     <span className={`text-sm tabular-nums ${isNext ? "font-semibold" : ""}`}>
                       {formatTime(time)}
                     </span>
-                    {isNext && (
+                    {isNext && timeUntil && (
                       <Badge variant="default" className="text-[10px] py-0 px-1.5">
-                        Next
+                        {timeUntil}
                       </Badge>
                     )}
                   </div>
