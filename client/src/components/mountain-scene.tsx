@@ -56,11 +56,11 @@ export function MountainScene() {
         className="absolute transition-all duration-1000 ease-in-out"
         style={{
           right: '15%',
-          top: isNight ? '8%' : '-60px',
+          top: isNight ? '8%' : 'calc(100% - 30px)',
           width: '48px',
           height: '48px',
           opacity: isNight ? 1 : 0,
-          transform: isNight ? 'scale(1) rotate(0deg)' : 'scale(0.3) rotate(-30deg)',
+          transform: isNight ? 'scale(1) rotate(0deg)' : 'scale(0.7) rotate(15deg)',
         }}
       >
         <div
