@@ -35,6 +35,7 @@ import {
   Eye,
   Minus,
   ZoomIn,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1538,9 +1539,43 @@ function getFileIcon(fileType: string | null, category: string | null) {
   return { icon: File, color: "text-muted-foreground" };
 }
 
-function DocumentViewer({ document, onClose }: { document: PatientDocument | null; onClose: () => void }) {
+function DocumentViewer({ 
+  document, 
+  onClose, 
+  onDelete,
+  patientId 
+}: { 
+  document: PatientDocument | null; 
+  onClose: () => void;
+  onDelete?: (docId: string) => void;
+  patientId?: string;
+}) {
+  const { toast } = useToast();
   const [zoom, setZoom] = useState(1);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
+  const deleteMutation = useMutation({
+    mutationFn: async (docId: string) => {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete document");
+      return res.json();
+    },
+    onSuccess: () => {
+      if (patientId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "documents"] });
+      }
+      toast({ title: "Document deleted", description: "The document has been removed." });
+      onClose();
+      setZoom(1);
+    },
+    onError: () => {
+      toast({ title: "Delete failed", description: "Could not delete the document.", variant: "destructive" });
+    },
+  });
+
   if (!document) return null;
 
   const isImage = document.fileType?.startsWith("image/");
@@ -1552,73 +1587,106 @@ function DocumentViewer({ document, onClose }: { document: PatientDocument | nul
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.25, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.25, 0.5));
   const handleResetZoom = () => setZoom(1);
+  
+  const handleDelete = () => {
+    deleteMutation.mutate(document.id);
+    setShowDeleteConfirm(false);
+  };
 
   return (
-    <Dialog open={!!document} onOpenChange={() => { onClose(); setZoom(1); }}>
-      <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            {document.fileName}
-          </DialogTitle>
-        </DialogHeader>
-        
-        {isImage && (
-          <div className="flex items-center justify-center gap-2 py-2 border-b">
-            <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.5}>
-              <Minus className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleResetZoom}>
-              {Math.round(zoom * 100)}%
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoom >= 3}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        
-        <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/50 rounded-lg p-4">
-          {isImage ? (
-            <div className="overflow-auto max-h-[70vh] max-w-full">
-              <img 
-                src={fileUrl} 
-                alt={document.fileName}
-                className="rounded-lg shadow-lg transition-transform duration-200"
-                style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
-              />
-            </div>
-          ) : isPdf ? (
-            <iframe 
-              src={fileUrl}
-              className="w-full h-[70vh] rounded-lg border"
-              title={document.fileName}
-            />
-          ) : (
-            <div className="text-center py-12">
-              <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">Preview not available for this file type</p>
-              <Button asChild>
-                <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download File
-                </a>
+    <>
+      <Dialog open={!!document} onOpenChange={() => { onClose(); setZoom(1); }}>
+        <DialogContent className="max-w-5xl max-h-[95vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              {document.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {isImage && (
+            <div className="flex items-center justify-center gap-2 py-2 border-b">
+              <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoom <= 0.5}>
+                <Minus className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleResetZoom}>
+                {Math.round(zoom * 100)}%
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoom >= 3}>
+                <Plus className="h-4 w-4" />
               </Button>
             </div>
           )}
-        </div>
-        <DialogFooter className="flex-shrink-0">
-          <Button variant="outline" onClick={() => { onClose(); setZoom(1); }}>
-            Close
-          </Button>
-          <Button asChild>
-            <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </a>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          
+          <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/50 rounded-lg p-4">
+            {isImage ? (
+              <div className="overflow-auto max-h-[70vh] max-w-full">
+                <img 
+                  src={fileUrl} 
+                  alt={document.fileName}
+                  className="rounded-lg shadow-lg transition-transform duration-200"
+                  style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
+                />
+              </div>
+            ) : isPdf ? (
+              <iframe 
+                src={fileUrl}
+                className="w-full h-[70vh] rounded-lg border"
+                title={document.fileName}
+              />
+            ) : (
+              <div className="text-center py-12">
+                <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-muted-foreground mb-4">Preview not available for this file type</p>
+                <Button asChild>
+                  <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download File
+                  </a>
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-shrink-0 gap-2">
+            <Button 
+              variant="destructive" 
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+            <div className="flex-1" />
+            <Button variant="outline" onClick={() => { onClose(); setZoom(1); }}>
+              Close
+            </Button>
+            <Button asChild>
+              <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Document</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{document.fileName}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -1923,7 +1991,7 @@ function DocumentsSection({ patientId }: { patientId: string }) {
           </DialogContent>
         </Dialog>
 
-        <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} />
+        <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} patientId={patientId} />
       </div>
     );
   }
@@ -2055,7 +2123,7 @@ function DocumentsSection({ patientId }: { patientId: string }) {
         </DialogContent>
       </Dialog>
 
-      <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} />
+      <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} patientId={patientId} />
     </div>
   );
 }

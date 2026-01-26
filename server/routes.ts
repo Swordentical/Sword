@@ -1138,6 +1138,18 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/documents/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.deleteDocument(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
   // Treatments (Services catalog)
   app.get("/api/treatments", requireAuth, async (req, res) => {
     try {
