@@ -8,6 +8,7 @@ import { ThemeTransitionLayer } from "@/components/theme-transition-layer";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppearanceSettingsProvider } from "@/hooks/use-appearance-settings";
 import { AuthProvider } from "@/hooks/use-auth";
+import { ArcadeProvider } from "@/contexts/arcade-context";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -257,12 +258,14 @@ function App() {
       <AppearanceSettingsProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <TooltipProvider>
-              <AnimatedBackground />
-              <Router />
-              <Toaster />
-              <ThemeTransitionLayer />
-            </TooltipProvider>
+            <ArcadeProvider>
+              <TooltipProvider>
+                <AnimatedBackground />
+                <Router />
+                <Toaster />
+                <ThemeTransitionLayer />
+              </TooltipProvider>
+            </ArcadeProvider>
           </AuthProvider>
         </QueryClientProvider>
       </AppearanceSettingsProvider>

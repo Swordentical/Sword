@@ -27,7 +27,8 @@ import { Link, useLocation } from "wouter";
 import glazerLogo from "@/assets/glazer-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
-import { ArcadeMode } from "@/components/arcade-mode";
+import { ArcadeMobileOverlay } from "@/components/arcade-mode";
+import { useArcade } from "@/contexts/arcade-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -192,8 +193,8 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logoutMutation } = useAuth();
   const { hasFeature, subscriptionContext, getPlanType } = useSubscription();
+  const { isOpen: arcadeOpen, openArcade, closeArcade } = useArcade();
   
-  const [arcadeOpen, setArcadeOpen] = useState(false);
   const clickCountRef = useRef(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -218,13 +219,13 @@ export function AppSidebar() {
     if (clickCountRef.current >= 5) {
       clickCountRef.current = 0;
       sounds.celebration();
-      setArcadeOpen(true);
+      openArcade();
     } else {
       clickTimeoutRef.current = setTimeout(() => {
         clickCountRef.current = 0;
       }, 2000);
     }
-  }, [arcadeOpen]);
+  }, [arcadeOpen, openArcade]);
 
   const userRole = (user?.role as UserRole) || "staff";
   const planType = getPlanType();
@@ -439,7 +440,7 @@ export function AppSidebar() {
         </div>
       </SidebarFooter>
       
-      <ArcadeMode isOpen={arcadeOpen} onClose={() => setArcadeOpen(false)} />
+      <ArcadeMobileOverlay isOpen={arcadeOpen} onClose={closeArcade} />
     </Sidebar>
   );
 }

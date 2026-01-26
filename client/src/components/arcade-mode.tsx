@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Gamepad2, Trophy, RotateCcw, Squircle, Grid3X3, Zap, Volume2, VolumeX } from "lucide-react";
+import { X, Gamepad2, Trophy, RotateCcw, Squircle, Grid3X3, Zap, Volume2, VolumeX, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { sounds } from "@/lib/sounds";
@@ -11,24 +11,95 @@ interface ArcadeModeProps {
   onClose: () => void;
 }
 
-export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
-  const [showCelebration, setShowCelebration] = useState(true);
+interface ArcadeContentProps {
+  onClose: () => void;
+  showCelebration: boolean;
+  embedded?: boolean;
+}
+
+function TouchControls({ onDirection, showRotate, onRotate }: { 
+  onDirection: (dir: "up" | "down" | "left" | "right") => void;
+  showRotate?: boolean;
+  onRotate?: () => void;
+}) {
+  return (
+    <div className="flex justify-center gap-2 mt-3 md:hidden">
+      <div className="grid grid-cols-3 gap-1">
+        <div />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 bg-white/10 border border-white/20"
+          onTouchStart={(e) => { e.preventDefault(); onDirection("up"); }}
+          data-testid="touch-up"
+        >
+          <ChevronUp className="h-5 w-5 text-white" />
+        </Button>
+        <div />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 bg-white/10 border border-white/20"
+          onTouchStart={(e) => { e.preventDefault(); onDirection("left"); }}
+          data-testid="touch-left"
+        >
+          <ChevronLeft className="h-5 w-5 text-white" />
+        </Button>
+        {showRotate && onRotate ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 bg-white/20 border border-white/30"
+            onTouchStart={(e) => { e.preventDefault(); onRotate(); }}
+            data-testid="touch-rotate"
+          >
+            <RotateCcw className="h-4 w-4 text-white" />
+          </Button>
+        ) : (
+          <div />
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 bg-white/10 border border-white/20"
+          onTouchStart={(e) => { e.preventDefault(); onDirection("right"); }}
+          data-testid="touch-right"
+        >
+          <ChevronRight className="h-5 w-5 text-white" />
+        </Button>
+        <div />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 bg-white/10 border border-white/20"
+          onTouchStart={(e) => { e.preventDefault(); onDirection("down"); }}
+          data-testid="touch-down"
+        >
+          <ChevronDown className="h-5 w-5 text-white" />
+        </Button>
+        <div />
+      </div>
+    </div>
+  );
+}
+
+function JumpButton({ onJump }: { onJump: () => void }) {
+  return (
+    <div className="flex justify-center mt-3 md:hidden">
+      <Button
+        variant="ghost"
+        className="h-16 w-32 bg-white/10 border border-white/20 text-white font-bold text-lg"
+        onTouchStart={(e) => { e.preventDefault(); onJump(); }}
+        data-testid="touch-jump"
+      >
+        JUMP
+      </Button>
+    </div>
+  );
+}
+
+function ArcadeContent({ onClose, showCelebration, embedded = false }: ArcadeContentProps) {
   const [currentGame, setCurrentGame] = useState<GameType>("menu");
-
-  useEffect(() => {
-    if (isOpen) {
-      setShowCelebration(true);
-      setCurrentGame("menu");
-      sounds.arcadeOpen();
-      const timer = setTimeout(() => setShowCelebration(false), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
-
-  const handleClose = useCallback(() => {
-    sounds.arcadeClose();
-    onClose();
-  }, [onClose]);
 
   const handleSelectGame = useCallback((game: GameType) => {
     sounds.menuSelect();
@@ -38,58 +109,109 @@ export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
     setCurrentGame(game);
   }, []);
 
-  if (!isOpen) return null;
+  const handleClose = useCallback(() => {
+    sounds.arcadeClose();
+    onClose();
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-md"
-        onClick={handleClose}
-      />
+    <div className={cn(
+      "relative flex flex-col h-full rounded-md overflow-hidden border border-white/20 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95",
+      embedded ? "shadow-lg" : "shadow-2xl"
+    )}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.03),transparent_50%)]" />
       
       {showCelebration && <CelebrationAnimation />}
       
-      <div className="relative z-10 w-[90vw] max-w-4xl h-[80vh] max-h-[600px] rounded-md overflow-hidden border border-white/20 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 shadow-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.03),transparent_50%)]" />
-        
-        <div className="relative z-10 flex flex-col h-full">
-          <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-white/10 shadow-lg">
-                <Gamepad2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Arcade Mode</h2>
-                <p className="text-xs text-white/50">Hidden Feature Unlocked</p>
-              </div>
+      <div className="relative z-10 flex flex-col h-full">
+        <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-1.5 sm:p-2 rounded-lg bg-white/10 shadow-lg">
+              <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="text-white/70"
-              data-testid="button-close-arcade"
-            >
-              <X className="w-5 h-5" />
-            </Button>
-          </header>
-
-          <div className="flex-1 overflow-hidden p-4">
-            {currentGame === "menu" && (
-              <GameMenu onSelectGame={handleSelectGame} />
-            )}
-            {currentGame === "snake" && (
-              <SnakeGame onBack={() => handleSelectGame("menu")} />
-            )}
-            {currentGame === "tetris" && (
-              <TetrisGame onBack={() => handleSelectGame("menu")} />
-            )}
-            {currentGame === "runner" && (
-              <RunnerGame onBack={() => handleSelectGame("menu")} />
-            )}
+            <div>
+              <h2 className="text-sm sm:text-lg font-semibold text-white">Arcade Mode</h2>
+              <p className="text-[10px] sm:text-xs text-white/50">Hidden Feature Unlocked</p>
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="text-white/70 h-8 w-8 sm:h-9 sm:w-9"
+            data-testid="button-close-arcade"
+          >
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+          </Button>
+        </header>
+
+        <div className="flex-1 overflow-hidden p-2 sm:p-4">
+          {currentGame === "menu" && (
+            <GameMenu onSelectGame={handleSelectGame} />
+          )}
+          {currentGame === "snake" && (
+            <SnakeGame onBack={() => handleSelectGame("menu")} />
+          )}
+          {currentGame === "tetris" && (
+            <TetrisGame onBack={() => handleSelectGame("menu")} />
+          )}
+          {currentGame === "runner" && (
+            <RunnerGame onBack={() => handleSelectGame("menu")} />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
+  const [showCelebration, setShowCelebration] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowCelebration(true);
+      sounds.arcadeOpen();
+      const timer = setTimeout(() => setShowCelebration(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center md:hidden">
+      <div 
+        className="absolute inset-0 bg-black/90"
+        onClick={() => {
+          sounds.arcadeClose();
+          onClose();
+        }}
+      />
+      
+      <div className="relative z-10 w-full h-full">
+        <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
+      </div>
+    </div>
+  );
+}
+
+export function ArcadeEmbedded({ isOpen, onClose }: ArcadeModeProps) {
+  const [showCelebration, setShowCelebration] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowCelebration(true);
+      sounds.arcadeOpen();
+      const timer = setTimeout(() => setShowCelebration(false), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="h-full w-full">
+      <ArcadeContent onClose={onClose} showCelebration={showCelebration} embedded />
     </div>
   );
 }
@@ -197,6 +319,24 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
     setIsPaused(false);
   }, []);
 
+  const changeDirection = useCallback((dir: "up" | "down" | "left" | "right") => {
+    const { direction } = gameStateRef.current;
+    switch (dir) {
+      case "up":
+        if (direction.y !== 1) gameStateRef.current.nextDirection = { x: 0, y: -1 };
+        break;
+      case "down":
+        if (direction.y !== -1) gameStateRef.current.nextDirection = { x: 0, y: 1 };
+        break;
+      case "left":
+        if (direction.x !== 1) gameStateRef.current.nextDirection = { x: -1, y: 0 };
+        break;
+      case "right":
+        if (direction.x !== -1) gameStateRef.current.nextDirection = { x: 1, y: 0 };
+        break;
+    }
+  }, []);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -204,23 +344,22 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
     if (!ctx) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      const { direction } = gameStateRef.current;
       switch (e.key.toLowerCase()) {
         case "arrowup":
         case "w":
-          if (direction.y !== 1) gameStateRef.current.nextDirection = { x: 0, y: -1 };
+          changeDirection("up");
           break;
         case "arrowdown":
         case "s":
-          if (direction.y !== -1) gameStateRef.current.nextDirection = { x: 0, y: 1 };
+          changeDirection("down");
           break;
         case "arrowleft":
         case "a":
-          if (direction.x !== 1) gameStateRef.current.nextDirection = { x: -1, y: 0 };
+          changeDirection("left");
           break;
         case "arrowright":
         case "d":
-          if (direction.x !== -1) gameStateRef.current.nextDirection = { x: 1, y: 0 };
+          changeDirection("right");
           break;
         case " ":
           setIsPaused(p => !p);
@@ -228,7 +367,31 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
       }
     };
 
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+      const minSwipe = 30;
+
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > minSwipe) {
+        changeDirection(dx > 0 ? "right" : "left");
+      } else if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > minSwipe) {
+        changeDirection(dy > 0 ? "down" : "up");
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
+    canvas.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     const gameLoop = setInterval(() => {
       if (gameOver || isPaused) return;
@@ -319,9 +482,11 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchend", handleTouchEnd);
       clearInterval(gameLoop);
     };
-  }, [gameOver, isPaused, score, highScore]);
+  }, [gameOver, isPaused, score, highScore, changeDirection]);
 
   return (
     <GameContainer
@@ -337,8 +502,9 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
         ref={canvasRef}
         width={GRID_SIZE * CELL_SIZE}
         height={GRID_SIZE * CELL_SIZE}
-        className="rounded-lg border border-white/10"
+        className="rounded-lg border border-white/10 touch-none"
       />
+      <TouchControls onDirection={changeDirection} />
     </GameContainer>
   );
 }
@@ -445,7 +611,7 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
     return linesCleared;
   }, []);
 
-  const rotate = useCallback((shape: number[][]) => {
+  const rotateShape = useCallback((shape: number[][]) => {
     const rows = shape.length;
     const cols = shape[0].length;
     const rotated = Array(cols).fill(null).map(() => Array(rows).fill(0));
@@ -457,6 +623,54 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
     return rotated;
   }, []);
 
+  const movePiece = useCallback((dir: "left" | "right" | "down") => {
+    if (gameOver) return;
+    const state = gameStateRef.current;
+    if (!state.currentPiece) return;
+
+    switch (dir) {
+      case "left":
+        state.currentPiece.x--;
+        if (collides(state.currentPiece, state.board)) {
+          state.currentPiece.x++;
+        }
+        break;
+      case "right":
+        state.currentPiece.x++;
+        if (collides(state.currentPiece, state.board)) {
+          state.currentPiece.x--;
+        }
+        break;
+      case "down":
+        state.currentPiece.y++;
+        if (collides(state.currentPiece, state.board)) {
+          state.currentPiece.y--;
+        }
+        break;
+    }
+  }, [gameOver, collides]);
+
+  const rotatePiece = useCallback(() => {
+    if (gameOver) return;
+    const state = gameStateRef.current;
+    if (!state.currentPiece) return;
+
+    const rotated = rotateShape(state.currentPiece.shape);
+    const originalShape = state.currentPiece.shape;
+    state.currentPiece.shape = rotated;
+    if (collides(state.currentPiece, state.board)) {
+      state.currentPiece.shape = originalShape;
+    }
+  }, [gameOver, rotateShape, collides]);
+
+  const handleDirection = useCallback((dir: "up" | "down" | "left" | "right") => {
+    if (dir === "up") {
+      rotatePiece();
+    } else {
+      movePiece(dir);
+    }
+  }, [movePiece, rotatePiece]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -464,46 +678,25 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
     if (!ctx) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameOver) return;
-      const state = gameStateRef.current;
-      if (!state.currentPiece) return;
-
       switch (e.key.toLowerCase()) {
         case "arrowleft":
         case "a":
-          state.currentPiece.x--;
-          if (collides(state.currentPiece, state.board)) {
-            state.currentPiece.x++;
-          }
+          movePiece("left");
           break;
         case "arrowright":
         case "d":
-          state.currentPiece.x++;
-          if (collides(state.currentPiece, state.board)) {
-            state.currentPiece.x--;
-          }
+          movePiece("right");
           break;
         case "arrowdown":
         case "s":
-          state.currentPiece.y++;
-          if (collides(state.currentPiece, state.board)) {
-            state.currentPiece.y--;
-          }
+          movePiece("down");
           break;
         case "arrowup":
         case "w":
-          const rotated = rotate(state.currentPiece.shape);
-          const originalShape = state.currentPiece.shape;
-          state.currentPiece.shape = rotated;
-          if (collides(state.currentPiece, state.board)) {
-            state.currentPiece.shape = originalShape;
-          }
+          rotatePiece();
           break;
         case " ":
-          while (!collides(state.currentPiece, state.board)) {
-            state.currentPiece.y++;
-          }
-          state.currentPiece.y--;
+          setIsPaused(p => !p);
           break;
       }
     };
@@ -611,7 +804,7 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
       window.removeEventListener("keydown", handleKeyDown);
       cancelAnimationFrame(animationId);
     };
-  }, [gameOver, isPaused, collides, merge, clearLines, rotate, spawnPiece, highScore]);
+  }, [gameOver, isPaused, collides, merge, clearLines, rotateShape, spawnPiece, highScore, movePiece, rotatePiece]);
 
   return (
     <GameContainer
@@ -627,8 +820,9 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
         ref={canvasRef}
         width={COLS * CELL_SIZE}
         height={ROWS * CELL_SIZE}
-        className="rounded-lg border border-white/10"
+        className="rounded-lg border border-white/10 touch-none"
       />
+      <TouchControls onDirection={handleDirection} showRotate onRotate={rotatePiece} />
     </GameContainer>
   );
 }
@@ -679,6 +873,20 @@ function RunnerGame({ onBack }: { onBack: () => void }) {
     setIsStarted(true);
     sounds.gameStart();
   }, []);
+
+  const handleJump = useCallback(() => {
+    if (!isStarted && !gameOver) {
+      setIsStarted(true);
+      sounds.gameStart();
+      return;
+    }
+    const state = gameStateRef.current;
+    if (!state.isJumping && !gameOver && !isPaused) {
+      state.playerVy = -14;
+      state.isJumping = true;
+      sounds.jump();
+    }
+  }, [isStarted, gameOver, isPaused]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -870,8 +1078,10 @@ function RunnerGame({ onBack }: { onBack: () => void }) {
         ref={canvasRef}
         width={WIDTH}
         height={HEIGHT}
-        className="rounded-lg border border-white/10"
+        className="rounded-lg border border-white/10 touch-none"
+        onTouchStart={(e) => { e.preventDefault(); handleJump(); }}
       />
+      <JumpButton onJump={handleJump} />
     </GameContainer>
   );
 }

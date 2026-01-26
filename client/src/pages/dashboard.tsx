@@ -51,6 +51,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
+import { useArcade } from "@/contexts/arcade-context";
+import { ArcadeEmbedded } from "@/components/arcade-mode";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -693,6 +695,7 @@ export default function Dashboard() {
   const [selectedApt, setSelectedApt] = useState<AppointmentWithPatient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { isOpen: arcadeOpen, closeArcade } = useArcade();
 
   const isStudent = user?.role === "student";
 
@@ -1049,11 +1052,17 @@ export default function Dashboard() {
   const mainWidgets = getSlotWidgets("main");
   const sidebarWidgets = getSlotWidgets("sidebar").filter(w => !(isStudent && (w.id === "lowStock" || w.id === "productivity")));
 
+  const renderArcadeWidget = () => (
+    <div className="h-[500px] lg:h-[540px] hidden md:block">
+      <ArcadeEmbedded isOpen={arcadeOpen} onClose={closeArcade} />
+    </div>
+  );
+
   const renderWidgetById = (id: string) => {
     switch (id) {
       case "clock": return <LiveClock />;
       case "stats": return renderStatsWidget();
-      case "appointments": return renderAppointmentsWidget();
+      case "appointments": return arcadeOpen ? renderArcadeWidget() : renderAppointmentsWidget();
       case "quickActions": return renderQuickActionsWidget();
       case "lowStock": return renderLowStockWidget();
       case "productivity": return renderProductivityWidget();
