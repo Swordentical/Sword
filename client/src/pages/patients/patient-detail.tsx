@@ -1541,39 +1541,27 @@ function DocumentsSection({ patientId }: { patientId: string }) {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<string>("other");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: documents, isLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/patients", patientId, "documents"],
   });
 
-  const uploadMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
+  const saveDocumentMutation = useMutation({
+    mutationFn: async (data: { fileName: string; fileType: string; fileUrl: string; fileSize: number; category: string }) => {
       const res = await fetch(`/api/patients/${patientId}/documents`, {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
         credentials: "include",
       });
       if (!res.ok) {
-        throw new Error("Failed to upload document");
+        throw new Error("Failed to save document");
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "documents"] });
-      setIsUploadDialogOpen(false);
-      setSelectedFiles(null);
-      setUploadCategory("other");
-      toast({
-        title: "Upload successful",
-        description: "Document has been uploaded successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -1601,16 +1589,69 @@ function DocumentsSection({ patientId }: { patientId: string }) {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedFiles || selectedFiles.length === 0) return;
 
-    const formData = new FormData();
-    for (let i = 0; i < selectedFiles.length; i++) {
-      formData.append("files", selectedFiles[i]);
+    setIsUploading(true);
+    try {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        
+        // Step 1: Request presigned URL from backend
+        const urlResponse = await fetch("/api/uploads/request-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: file.name,
+            size: file.size,
+            contentType: file.type || "application/octet-stream",
+          }),
+          credentials: "include",
+        });
+        
+        if (!urlResponse.ok) {
+          throw new Error("Failed to get upload URL");
+        }
+        
+        const { uploadURL, objectPath } = await urlResponse.json();
+        
+        // Step 2: Upload file directly to cloud storage
+        const uploadResponse = await fetch(uploadURL, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file to storage");
+        }
+        
+        // Step 3: Save document metadata to database
+        await saveDocumentMutation.mutateAsync({
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileUrl: objectPath,
+          fileSize: file.size,
+          category: uploadCategory,
+        });
+      }
+      
+      setIsUploadDialogOpen(false);
+      setSelectedFiles(null);
+      setUploadCategory("other");
+      toast({
+        title: "Upload successful",
+        description: "Document has been uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload document",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
     }
-    formData.append("category", uploadCategory);
-
-    uploadMutation.mutate(formData);
   };
 
   const openUploadDialog = (category?: string) => {
@@ -1752,10 +1793,10 @@ function DocumentsSection({ patientId }: { patientId: string }) {
               </Button>
               <Button
                 onClick={handleUpload}
-                disabled={uploadMutation.isPending || !selectedFiles || selectedFiles.length === 0}
+                disabled={isUploading || !selectedFiles || selectedFiles.length === 0}
                 data-testid="button-confirm-upload"
               >
-                {uploadMutation.isPending ? (
+                {isUploading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Uploading...
@@ -1882,10 +1923,10 @@ function DocumentsSection({ patientId }: { patientId: string }) {
             </Button>
             <Button
               onClick={handleUpload}
-              disabled={uploadMutation.isPending || !selectedFiles || selectedFiles.length === 0}
+              disabled={isUploading || !selectedFiles || selectedFiles.length === 0}
               data-testid="button-confirm-upload"
             >
-              {uploadMutation.isPending ? (
+              {isUploading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Uploading...

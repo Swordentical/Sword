@@ -443,6 +443,7 @@ export default function PatientsList() {
                               key={patient.id}
                               className={`hover-elevate cursor-pointer ${isSelected ? "bg-accent" : ""}`}
                               onClick={() => handlePatientClick(patient)}
+                              onDoubleClick={() => setLocation(`/patients/${patient.id}`)}
                               data-testid={`row-patient-${patient.id}`}
                             >
                               <TableCell>

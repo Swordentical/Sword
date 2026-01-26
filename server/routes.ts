@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
 import { subscriptionService } from "./subscription";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 import bcrypt from "bcrypt";
 import {
   insertPatientSchema,
@@ -86,6 +87,9 @@ export async function registerRoutes(
 ): Promise<Server> {
   // Set up authentication FIRST
   setupAuth(app);
+
+  // Register object storage routes for file uploads
+  registerObjectStorageRoutes(app);
 
   // Dashboard stats
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
