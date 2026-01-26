@@ -1,6 +1,7 @@
 import { useTheme } from "@/components/theme-provider";
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
+import { sounds } from "@/lib/sounds";
 
 export function ThemeToggle() {
   const { resolvedTheme, setThemeWithAnimation } = useTheme();
@@ -16,6 +17,16 @@ export function ThemeToggle() {
       const y = rect.top + rect.height / 2;
       // Cycle: light -> dusk -> dark -> light
       const nextTheme = isLight ? "dusk" : isDusk ? "dark" : "light";
+      
+      // Play theme-specific sound
+      if (nextTheme === "light") {
+        sounds.themeDay();
+      } else if (nextTheme === "dusk") {
+        sounds.themeDusk();
+      } else {
+        sounds.themeNight();
+      }
+      
       setThemeWithAnimation(nextTheme, x, y);
     }
   };

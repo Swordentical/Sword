@@ -123,4 +123,35 @@ export const sounds = {
   },
   
   collision: () => playTone(200, 0.15, "sawtooth", 0.04),
+  
+  // Theme-specific sounds
+  themeDay: () => {
+    // Bright, ascending, motivating sunrise sound
+    const notes = [392, 494, 587, 698, 784]; // G4, B4, D5, F5, G5 - major ascending
+    notes.forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.15, "sine", 0.04), i * 60);
+    });
+    // Warm chord at the end
+    setTimeout(() => playChord([392, 494, 587], 0.3, "sine", 0.03), 320);
+  },
+  
+  themeDusk: () => {
+    // Warm, transitional sunset sound with gentle descent
+    const notes = [523, 466, 392, 349]; // C5, Bb4, G4, F4 - warm descending
+    notes.forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.2, "sine", 0.035), i * 100);
+    });
+    // Amber warm chord
+    setTimeout(() => playChord([349, 440, 523], 0.35, "triangle", 0.025), 420);
+  },
+  
+  themeNight: () => {
+    // Calm, smooth, relaxing night sound
+    const notes = [262, 294, 330, 294, 262]; // C4, D4, E4, D4, C4 - gentle wave
+    notes.forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.25, "sine", 0.03), i * 120);
+    });
+    // Soft low chord for calm feeling
+    setTimeout(() => playChord([196, 247, 294], 0.5, "sine", 0.02), 620);
+  },
 };
