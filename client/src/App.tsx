@@ -8,7 +8,8 @@ import { ThemeTransitionLayer } from "@/components/theme-transition-layer";
 import { AnimatedBackground } from "@/components/animated-background";
 import { AppearanceSettingsProvider } from "@/hooks/use-appearance-settings";
 import { AuthProvider } from "@/hooks/use-auth";
-import { ArcadeProvider } from "@/contexts/arcade-context";
+import { ArcadeProvider, useArcade } from "@/contexts/arcade-context";
+import { ArcadeMobileOverlay } from "@/components/arcade-mode";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -252,6 +253,11 @@ function Router() {
   );
 }
 
+function MobileArcadeOverlay() {
+  const { isOpen, closeArcade } = useArcade();
+  return <ArcadeMobileOverlay isOpen={isOpen} onClose={closeArcade} />;
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="light" storageKey="dental-clinic-theme">
@@ -264,6 +270,7 @@ function App() {
                 <Router />
                 <Toaster />
                 <ThemeTransitionLayer />
+                <MobileArcadeOverlay />
               </TooltipProvider>
             </ArcadeProvider>
           </AuthProvider>

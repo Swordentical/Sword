@@ -27,7 +27,6 @@ import { Link, useLocation } from "wouter";
 import glazerLogo from "@/assets/glazer-logo.png";
 import { useAuth } from "@/hooks/use-auth";
 import { useSubscription } from "@/hooks/use-subscription";
-import { ArcadeMobileOverlay } from "@/components/arcade-mode";
 import { useArcade } from "@/contexts/arcade-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -439,8 +438,6 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </div>
       </SidebarFooter>
-      
-      <ArcadeMobileOverlay isOpen={arcadeOpen} onClose={closeArcade} />
     </Sidebar>
   );
 }
