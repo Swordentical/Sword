@@ -24,60 +24,55 @@ function TouchControls({ onDirection, showRotate, onRotate }: {
   onRotate?: () => void;
 }) {
   return (
-    <div className="flex justify-center gap-2 mt-3 md:hidden">
-      <div className="grid grid-cols-3 gap-1">
+    <div className="flex justify-center gap-2 mt-4 md:hidden">
+      <div className="grid grid-cols-3 gap-2">
         <div />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 bg-white/10 border border-white/20"
-          onTouchStart={(e) => { e.preventDefault(); onDirection("up"); }}
+        <button
+          className="h-14 w-14 rounded-lg bg-white/15 border-2 border-white/30 flex items-center justify-center active:bg-white/30 touch-manipulation"
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onDirection("up"); }}
+          onClick={() => onDirection("up")}
           data-testid="touch-up"
         >
-          <ChevronUp className="h-5 w-5 text-white" />
-        </Button>
+          <ChevronUp className="h-7 w-7 text-white" />
+        </button>
         <div />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 bg-white/10 border border-white/20"
-          onTouchStart={(e) => { e.preventDefault(); onDirection("left"); }}
+        <button
+          className="h-14 w-14 rounded-lg bg-white/15 border-2 border-white/30 flex items-center justify-center active:bg-white/30 touch-manipulation"
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onDirection("left"); }}
+          onClick={() => onDirection("left")}
           data-testid="touch-left"
         >
-          <ChevronLeft className="h-5 w-5 text-white" />
-        </Button>
+          <ChevronLeft className="h-7 w-7 text-white" />
+        </button>
         {showRotate && onRotate ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 bg-white/20 border border-white/30"
-            onTouchStart={(e) => { e.preventDefault(); onRotate(); }}
+          <button
+            className="h-14 w-14 rounded-lg bg-white/25 border-2 border-white/40 flex items-center justify-center active:bg-white/40 touch-manipulation"
+            onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onRotate(); }}
+            onClick={() => onRotate()}
             data-testid="touch-rotate"
           >
-            <RotateCcw className="h-4 w-4 text-white" />
-          </Button>
+            <RotateCcw className="h-5 w-5 text-white" />
+          </button>
         ) : (
           <div />
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 bg-white/10 border border-white/20"
-          onTouchStart={(e) => { e.preventDefault(); onDirection("right"); }}
+        <button
+          className="h-14 w-14 rounded-lg bg-white/15 border-2 border-white/30 flex items-center justify-center active:bg-white/30 touch-manipulation"
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onDirection("right"); }}
+          onClick={() => onDirection("right")}
           data-testid="touch-right"
         >
-          <ChevronRight className="h-5 w-5 text-white" />
-        </Button>
+          <ChevronRight className="h-7 w-7 text-white" />
+        </button>
         <div />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 bg-white/10 border border-white/20"
-          onTouchStart={(e) => { e.preventDefault(); onDirection("down"); }}
+        <button
+          className="h-14 w-14 rounded-lg bg-white/15 border-2 border-white/30 flex items-center justify-center active:bg-white/30 touch-manipulation"
+          onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onDirection("down"); }}
+          onClick={() => onDirection("down")}
           data-testid="touch-down"
         >
-          <ChevronDown className="h-5 w-5 text-white" />
-        </Button>
+          <ChevronDown className="h-7 w-7 text-white" />
+        </button>
         <div />
       </div>
     </div>
@@ -86,15 +81,15 @@ function TouchControls({ onDirection, showRotate, onRotate }: {
 
 function JumpButton({ onJump }: { onJump: () => void }) {
   return (
-    <div className="flex justify-center mt-3 md:hidden">
-      <Button
-        variant="ghost"
-        className="h-16 w-32 bg-white/10 border border-white/20 text-white font-bold text-lg"
-        onTouchStart={(e) => { e.preventDefault(); onJump(); }}
+    <div className="flex justify-center mt-4 md:hidden">
+      <button
+        className="h-20 w-40 rounded-xl bg-white/15 border-2 border-white/30 text-white font-bold text-xl active:bg-white/30 touch-manipulation"
+        onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); onJump(); }}
+        onClick={() => onJump()}
         data-testid="touch-jump"
       >
         JUMP
-      </Button>
+      </button>
     </div>
   );
 }
@@ -117,10 +112,10 @@ function ArcadeContent({ onClose, showCelebration, embedded = false }: ArcadeCon
 
   return (
     <div className={cn(
-      "relative flex flex-col h-full rounded-md overflow-hidden border border-white/20 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95",
+      "relative flex flex-col h-full rounded-md overflow-hidden border border-white/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900",
       embedded ? "shadow-lg" : "shadow-2xl"
     )}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.03),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.03),transparent_50%)] pointer-events-none" />
       
       {showCelebration && <CelebrationAnimation />}
       
@@ -180,18 +175,8 @@ export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center md:hidden">
-      <div 
-        className="absolute inset-0 bg-black"
-        onClick={() => {
-          sounds.arcadeClose();
-          onClose();
-        }}
-      />
-      
-      <div className="absolute inset-0 z-10">
-        <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
-      </div>
+    <div className="fixed inset-0 z-[9999] md:hidden bg-black">
+      <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
     </div>,
     document.body
   );
@@ -266,26 +251,30 @@ function GameMenu({ onSelectGame }: { onSelectGame: (game: GameType) => void }) 
   ];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-6">
+    <div className="h-full flex flex-col items-center justify-center gap-4 sm:gap-6 px-4">
       <p className="text-white/60 text-sm">Select a game to play</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-2xl">
         {games.map((game) => (
           <button
             key={game.id}
             onClick={() => onSelectGame(game.id)}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onSelectGame(game.id);
+            }}
             onMouseEnter={() => sounds.menuHover()}
-            className="group p-6 rounded-md border border-white/10 bg-white/5 hover-elevate transition-all duration-300 text-left"
+            className="group p-4 sm:p-6 rounded-lg border-2 border-white/20 bg-white/10 active:bg-white/20 transition-all duration-200 text-left min-h-[100px] touch-manipulation"
             data-testid={`button-game-${game.id}`}
           >
-            <div className="mb-3">
-              <game.icon className="w-10 h-10 text-white/80" />
+            <div className="mb-2 sm:mb-3">
+              <game.icon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-1">{game.name}</h3>
-            <p className="text-sm text-white/50">{game.description}</p>
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{game.name}</h3>
+            <p className="text-xs sm:text-sm text-white/60">{game.description}</p>
           </button>
         ))}
       </div>
-      <p className="text-white/40 text-xs mt-4">Use arrow keys or WASD to play</p>
+      <p className="text-white/40 text-xs mt-2 sm:mt-4 text-center">Tap a game to play. Use touch controls or swipe.</p>
     </div>
   );
 }
@@ -1110,25 +1099,23 @@ function GameContainer({
   children,
 }: GameContainerProps) {
   return (
-    <div className="h-full flex flex-col items-center justify-center gap-4">
+    <div className="h-full flex flex-col items-center justify-center gap-3 sm:gap-4 px-2">
       <div className="flex items-center justify-between w-full max-w-[600px] px-2">
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={onBack}
-          className="text-white/70"
+          className="px-4 py-2 rounded-lg bg-white/10 border-2 border-white/20 text-white/80 text-sm font-medium active:bg-white/20 touch-manipulation"
           data-testid="button-back-to-menu"
         >
           Back to Menu
-        </Button>
-        <div className="flex items-center gap-6">
+        </button>
+        <div className="flex items-center gap-4 sm:gap-6">
           <div className="text-center">
-            <p className="text-xs text-white/50">Score</p>
-            <p className="text-lg font-bold text-white">{score}</p>
+            <p className="text-[10px] sm:text-xs text-white/50">Score</p>
+            <p className="text-base sm:text-lg font-bold text-white">{score}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-white/50">Best</p>
-            <p className="text-lg font-bold text-white/80">{highScore}</p>
+            <p className="text-[10px] sm:text-xs text-white/50">Best</p>
+            <p className="text-base sm:text-lg font-bold text-white/80">{highScore}</p>
           </div>
         </div>
       </div>
@@ -1137,27 +1124,27 @@ function GameContainer({
         {children}
         
         {(gameOver || isPaused) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm rounded-lg">
-            <h3 className="text-2xl font-bold text-white mb-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg">
+            <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
               {gameOver ? "Game Over" : "Paused"}
             </h3>
             {gameOver && score >= highScore && score > 0 && (
               <p className="text-white/70 text-sm mb-4">New High Score!</p>
             )}
-            <Button
+            <button
               onClick={onRestart}
-              className="bg-white/20 border border-white/30"
+              className="px-6 py-3 rounded-lg bg-white/20 border-2 border-white/30 text-white font-medium flex items-center gap-2 active:bg-white/30 touch-manipulation"
               data-testid="button-restart-game"
             >
-              <RotateCcw className="w-4 h-4 mr-2" />
+              <RotateCcw className="w-4 h-4" />
               {gameOver ? "Play Again" : "Restart"}
-            </Button>
+            </button>
           </div>
         )}
       </div>
 
-      <p className="text-white/40 text-xs">
-        {title === "Runner" ? "Press SPACE or UP to jump" : "Arrow keys or WASD to move • SPACE to pause"}
+      <p className="text-white/40 text-[10px] sm:text-xs text-center px-4">
+        {title === "Runner" ? "Tap JUMP or swipe up" : "Use touch controls or swipe"}
       </p>
     </div>
   );
