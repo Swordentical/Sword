@@ -41,7 +41,7 @@ import ManageSubscriptionPage from "@/pages/subscription/manage-page";
 import RegisterPage from "@/pages/register-page";
 import RegistrationSuccessPage from "@/pages/registration-success";
 
-function MainLayout({ children, transparentHeader = false }: { children: React.ReactNode; transparentHeader?: boolean }) {
+function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3.5rem",
@@ -52,7 +52,7 @@ function MainLayout({ children, transparentHeader = false }: { children: React.R
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className={`flex items-center gap-2 sm:gap-4 h-14 px-2 sm:px-4 shrink-0 relative z-50 ${transparentHeader ? 'bg-transparent border-transparent' : 'border-b backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))]'}`}>
+          <header className="flex items-center gap-2 sm:gap-4 h-14 px-2 sm:px-4 border-b shrink-0 backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))]">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex-1 max-w-md">
               <GlobalSearch />
@@ -73,7 +73,7 @@ function MainLayout({ children, transparentHeader = false }: { children: React.R
 
 function DashboardPage() {
   return (
-    <MainLayout transparentHeader>
+    <MainLayout>
       <Dashboard />
     </MainLayout>
   );

@@ -1074,7 +1074,7 @@ export default function Dashboard() {
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
       <LiveWallpaper />
-      <div className="shrink-0 border-b relative overflow-hidden" style={{ marginTop: '-56px', paddingTop: '56px' }}>
+      <div className="shrink-0 border-b relative overflow-hidden">
         <MountainScene />
         <div className="relative z-10 p-3 sm:p-4 backdrop-blur-[var(--elements-blur,1px)]">
         <div className="max-w-[1400px] mx-auto">
