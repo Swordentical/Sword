@@ -52,7 +52,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center gap-2 sm:gap-4 h-14 px-2 sm:px-4 border-b shrink-0 backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))]">
+          <header className="flex items-center gap-2 sm:gap-4 h-14 px-2 sm:px-4 border-b shrink-0 backdrop-blur-[var(--sidebar-blur,2px)] [background-color:hsl(var(--sidebar)/var(--sidebar-transparency,0.2))] relative z-50">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
             <div className="flex-1 max-w-md">
               <GlobalSearch />
