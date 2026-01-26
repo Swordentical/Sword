@@ -943,6 +943,21 @@ function AppearanceSettings() {
               data-testid="switch-floating-elements"
             />
           </div>
+          
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div>
+              <Label htmlFor="sound-enabled">Interface Sounds</Label>
+              <p className="text-xs text-muted-foreground">
+                Play sounds on hover, click, and other interactions
+              </p>
+            </div>
+            <Switch
+              id="sound-enabled"
+              checked={settings.soundEnabled}
+              onCheckedChange={(checked) => updateSettings({ soundEnabled: checked })}
+              data-testid="switch-sound-enabled"
+            />
+          </div>
         </CardContent>
       </Card>
 

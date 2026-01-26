@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { sounds } from "@/lib/sounds";
 import {
   LayoutDashboard,
   Users,
@@ -205,7 +206,10 @@ export function AppSidebar() {
   }, []);
   
   const handleLogoClick = useCallback(() => {
+    if (arcadeOpen) return;
+    
     clickCountRef.current += 1;
+    sounds.click();
     
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
@@ -213,13 +217,14 @@ export function AppSidebar() {
     
     if (clickCountRef.current >= 5) {
       clickCountRef.current = 0;
+      sounds.celebration();
       setArcadeOpen(true);
     } else {
       clickTimeoutRef.current = setTimeout(() => {
         clickCountRef.current = 0;
       }, 2000);
     }
-  }, []);
+  }, [arcadeOpen]);
 
   const userRole = (user?.role as UserRole) || "staff";
   const planType = getPlanType();

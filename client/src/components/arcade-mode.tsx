@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Gamepad2, Trophy, RotateCcw, Squircle, Grid3X3, Zap } from "lucide-react";
+import { X, Gamepad2, Trophy, RotateCcw, Squircle, Grid3X3, Zap, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { sounds } from "@/lib/sounds";
 
 type GameType = "menu" | "snake" | "tetris" | "runner";
 
@@ -18,10 +19,24 @@ export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
     if (isOpen) {
       setShowCelebration(true);
       setCurrentGame("menu");
+      sounds.arcadeOpen();
       const timer = setTimeout(() => setShowCelebration(false), 2500);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
+
+  const handleClose = useCallback(() => {
+    sounds.arcadeClose();
+    onClose();
+  }, [onClose]);
+
+  const handleSelectGame = useCallback((game: GameType) => {
+    sounds.menuSelect();
+    if (game !== "menu") {
+      sounds.gameStart();
+    }
+    setCurrentGame(game);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -29,18 +44,18 @@ export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div 
         className="absolute inset-0 bg-black/70 backdrop-blur-md"
-        onClick={onClose}
+        onClick={handleClose}
       />
       
       {showCelebration && <CelebrationAnimation />}
       
-      <div className="relative z-10 w-[90vw] max-w-4xl h-[80vh] max-h-[600px] rounded-md overflow-hidden border border-white/10 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 shadow-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(187_85%_42%/0.15),transparent_50%),radial-gradient(circle_at_70%_80%,hsl(280_70%_55%/0.1),transparent_50%)]" />
+      <div className="relative z-10 w-[90vw] max-w-4xl h-[80vh] max-h-[600px] rounded-md overflow-hidden border border-white/20 bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 shadow-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.05),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.03),transparent_50%)]" />
         
         <div className="relative z-10 flex flex-col h-full">
           <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-[hsl(187,85%,42%)] to-[hsl(280,70%,55%)] shadow-lg shadow-[hsl(187,85%,42%)/0.3]">
+              <div className="p-2 rounded-lg bg-white/10 shadow-lg">
                 <Gamepad2 className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -51,7 +66,7 @@ export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleClose}
               className="text-white/70"
               data-testid="button-close-arcade"
             >
@@ -61,16 +76,16 @@ export function ArcadeMode({ isOpen, onClose }: ArcadeModeProps) {
 
           <div className="flex-1 overflow-hidden p-4">
             {currentGame === "menu" && (
-              <GameMenu onSelectGame={setCurrentGame} />
+              <GameMenu onSelectGame={handleSelectGame} />
             )}
             {currentGame === "snake" && (
-              <SnakeGame onBack={() => setCurrentGame("menu")} />
+              <SnakeGame onBack={() => handleSelectGame("menu")} />
             )}
             {currentGame === "tetris" && (
-              <TetrisGame onBack={() => setCurrentGame("menu")} />
+              <TetrisGame onBack={() => handleSelectGame("menu")} />
             )}
             {currentGame === "runner" && (
-              <RunnerGame onBack={() => setCurrentGame("menu")} />
+              <RunnerGame onBack={() => handleSelectGame("menu")} />
             )}
           </div>
         </div>
@@ -86,7 +101,7 @@ function CelebrationAnimation() {
     delay: Math.random() * 0.5,
     duration: 1.5 + Math.random() * 1,
     size: 4 + Math.random() * 8,
-    color: ["hsl(187,85%,42%)", "hsl(207,90%,54%)", "hsl(280,70%,55%)", "hsl(45,100%,60%)"][Math.floor(Math.random() * 4)]
+    opacity: 0.4 + Math.random() * 0.6
   }));
 
   return (
@@ -99,8 +114,8 @@ function CelebrationAnimation() {
             left: `${p.x}%`,
             width: p.size,
             height: p.size,
-            backgroundColor: p.color,
-            boxShadow: `0 0 ${p.size * 2}px ${p.color}`,
+            backgroundColor: `rgba(255,255,255,${p.opacity})`,
+            boxShadow: `0 0 ${p.size * 2}px rgba(255,255,255,${p.opacity * 0.5})`,
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
           }}
@@ -108,7 +123,7 @@ function CelebrationAnimation() {
       ))}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center animate-celebration-text">
-          <Trophy className="w-16 h-16 mx-auto mb-4 text-yellow-400 drop-shadow-[0_0_20px_rgba(250,204,21,0.5)]" />
+          <Trophy className="w-16 h-16 mx-auto mb-4 text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]" />
           <h1 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Arcade Unlocked!
           </h1>
@@ -134,11 +149,12 @@ function GameMenu({ onSelectGame }: { onSelectGame: (game: GameType) => void }) 
           <button
             key={game.id}
             onClick={() => onSelectGame(game.id)}
-            className="group p-6 rounded-xl border border-white/10 bg-white/5 hover-elevate transition-all duration-300 text-left"
+            onMouseEnter={() => sounds.menuHover()}
+            className="group p-6 rounded-md border border-white/10 bg-white/5 hover-elevate transition-all duration-300 text-left"
             data-testid={`button-game-${game.id}`}
           >
-            <div className="mb-3 group-hover:scale-110 transition-transform">
-              <game.icon className="w-10 h-10 text-[hsl(187,85%,42%)]" />
+            <div className="mb-3">
+              <game.icon className="w-10 h-10 text-white/80" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-1">{game.name}</h3>
             <p className="text-sm text-white/50">{game.description}</p>
@@ -228,6 +244,7 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
 
       if (state.snake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
         setGameOver(true);
+        sounds.gameOver();
         if (score > highScore) {
           setHighScore(score);
           localStorage.setItem("arcade-snake-highscore", score.toString());
@@ -239,6 +256,7 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
 
       if (newHead.x === state.food.x && newHead.y === state.food.y) {
         setScore(s => s + 10);
+        sounds.score();
         state.food = {
           x: Math.floor(Math.random() * GRID_SIZE),
           y: Math.floor(Math.random() * GRID_SIZE),
@@ -263,18 +281,9 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
       }
 
       state.snake.forEach((seg, i) => {
-        const gradient = ctx.createRadialGradient(
-          seg.x * CELL_SIZE + CELL_SIZE / 2,
-          seg.y * CELL_SIZE + CELL_SIZE / 2,
-          0,
-          seg.x * CELL_SIZE + CELL_SIZE / 2,
-          seg.y * CELL_SIZE + CELL_SIZE / 2,
-          CELL_SIZE / 2
-        );
         const alpha = 1 - (i / state.snake.length) * 0.5;
-        gradient.addColorStop(0, `hsla(187, 85%, 52%, ${alpha})`);
-        gradient.addColorStop(1, `hsla(187, 85%, 42%, ${alpha * 0.7})`);
-        ctx.fillStyle = gradient;
+        const brightness = 85 - (i / state.snake.length) * 30;
+        ctx.fillStyle = `rgba(${brightness * 2.55}, ${brightness * 2.55}, ${brightness * 2.55}, ${alpha})`;
         ctx.beginPath();
         ctx.roundRect(
           seg.x * CELL_SIZE + 2,
@@ -286,15 +295,15 @@ function SnakeGame({ onBack }: { onBack: () => void }) {
         ctx.fill();
         
         if (i === 0) {
-          ctx.shadowColor = "hsl(187, 85%, 42%)";
+          ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
           ctx.shadowBlur = 10;
           ctx.fill();
           ctx.shadowBlur = 0;
         }
       });
 
-      ctx.fillStyle = "hsl(280, 70%, 55%)";
-      ctx.shadowColor = "hsl(280, 70%, 55%)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+      ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
       ctx.shadowBlur = 15;
       ctx.beginPath();
       ctx.arc(
@@ -349,13 +358,13 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
   const CELL_SIZE = 20;
 
   const PIECES = [
-    { shape: [[1, 1, 1, 1]], color: "hsl(187, 85%, 42%)" },
-    { shape: [[1, 1], [1, 1]], color: "hsl(45, 100%, 60%)" },
-    { shape: [[1, 1, 1], [0, 1, 0]], color: "hsl(280, 70%, 55%)" },
-    { shape: [[1, 1, 1], [1, 0, 0]], color: "hsl(207, 90%, 54%)" },
-    { shape: [[1, 1, 1], [0, 0, 1]], color: "hsl(25, 95%, 55%)" },
-    { shape: [[1, 1, 0], [0, 1, 1]], color: "hsl(140, 70%, 45%)" },
-    { shape: [[0, 1, 1], [1, 1, 0]], color: "hsl(0, 75%, 55%)" },
+    { shape: [[1, 1, 1, 1]], color: "rgba(255, 255, 255, 0.9)" },
+    { shape: [[1, 1], [1, 1]], color: "rgba(200, 200, 200, 0.9)" },
+    { shape: [[1, 1, 1], [0, 1, 0]], color: "rgba(180, 180, 180, 0.9)" },
+    { shape: [[1, 1, 1], [1, 0, 0]], color: "rgba(160, 160, 160, 0.9)" },
+    { shape: [[1, 1, 1], [0, 0, 1]], color: "rgba(140, 140, 140, 0.9)" },
+    { shape: [[1, 1, 0], [0, 1, 1]], color: "rgba(120, 120, 120, 0.9)" },
+    { shape: [[0, 1, 1], [1, 1, 0]], color: "rgba(100, 100, 100, 0.9)" },
   ];
 
   const gameStateRef = useRef({
@@ -517,6 +526,7 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
               merge(state.currentPiece, state.board);
               const lines = clearLines(state.board);
               if (lines > 0) {
+                sounds.lineClear();
                 const points = [0, 100, 300, 500, 800][lines] || 0;
                 setScore(s => {
                   const newScore = s + points;
@@ -530,6 +540,7 @@ function TetrisGame({ onBack }: { onBack: () => void }) {
               state.currentPiece = spawnPiece();
               if (collides(state.currentPiece, state.board)) {
                 setGameOver(true);
+                sounds.gameOver();
               }
             }
           }
@@ -632,31 +643,41 @@ function RunnerGame({ onBack }: { onBack: () => void }) {
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isStarted, setIsStarted] = useState(false);
+  const animationRef = useRef<number>(0);
+  const scoreRef = useRef(0);
 
   const WIDTH = 600;
   const HEIGHT = 200;
-  const GROUND_Y = HEIGHT - 40;
+  const GROUND_Y = HEIGHT - 20;
+  const PLAYER_HEIGHT = 40;
+  const PLAYER_WIDTH = 30;
 
   const gameStateRef = useRef({
-    player: { x: 50, y: GROUND_Y, vy: 0, isJumping: false, width: 30, height: 40 },
+    playerY: GROUND_Y - PLAYER_HEIGHT,
+    playerVy: 0,
+    isJumping: false,
     obstacles: [] as { x: number; width: number; height: number }[],
-    speed: 5,
-    lastObstacle: 0,
+    speed: 6,
+    nextObstacleIn: 80,
     frameCount: 0,
   });
 
   const resetGame = useCallback(() => {
     gameStateRef.current = {
-      player: { x: 50, y: GROUND_Y, vy: 0, isJumping: false, width: 30, height: 40 },
+      playerY: GROUND_Y - PLAYER_HEIGHT,
+      playerVy: 0,
+      isJumping: false,
       obstacles: [],
-      speed: 5,
-      lastObstacle: 0,
+      speed: 6,
+      nextObstacleIn: 80,
       frameCount: 0,
     };
+    scoreRef.current = 0;
     setScore(0);
     setGameOver(false);
     setIsPaused(false);
     setIsStarted(true);
+    sounds.gameStart();
   }, []);
 
   useEffect(() => {
@@ -667,153 +688,173 @@ function RunnerGame({ onBack }: { onBack: () => void }) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "ArrowUp" || e.key.toLowerCase() === "w") {
+        e.preventDefault();
         if (!isStarted && !gameOver) {
           setIsStarted(true);
+          sounds.gameStart();
           return;
         }
         const state = gameStateRef.current;
-        if (!state.player.isJumping && !gameOver) {
-          state.player.vy = -12;
-          state.player.isJumping = true;
+        if (!state.isJumping && !gameOver && !isPaused) {
+          state.playerVy = -14;
+          state.isJumping = true;
+          sounds.jump();
         }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
 
-    let animationId: number;
     const gameLoop = () => {
       const state = gameStateRef.current;
 
-      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+      ctx.fillStyle = "rgba(15, 23, 42, 1)";
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      ctx.strokeStyle = "rgba(255,255,255,0.1)";
+      ctx.strokeStyle = "rgba(255,255,255,0.2)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, GROUND_Y + state.player.height);
-      ctx.lineTo(WIDTH, GROUND_Y + state.player.height);
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(WIDTH, GROUND_Y);
       ctx.stroke();
+      ctx.lineWidth = 1;
 
-      if (!isStarted || gameOver || isPaused) {
-        const gradient = ctx.createLinearGradient(0, 0, state.player.width, state.player.height);
-        gradient.addColorStop(0, "hsl(187, 85%, 52%)");
-        gradient.addColorStop(1, "hsl(187, 85%, 42%)");
-        ctx.fillStyle = gradient;
-        ctx.shadowColor = "hsl(187, 85%, 42%)";
+      const playerX = 60;
+
+      if (!isStarted) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
         ctx.shadowBlur = 15;
         ctx.beginPath();
-        ctx.roundRect(state.player.x, GROUND_Y, state.player.width, state.player.height, 6);
+        ctx.roundRect(playerX, GROUND_Y - PLAYER_HEIGHT, PLAYER_WIDTH, PLAYER_HEIGHT, 6);
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        if (!isStarted) {
-          ctx.fillStyle = "rgba(255,255,255,0.8)";
-          ctx.font = "16px system-ui";
-          ctx.textAlign = "center";
-          ctx.fillText("Press SPACE to start", WIDTH / 2, HEIGHT / 2);
+        ctx.fillStyle = "rgba(255,255,255,0.8)";
+        ctx.font = "bold 18px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("Press SPACE to start", WIDTH / 2, HEIGHT / 2 - 20);
+        ctx.font = "14px system-ui";
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText("Jump over obstacles", WIDTH / 2, HEIGHT / 2 + 10);
+
+        animationRef.current = requestAnimationFrame(gameLoop);
+        return;
+      }
+
+      if (gameOver || isPaused) {
+        ctx.fillStyle = "rgba(120, 120, 120, 0.8)";
+        ctx.beginPath();
+        ctx.roundRect(playerX, state.playerY, PLAYER_WIDTH, PLAYER_HEIGHT, 6);
+        ctx.fill();
+
+        for (const obs of state.obstacles) {
+          const obsY = GROUND_Y - obs.height;
+          ctx.fillStyle = "rgba(80, 80, 80, 0.8)";
+          ctx.beginPath();
+          ctx.roundRect(obs.x, obsY, obs.width, obs.height, 4);
+          ctx.fill();
         }
 
-        animationId = requestAnimationFrame(gameLoop);
+        animationRef.current = requestAnimationFrame(gameLoop);
         return;
       }
 
       state.frameCount++;
 
-      if (state.player.isJumping) {
-        state.player.vy += 0.6;
-        state.player.y += state.player.vy;
-        if (state.player.y >= GROUND_Y) {
-          state.player.y = GROUND_Y;
-          state.player.vy = 0;
-          state.player.isJumping = false;
-        }
+      state.playerVy += 0.8;
+      state.playerY += state.playerVy;
+      
+      if (state.playerY >= GROUND_Y - PLAYER_HEIGHT) {
+        state.playerY = GROUND_Y - PLAYER_HEIGHT;
+        state.playerVy = 0;
+        state.isJumping = false;
       }
 
-      if (state.frameCount - state.lastObstacle > 100 + Math.random() * 50) {
-        const height = 20 + Math.random() * 30;
+      state.nextObstacleIn--;
+      if (state.nextObstacleIn <= 0) {
+        const height = 25 + Math.random() * 25;
         state.obstacles.push({
-          x: WIDTH,
-          width: 15 + Math.random() * 15,
+          x: WIDTH + 10,
+          width: 18 + Math.random() * 12,
           height,
         });
-        state.lastObstacle = state.frameCount;
+        state.nextObstacleIn = 70 + Math.random() * 60;
       }
 
       state.obstacles = state.obstacles.filter(obs => {
         obs.x -= state.speed;
-        return obs.x + obs.width > 0;
+        return obs.x + obs.width > -10;
       });
 
+      const playerLeft = playerX;
+      const playerRight = playerX + PLAYER_WIDTH - 4;
+      const playerTop = state.playerY + 4;
+      const playerBottom = state.playerY + PLAYER_HEIGHT;
+
       for (const obs of state.obstacles) {
-        const playerRight = state.player.x + state.player.width;
-        const playerBottom = state.player.y + state.player.height;
-        const obsRight = obs.x + obs.width;
-        const obsTop = GROUND_Y + state.player.height - obs.height;
+        const obsY = GROUND_Y - obs.height;
+        const obsLeft = obs.x + 2;
+        const obsRight = obs.x + obs.width - 2;
+        const obsTop = obsY + 2;
+        const obsBottom = GROUND_Y;
 
         if (
-          playerRight > obs.x &&
-          state.player.x < obsRight &&
-          playerBottom > obsTop
+          playerRight > obsLeft &&
+          playerLeft < obsRight &&
+          playerBottom > obsTop &&
+          playerTop < obsBottom
         ) {
           setGameOver(true);
-          if (score > highScore) {
-            setHighScore(score);
-            localStorage.setItem("arcade-runner-highscore", score.toString());
+          sounds.gameOver();
+          const currentScore = scoreRef.current;
+          if (currentScore > highScore) {
+            setHighScore(currentScore);
+            localStorage.setItem("arcade-runner-highscore", currentScore.toString());
           }
+          animationRef.current = requestAnimationFrame(gameLoop);
+          return;
         }
       }
 
-      if (state.frameCount % 10 === 0) {
-        setScore(s => s + 1);
+      if (state.frameCount % 6 === 0) {
+        scoreRef.current += 1;
+        setScore(scoreRef.current);
       }
 
-      if (state.frameCount % 500 === 0) {
+      if (state.frameCount % 400 === 0 && state.speed < 12) {
         state.speed += 0.5;
       }
 
-      const playerGradient = ctx.createLinearGradient(
-        state.player.x,
-        state.player.y,
-        state.player.x + state.player.width,
-        state.player.y + state.player.height
-      );
-      playerGradient.addColorStop(0, "hsl(187, 85%, 52%)");
-      playerGradient.addColorStop(1, "hsl(207, 90%, 54%)");
-      ctx.fillStyle = playerGradient;
-      ctx.shadowColor = "hsl(187, 85%, 42%)";
-      ctx.shadowBlur = 15;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+      ctx.shadowBlur = 12;
       ctx.beginPath();
-      ctx.roundRect(
-        state.player.x,
-        state.player.y,
-        state.player.width,
-        state.player.height,
-        6
-      );
+      ctx.roundRect(playerX, state.playerY, PLAYER_WIDTH, PLAYER_HEIGHT, 6);
       ctx.fill();
       ctx.shadowBlur = 0;
 
       for (const obs of state.obstacles) {
-        const obsY = GROUND_Y + state.player.height - obs.height;
-        ctx.fillStyle = "hsl(280, 70%, 55%)";
-        ctx.shadowColor = "hsl(280, 70%, 55%)";
-        ctx.shadowBlur = 10;
+        const obsY = GROUND_Y - obs.height;
+        ctx.fillStyle = "rgba(150, 150, 150, 0.9)";
+        ctx.shadowColor = "rgba(150, 150, 150, 0.4)";
+        ctx.shadowBlur = 8;
         ctx.beginPath();
         ctx.roundRect(obs.x, obsY, obs.width, obs.height, 4);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      animationId = requestAnimationFrame(gameLoop);
+      animationRef.current = requestAnimationFrame(gameLoop);
     };
 
-    animationId = requestAnimationFrame(gameLoop);
+    animationRef.current = requestAnimationFrame(gameLoop);
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      cancelAnimationFrame(animationId);
+      cancelAnimationFrame(animationRef.current);
     };
-  }, [isStarted, gameOver, isPaused, score, highScore]);
+  }, [isStarted, gameOver, isPaused, highScore]);
 
   return (
     <GameContainer
@@ -875,7 +916,7 @@ function GameContainer({
           </div>
           <div className="text-center">
             <p className="text-xs text-white/50">Best</p>
-            <p className="text-lg font-bold text-[hsl(187,85%,42%)]">{highScore}</p>
+            <p className="text-lg font-bold text-white/80">{highScore}</p>
           </div>
         </div>
       </div>
@@ -889,11 +930,11 @@ function GameContainer({
               {gameOver ? "Game Over" : "Paused"}
             </h3>
             {gameOver && score >= highScore && score > 0 && (
-              <p className="text-[hsl(45,100%,60%)] text-sm mb-4">New High Score!</p>
+              <p className="text-white/70 text-sm mb-4">New High Score!</p>
             )}
             <Button
               onClick={onRestart}
-              className="bg-gradient-to-r from-[hsl(187,85%,42%)] to-[hsl(207,90%,54%)]"
+              className="bg-white/20 border border-white/30"
               data-testid="button-restart-game"
             >
               <RotateCcw className="w-4 h-4 mr-2" />

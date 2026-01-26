@@ -8,6 +8,7 @@ export interface AppearanceSettings {
   elementsTransparency: number;
   elementsBlur: number;
   showFloatingElements: boolean;
+  soundEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: AppearanceSettings = {
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
   elementsTransparency: 50,
   elementsBlur: 20,
   showFloatingElements: true,
+  soundEnabled: true,
 };
 
 interface AppearanceSettingsContextType {
