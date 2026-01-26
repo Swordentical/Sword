@@ -32,6 +32,7 @@ import {
   FileJson,
   FileCode,
   Share2,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1535,6 +1536,66 @@ function getFileIcon(fileType: string | null, category: string | null) {
   return { icon: File, color: "text-muted-foreground" };
 }
 
+function DocumentViewer({ document, onClose }: { document: PatientDocument | null; onClose: () => void }) {
+  if (!document) return null;
+
+  const isImage = document.fileType?.startsWith("image/");
+  const isPdf = document.fileType === "application/pdf";
+  const fileUrl = document.fileUrl.startsWith("/objects/") 
+    ? document.fileUrl 
+    : document.fileUrl;
+
+  return (
+    <Dialog open={!!document} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            {document.fileName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/50 rounded-lg p-4">
+          {isImage ? (
+            <img 
+              src={fileUrl} 
+              alt={document.fileName}
+              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+            />
+          ) : isPdf ? (
+            <iframe 
+              src={fileUrl}
+              className="w-full h-[70vh] rounded-lg border"
+              title={document.fileName}
+            />
+          ) : (
+            <div className="text-center py-12">
+              <File className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground mb-4">Preview not available for this file type</p>
+              <Button asChild>
+                <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download File
+                </a>
+              </Button>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="flex-shrink-0">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+          <Button asChild>
+            <a href={fileUrl} download={document.fileName} target="_blank" rel="noopener noreferrer">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </a>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function DocumentsSection({ patientId }: { patientId: string }) {
   const { toast } = useToast();
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -1542,6 +1603,7 @@ function DocumentsSection({ patientId }: { patientId: string }) {
   const [uploadCategory, setUploadCategory] = useState<string>("other");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
 
   const { data: documents, isLoading } = useQuery<PatientDocument[]>({
     queryKey: ["/api/patients", patientId, "documents"],
@@ -1704,7 +1766,12 @@ function DocumentsSection({ patientId }: { patientId: string }) {
             {folderDocuments.map((doc) => {
               const { icon: DocIcon, color } = getFileIcon(doc.fileType, doc.category);
               return (
-                <Card key={doc.id} className="hover-elevate cursor-pointer" data-testid={`card-document-${doc.id}`}>
+                <Card 
+                  key={doc.id} 
+                  className="hover-elevate cursor-pointer" 
+                  onClick={() => setViewingDocument(doc)}
+                  data-testid={`card-document-${doc.id}`}
+                >
                   <CardContent className="p-4">
                     <div className="flex flex-col items-center text-center gap-2">
                       <div className="w-12 h-12 flex items-center justify-center rounded-lg bg-muted">
@@ -1811,6 +1878,8 @@ function DocumentsSection({ patientId }: { patientId: string }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} />
       </div>
     );
   }
@@ -1941,6 +2010,8 @@ function DocumentsSection({ patientId }: { patientId: string }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DocumentViewer document={viewingDocument} onClose={() => setViewingDocument(null)} />
     </div>
   );
 }
