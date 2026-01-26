@@ -9,155 +9,103 @@ export function MountainScene() {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <svg
-        viewBox="0 0 1200 200"
-        preserveAspectRatio="xMidYMax slice"
-        className="absolute inset-0 w-full h-full"
-        style={{ minWidth: '100%' }}
-      >
-        <defs>
-          <linearGradient id="sky-day" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#87CEEB" />
-            <stop offset="50%" stopColor="#98D8E8" />
-            <stop offset="100%" stopColor="#B8E6F0" />
-          </linearGradient>
-          
-          <linearGradient id="sky-dusk" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#1a1a2e" />
-            <stop offset="30%" stopColor="#2d3561" />
-            <stop offset="60%" stopColor="#734b6d" />
-            <stop offset="85%" stopColor="#d4837a" />
-            <stop offset="100%" stopColor="#f4a460" />
-          </linearGradient>
-          
-          <linearGradient id="sky-night" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#0a0a1a" />
-            <stop offset="40%" stopColor="#1a1a3a" />
-            <stop offset="100%" stopColor="#2a2a4a" />
-          </linearGradient>
-          
-          <linearGradient id="sun-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#FFE066" />
-            <stop offset="100%" stopColor="#FFA500" />
-          </linearGradient>
-          
-          <linearGradient id="moon-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F5F5F5" />
-            <stop offset="100%" stopColor="#E8E8E8" />
-          </linearGradient>
-          
-          <filter id="sun-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          
-          <filter id="moon-glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          
-          <radialGradient id="star-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        
-        <rect
-          x="0"
-          y="0"
-          width="1200"
-          height="200"
-          className="transition-all duration-1000 ease-in-out"
-          fill={isDay ? "url(#sky-day)" : isDusk ? "url(#sky-dusk)" : "url(#sky-night)"}
-        />
-        
-        <g className="stars">
+      <div 
+        className="absolute inset-0 transition-all duration-1000 ease-in-out"
+        style={{
+          background: isDay 
+            ? 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B8E6F0 100%)'
+            : isDusk 
+              ? 'linear-gradient(to bottom, #1a1a2e 0%, #2d3561 30%, #734b6d 60%, #d4837a 85%, #f4a460 100%)'
+              : 'linear-gradient(to bottom, #0a0a1a 0%, #1a1a3a 40%, #2a2a4a 100%)',
+        }}
+      />
+      
+      {isNight && (
+        <div className="absolute inset-0" style={{ top: '5%', bottom: '45%' }}>
           {[
-            { cx: 100, cy: 25, r: 1.5, delay: 0 },
-            { cx: 200, cy: 40, r: 1, delay: 0.2 },
-            { cx: 300, cy: 15, r: 1.2, delay: 0.4 },
-            { cx: 400, cy: 50, r: 0.8, delay: 0.1 },
-            { cx: 500, cy: 30, r: 1.3, delay: 0.3 },
-            { cx: 650, cy: 20, r: 1, delay: 0.5 },
-            { cx: 750, cy: 45, r: 1.4, delay: 0.15 },
-            { cx: 850, cy: 25, r: 0.9, delay: 0.35 },
-            { cx: 950, cy: 55, r: 1.1, delay: 0.25 },
-            { cx: 1050, cy: 35, r: 1.2, delay: 0.45 },
-            { cx: 1100, cy: 15, r: 0.8, delay: 0.55 },
-            { cx: 150, cy: 60, r: 1, delay: 0.6 },
-            { cx: 350, cy: 65, r: 0.7, delay: 0.7 },
-            { cx: 550, cy: 55, r: 1.1, delay: 0.8 },
-            { cx: 800, cy: 60, r: 0.9, delay: 0.9 },
-            { cx: 1000, cy: 50, r: 1, delay: 0.65 },
+            { left: '8%', top: '15%', size: 2, delay: 0 },
+            { left: '15%', top: '35%', size: 1.5, delay: 0.3 },
+            { left: '22%', top: '10%', size: 1.8, delay: 0.5 },
+            { left: '30%', top: '45%', size: 1.2, delay: 0.2 },
+            { left: '38%', top: '25%', size: 2, delay: 0.7 },
+            { left: '45%', top: '55%', size: 1.5, delay: 0.4 },
+            { left: '52%', top: '12%', size: 1.8, delay: 0.6 },
+            { left: '60%', top: '40%', size: 1.2, delay: 0.1 },
+            { left: '68%', top: '20%', size: 2, delay: 0.8 },
+            { left: '75%', top: '50%', size: 1.5, delay: 0.9 },
+            { left: '82%', top: '30%', size: 1.8, delay: 0.35 },
+            { left: '90%', top: '42%', size: 1.2, delay: 0.65 },
           ].map((star, i) => (
-            <circle
+            <div
               key={i}
-              cx={star.cx}
-              cy={star.cy}
-              r={star.r}
-              fill="white"
-              className="transition-all duration-1000 ease-in-out"
+              className="absolute rounded-full bg-white transition-opacity duration-1000"
               style={{
+                left: star.left,
+                top: star.top,
+                width: star.size,
+                height: star.size,
                 opacity: isNight ? 1 : 0,
-                transform: isNight ? 'scale(1)' : 'scale(0)',
-                transformOrigin: `${star.cx}px ${star.cy}px`,
-                animation: isNight ? `twinkle 2s ease-in-out infinite ${star.delay}s` : 'none',
+                animation: `twinkle-star 2s ease-in-out infinite ${star.delay}s`,
               }}
             />
           ))}
-        </g>
-        
-        <g
-          className="transition-all duration-1000 ease-in-out"
+        </div>
+      )}
+      
+      {isNight && (
+        <div 
+          className="absolute transition-all duration-1000 ease-in-out"
           style={{
+            right: '12%',
+            top: '12%',
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F5F5F5 0%, #E8E8E8 100%)',
+            boxShadow: '0 0 12px 3px rgba(255,255,255,0.2)',
             opacity: isNight ? 1 : 0,
-            transform: isNight ? 'translateY(0)' : 'translateY(50px)',
+            transform: isNight ? 'scale(1) translateY(0)' : 'scale(0.5) translateY(15px)',
           }}
         >
-          <circle
-            cx="900"
-            cy="50"
-            r="28"
-            fill="url(#moon-gradient)"
-            filter="url(#moon-glow)"
-          />
-          <circle cx="890" cy="42" r="4" fill="#D8D8D8" opacity="0.5" />
-          <circle cx="908" cy="55" r="6" fill="#D8D8D8" opacity="0.4" />
-          <circle cx="895" cy="60" r="3" fill="#D8D8D8" opacity="0.3" />
-        </g>
-        
-        <g
-          className="transition-all duration-1000 ease-in-out"
+          <div className="absolute w-1 h-1 rounded-full bg-gray-300/50" style={{ left: '25%', top: '20%' }} />
+          <div className="absolute w-1.5 h-1.5 rounded-full bg-gray-300/40" style={{ left: '55%', top: '45%' }} />
+          <div className="absolute w-0.5 h-0.5 rounded-full bg-gray-300/30" style={{ left: '30%', top: '60%' }} />
+        </div>
+      )}
+      
+      {(isDay || isDusk) && (
+        <div 
+          className="absolute transition-all duration-1000 ease-in-out"
           style={{
-            opacity: isDay || isDusk ? 1 : 0,
+            left: '50%',
+            marginLeft: '-14px',
+            top: isDay ? '10%' : '20%',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            background: isDusk 
+              ? 'linear-gradient(to bottom, #FF6B4A 0%, #FF8C42 100%)'
+              : 'linear-gradient(to bottom, #FFE066 0%, #FFA500 100%)',
+            boxShadow: isDusk 
+              ? '0 0 20px 6px rgba(255,107,74,0.3)'
+              : '0 0 20px 6px rgba(255,200,100,0.35)',
+            opacity: (isDay || isDusk) ? 1 : 0,
             transform: isDay 
-              ? 'translateY(0)' 
+              ? 'translateY(0) scale(1)' 
               : isDusk 
-                ? 'translateY(60px)' 
-                : 'translateY(120px)',
+                ? 'translateY(0) scale(0.9)' 
+                : 'translateY(40px) scale(0.5)',
           }}
-        >
-          <circle
-            cx="600"
-            cy="45"
-            r="35"
-            fill="url(#sun-gradient)"
-            filter="url(#sun-glow)"
-            className="transition-all duration-1000"
-            style={{
-              fill: isDusk ? '#FF6B4A' : undefined,
-            }}
-          />
-        </g>
-        
+        />
+      )}
+      
+      <svg
+        viewBox="0 0 1000 50"
+        preserveAspectRatio="xMidYMax slice"
+        className="absolute bottom-0 left-0 w-full h-1/2"
+      >
         <path
-          d="M0,200 L0,140 Q100,160 200,130 Q280,110 350,125 Q420,140 480,115 Q530,95 600,100 Q670,105 720,115 Q780,125 850,110 Q930,90 1000,120 Q1080,145 1150,130 Q1180,125 1200,135 L1200,200 Z"
+          d="M0,50 L0,35 Q60,42 120,32 Q200,22 280,30 Q360,38 440,25 Q520,12 600,20 Q680,28 760,18 Q840,8 920,22 Q960,30 1000,25 L1000,50 Z"
           className="transition-all duration-1000 ease-in-out"
           style={{
             fill: isDay ? '#6B8E6B' : isDusk ? '#4A5568' : '#2D3748',
@@ -166,7 +114,7 @@ export function MountainScene() {
         />
         
         <path
-          d="M0,200 L0,150 Q80,130 150,145 Q220,160 300,140 Q380,120 450,135 Q520,150 600,130 Q680,110 750,130 Q820,150 900,135 Q980,120 1050,140 Q1120,160 1200,145 L1200,200 Z"
+          d="M0,50 L0,38 Q50,44 110,35 Q180,26 260,34 Q340,42 420,30 Q500,18 580,28 Q660,38 740,28 Q820,18 900,32 Q950,40 1000,35 L1000,50 Z"
           className="transition-all duration-1000 ease-in-out"
           style={{
             fill: isDay ? '#4A7C4A' : isDusk ? '#3D4852' : '#1A202C',
@@ -175,7 +123,7 @@ export function MountainScene() {
         />
         
         <path
-          d="M0,200 L0,160 Q60,175 120,165 Q180,155 250,168 Q320,180 400,160 Q480,140 560,155 Q640,170 720,155 Q800,140 880,160 Q960,180 1040,165 Q1100,155 1140,165 Q1170,175 1200,168 L1200,200 Z"
+          d="M0,50 L0,42 Q40,48 100,40 Q170,32 250,40 Q330,48 410,38 Q490,28 570,36 Q650,44 730,36 Q810,28 890,38 Q950,44 1000,40 L1000,50 Z"
           className="transition-all duration-1000 ease-in-out"
           style={{
             fill: isDay ? '#3D6B3D' : isDusk ? '#2D3748' : '#171923',
@@ -184,7 +132,7 @@ export function MountainScene() {
         />
         
         <path
-          d="M0,200 L0,175 Q50,185 100,178 Q160,170 220,180 Q280,190 350,175 Q420,160 500,172 Q580,185 660,175 Q740,165 820,178 Q900,190 980,175 Q1040,165 1100,178 Q1150,188 1200,180 L1200,200 Z"
+          d="M0,50 L0,46 Q30,50 80,45 Q140,40 220,46 Q300,50 380,44 Q460,38 540,44 Q620,50 700,44 Q780,38 860,46 Q940,50 1000,46 L1000,50 Z"
           className="transition-all duration-1000 ease-in-out"
           style={{
             fill: isDay ? '#2D5A2D' : isDusk ? '#1A202C' : '#0D1117',
@@ -193,14 +141,14 @@ export function MountainScene() {
       </svg>
       
       <style>{`
-        @keyframes twinkle {
+        @keyframes twinkle-star {
           0%, 100% {
             opacity: 1;
             transform: scale(1);
           }
           50% {
-            opacity: 0.4;
-            transform: scale(0.8);
+            opacity: 0.3;
+            transform: scale(0.6);
           }
         }
       `}</style>
