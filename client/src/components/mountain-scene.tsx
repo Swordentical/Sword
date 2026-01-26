@@ -92,8 +92,8 @@ export function MountainScene() {
             height: '38px',
             borderRadius: '50%',
             backgroundColor: isNight ? '#0a0a1a' : isDusk ? '#1a1a2e' : '#87CEEB',
-            top: '-5px',
-            left: '18px',
+            top: '2px',
+            left: '16px',
           }}
         />
       </div>
