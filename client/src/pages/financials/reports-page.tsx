@@ -682,7 +682,7 @@ export default function ReportsPage() {
                           <>
                             <TableRow key={row.doctorId} className={row.totalProduction === 0 ? "opacity-60" : ""}>
                               <TableCell>
-                                {row.treatmentBreakdown.length > 0 && (
+                                {row.treatmentBreakdown?.length > 0 && (
                                   <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -715,13 +715,13 @@ export default function ReportsPage() {
                                 </Button>
                               </TableCell>
                             </TableRow>
-                            {expandedDoctors.has(row.doctorId) && row.treatmentBreakdown.length > 0 && (
+                            {expandedDoctors.has(row.doctorId) && row.treatmentBreakdown?.length > 0 && (
                               <TableRow key={`${row.doctorId}-breakdown`} className="bg-muted/30">
                                 <TableCell colSpan={7} className="py-2">
                                   <div className="pl-10 pr-4">
                                     <p className="text-sm font-medium mb-2">Treatment Breakdown:</p>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                      {row.treatmentBreakdown.map((t, i) => (
+                                      {row.treatmentBreakdown?.map((t, i) => (
                                         <div key={i} className="bg-background rounded p-2 text-sm">
                                           <p className="font-medium truncate">{t.treatmentName}</p>
                                           <p className="text-muted-foreground">{t.count} × {formatCurrency(t.revenue / t.count)}</p>
@@ -851,7 +851,7 @@ export default function ReportsPage() {
                       )}
 
                       {/* Treatment Breakdown */}
-                      {selectedDoctorReport.treatmentBreakdown.length > 0 && (
+                      {selectedDoctorReport.treatmentBreakdown?.length > 0 && (
                         <div>
                           <h4 className="font-medium mb-4">Treatment Breakdown</h4>
                           <Table>
@@ -863,7 +863,7 @@ export default function ReportsPage() {
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {selectedDoctorReport.treatmentBreakdown.map((t, i) => (
+                              {selectedDoctorReport.treatmentBreakdown?.map((t, i) => (
                                 <TableRow key={i}>
                                   <TableCell className="font-medium">{t.treatmentName}</TableCell>
                                   <TableCell className="text-right">{t.count}</TableCell>
