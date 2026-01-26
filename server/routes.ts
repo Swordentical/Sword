@@ -3283,6 +3283,31 @@ export async function registerRoutes(
   // Backup - Export all data as JSON (admin only)
   app.post("/api/backup", requireRole("admin"), async (req, res) => {
     try {
+      const { includeFiles } = req.body || {};
+      
+      // Helper to convert Object Storage URLs to base64 for full backup
+      const convertUrlToBase64 = async (url: string | null | undefined): Promise<string | null> => {
+        if (!url || !includeFiles) return url || null;
+        
+        // Already base64, return as-is
+        if (url.startsWith("data:")) return url;
+        
+        // Object Storage URL - convert to base64
+        if (url.startsWith("/objects/")) {
+          try {
+            const { getFileFromObjectPath, getObjectAsBase64 } = await import("./replit_integrations/object_storage/objectStorage");
+            const file = await getFileFromObjectPath(url);
+            if (file) {
+              return await getObjectAsBase64(file);
+            }
+          } catch (e) {
+            console.error("Error converting object storage file:", e);
+          }
+        }
+        
+        return url;
+      };
+      
       // Core clinical data
       const patientsList = await storage.getPatients({});
       const appointmentsList = await storage.getAppointments({});
@@ -3310,8 +3335,27 @@ export async function registerRoutes(
       const patientDocumentsMap: Record<string, any[]> = {};
       for (const patient of patientsList) {
         patientTreatmentsMap[patient.id] = await storage.getPatientTreatments(patient.id);
-        patientDocumentsMap[patient.id] = await storage.getPatientDocuments(patient.id);
+        const docs = await storage.getPatientDocuments(patient.id);
+        // Convert document file URLs to base64 if full backup
+        if (includeFiles) {
+          patientDocumentsMap[patient.id] = await Promise.all(
+            docs.map(async (doc) => ({
+              ...doc,
+              fileUrl: await convertUrlToBase64(doc.fileUrl) || doc.fileUrl,
+            }))
+          );
+        } else {
+          patientDocumentsMap[patient.id] = docs;
+        }
       }
+      
+      // Convert patient photos to base64 if full backup
+      const patientsWithPhotos = includeFiles ? await Promise.all(
+        patientsList.map(async (patient) => ({
+          ...patient,
+          photoUrl: await convertUrlToBase64(patient.photoUrl) || patient.photoUrl,
+        }))
+      ) : patientsList;
       
       // Get payment plan installments for each payment plan
       const paymentPlanInstallmentsMap: Record<string, any[]> = {};
@@ -3328,18 +3372,30 @@ export async function registerRoutes(
       
       // Users (exclude password hash for security)
       const usersList = await storage.getUsers({});
-      const usersWithoutPasswords = usersList.map(({ password, ...user }) => user);
+      // Convert user avatars to base64 if full backup
+      const usersWithoutPasswords = includeFiles ? await Promise.all(
+        usersList.map(async ({ password, ...user }) => ({
+          ...user,
+          avatarUrl: await convertUrlToBase64(user.avatarUrl) || user.avatarUrl,
+        }))
+      ) : usersList.map(({ password, ...user }) => user);
       
       // Settings and clinic configuration
       const clinicSettings = await storage.getClinicSettings();
       const clinicRooms = await storage.getClinicRooms();
+      
+      // Convert clinic logo to base64 if full backup
+      const clinicSettingsWithLogo = includeFiles && clinicSettings?.logoUrl
+        ? { ...clinicSettings, logoUrl: await convertUrlToBase64(clinicSettings.logoUrl) || clinicSettings.logoUrl }
+        : clinicSettings;
 
       const backupData = {
-        version: "2.3",
+        version: "2.4",
+        includesFiles: !!includeFiles,
         exportedAt: new Date().toISOString(),
         data: {
           // Core clinical data
-          patients: patientsList,
+          patients: patientsWithPhotos,
           patientTreatments: patientTreatmentsMap,
           patientDocuments: patientDocumentsMap,
           appointments: appointmentsList,
@@ -3364,7 +3420,7 @@ export async function registerRoutes(
           
           // Users and settings
           users: usersWithoutPasswords,
-          clinicSettings: clinicSettings,
+          clinicSettings: clinicSettingsWithLogo,
           clinicRooms: clinicRooms,
         },
         summary: {

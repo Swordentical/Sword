@@ -1119,25 +1119,31 @@ function DataBackup() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [backupOptionsOpen, setBackupOptionsOpen] = useState(false);
+  const [backupType, setBackupType] = useState<"compact" | "full">("compact");
 
   const exportMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/backup");
+    mutationFn: async (type: "compact" | "full") => {
+      const res = await apiRequest("POST", "/api/backup", { includeFiles: type === "full" });
       return res.json();
     },
     onSuccess: (data) => {
+      const suffix = data.includesFiles ? "-full" : "-compact";
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dental-clinic-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.download = `dental-clinic-backup-${new Date().toISOString().split("T")[0]}${suffix}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setBackupOptionsOpen(false);
       toast({
         title: "Backup exported",
-        description: "Your data backup has been downloaded successfully.",
+        description: data.includesFiles 
+          ? "Full backup with all files downloaded successfully." 
+          : "Compact backup downloaded successfully.",
       });
     },
     onError: (error: Error) => {
@@ -1214,13 +1220,13 @@ function DataBackup() {
         <CardContent>
           <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
             <div className="space-y-1">
-              <p className="text-sm font-medium">Full Data Backup</p>
+              <p className="text-sm font-medium">Data Backup</p>
               <p className="text-xs text-muted-foreground">
-                Includes patients, appointments, treatments, invoices, payments, and inventory
+                Choose compact (references only) or full (with all images and documents)
               </p>
             </div>
             <Button
-              onClick={() => exportMutation.mutate()}
+              onClick={() => setBackupOptionsOpen(true)}
               disabled={exportMutation.isPending}
               data-testid="button-export-data"
             >
@@ -1239,6 +1245,77 @@ function DataBackup() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={backupOptionsOpen} onOpenChange={setBackupOptionsOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Choose Backup Type</DialogTitle>
+            <DialogDescription>
+              Select the type of backup you want to create
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div 
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${backupType === "compact" ? "border-primary bg-primary/5" : "border-muted hover-elevate"}`}
+              onClick={() => setBackupType("compact")}
+              data-testid="option-backup-compact"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${backupType === "compact" ? "border-primary" : "border-muted-foreground"}`}>
+                  {backupType === "compact" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Compact Backup</p>
+                  <p className="text-sm text-muted-foreground">
+                    Smaller file size. Saves references to images and documents stored in cloud storage.
+                    Best for quick backups when files are already safely stored.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div 
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${backupType === "full" ? "border-primary bg-primary/5" : "border-muted hover-elevate"}`}
+              onClick={() => setBackupType("full")}
+              data-testid="option-backup-full"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${backupType === "full" ? "border-primary" : "border-muted-foreground"}`}>
+                  {backupType === "full" && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Full Backup</p>
+                  <p className="text-sm text-muted-foreground">
+                    Larger file size. Includes all images and documents embedded as data.
+                    Best for complete portability and migration to a new system.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBackupOptionsOpen(false)} data-testid="button-cancel-backup">
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => exportMutation.mutate(backupType)} 
+              disabled={exportMutation.isPending}
+              data-testid="button-confirm-backup"
+            >
+              {exportMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Backup...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Create Backup
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>

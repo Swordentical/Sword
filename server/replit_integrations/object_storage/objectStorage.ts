@@ -298,3 +298,54 @@ async function signObjectURL({
   return signedURL;
 }
 
+// Helper to convert an Object Storage file to base64 data URL
+export async function getObjectAsBase64(file: File): Promise<string | null> {
+  try {
+    const [metadata] = await file.getMetadata();
+    const contentType = metadata.contentType || "application/octet-stream";
+    
+    // Download file content as buffer
+    const [contents] = await file.download();
+    const base64 = contents.toString("base64");
+    
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error("Error converting object to base64:", error);
+    return null;
+  }
+}
+
+// Helper to get file from Object Storage URL path
+export async function getFileFromObjectPath(objectPath: string): Promise<File | null> {
+  try {
+    if (!objectPath.startsWith("/objects/")) {
+      return null;
+    }
+
+    const parts = objectPath.slice(1).split("/");
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const entityId = parts.slice(1).join("/");
+    let entityDir = process.env.PRIVATE_OBJECT_DIR || "";
+    if (!entityDir) {
+      return null;
+    }
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const objectEntityPath = `${entityDir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    const [exists] = await file.exists();
+    
+    return exists ? file : null;
+  } catch (error) {
+    console.error("Error getting file from object path:", error);
+    return null;
+  }
+}
+
