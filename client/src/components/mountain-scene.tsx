@@ -10,13 +10,24 @@ export function MountainScene() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       <div 
-        className="absolute inset-0 transition-all duration-1000 ease-in-out"
+        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
         style={{
-          background: isDay 
-            ? 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B8E6F0 100%)'
-            : isDusk 
-              ? 'linear-gradient(to bottom, #1a1a2e 0%, #2d3561 30%, #734b6d 60%, #d4837a 85%, #f4a460 100%)'
-              : 'linear-gradient(to bottom, #0a0a1a 0%, #1a1a3a 40%, #2a2a4a 100%)',
+          background: 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B8E6F0 100%)',
+          opacity: isDay ? 1 : 0,
+        }}
+      />
+      <div 
+        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+        style={{
+          background: 'linear-gradient(to bottom, #1a1a2e 0%, #2d3561 30%, #734b6d 60%, #d4837a 85%, #f4a460 100%)',
+          opacity: isDusk ? 1 : 0,
+        }}
+      />
+      <div 
+        className="absolute inset-0 transition-opacity duration-1000 ease-in-out"
+        style={{
+          background: 'linear-gradient(to bottom, #0a0a1a 0%, #1a1a3a 40%, #2a2a4a 100%)',
+          opacity: isNight ? 1 : 0,
         }}
       />
       
@@ -56,7 +67,7 @@ export function MountainScene() {
         className="absolute transition-all duration-1000 ease-in-out"
         style={{
           right: '15%',
-          top: isNight ? '8%' : 'calc(100% - 30px)',
+          top: isNight ? '8%' : '85%',
           width: '48px',
           height: '48px',
           opacity: isNight ? 1 : 0,
@@ -74,19 +85,15 @@ export function MountainScene() {
           }}
         />
         <div
+          className="transition-all duration-1000 ease-in-out"
           style={{
             position: 'absolute',
             width: '38px',
             height: '38px',
             borderRadius: '50%',
-            background: isNight 
-              ? 'linear-gradient(to bottom, #0a0a1a 0%, #1a1a3a 40%, #2a2a4a 100%)'
-              : isDusk 
-                ? 'linear-gradient(to bottom, #1a1a2e 0%, #2d3561 30%, #734b6d 60%, #d4837a 85%, #f4a460 100%)'
-                : 'linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B8E6F0 100%)',
+            backgroundColor: isNight ? '#0a0a1a' : isDusk ? '#1a1a2e' : '#87CEEB',
             top: '-5px',
             left: '18px',
-            transition: 'background 1000ms ease-in-out',
           }}
         />
       </div>
@@ -96,7 +103,7 @@ export function MountainScene() {
         style={{
           left: '50%',
           marginLeft: '-28px',
-          top: isDay ? '5%' : isDusk ? 'calc(100% - 85px)' : 'calc(100% + 20px)',
+          top: isDay ? '10%' : isDusk ? '55%' : '95%',
           width: '56px',
           height: '56px',
           borderRadius: '50%',
