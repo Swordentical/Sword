@@ -71,31 +71,32 @@ export function MountainScene() {
           width: '48px',
           height: '48px',
           opacity: isNight ? 1 : 0,
-          transform: isNight ? 'scale(1) rotate(0deg)' : 'scale(0.7) rotate(15deg)',
+          transform: isNight ? 'scale(1) rotate(-25deg)' : 'scale(0.7) rotate(15deg)',
+          filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.3))',
         }}
       >
-        <div
-          style={{
-            position: 'absolute',
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #E8E8E8 0%, #D0D0D0 100%)',
-            boxShadow: '0 0 20px 6px rgba(255,255,255,0.15)',
-          }}
-        />
-        <div
-          className="transition-all duration-1000 ease-in-out"
-          style={{
-            position: 'absolute',
-            width: '38px',
-            height: '38px',
-            borderRadius: '50%',
-            backgroundColor: isNight ? '#0a0a1a' : isDusk ? '#1a1a2e' : '#87CEEB',
-            top: '2px',
-            left: '16px',
-          }}
-        />
+        <svg viewBox="0 0 100 100" width="48" height="48">
+          <defs>
+            <mask id="crescentMask">
+              <circle cx="50" cy="50" r="45" fill="white" />
+              <circle cx="65" cy="45" r="38" fill="black" />
+            </mask>
+          </defs>
+          <circle 
+            cx="50" 
+            cy="50" 
+            r="45" 
+            fill="url(#moonGradient)" 
+            mask="url(#crescentMask)"
+          />
+          <defs>
+            <linearGradient id="moonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F5F5F5" />
+              <stop offset="50%" stopColor="#E8E8E8" />
+              <stop offset="100%" stopColor="#D8D8D8" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
       
       <div 
