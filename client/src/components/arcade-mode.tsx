@@ -162,15 +162,35 @@ function ArcadeContent({ onClose, showCelebration, embedded = false }: ArcadeCon
 
 export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
   const [showCelebration, setShowCelebration] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Immediately block all touch/click events when overlay opens
+  // Track when overlay is mounted
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => setIsMounted(true), 10);
+      return () => {
+        clearTimeout(timer);
+        setIsMounted(false);
+      };
+    } else {
+      setIsMounted(false);
+    }
+  }, [isOpen]);
+
+  // Block events outside overlay only on mobile and only after mounted
+  useEffect(() => {
+    if (!isOpen || !isMounted) return;
+    
+    // Check if we're on mobile (viewport width < 768px)
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) return;
 
     const blockEvent = (e: Event) => {
-      // Only block events that are NOT inside our overlay
-      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      // Only block if overlay exists and event is OUTSIDE it
+      if (overlayRef.current && !overlayRef.current.contains(target)) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -181,17 +201,13 @@ export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
     document.addEventListener('touchstart', blockEvent, { capture: true });
     document.addEventListener('touchend', blockEvent, { capture: true });
     document.addEventListener('touchmove', blockEvent, { capture: true });
-    document.addEventListener('click', blockEvent, { capture: true });
-    document.addEventListener('mousedown', blockEvent, { capture: true });
 
     return () => {
       document.removeEventListener('touchstart', blockEvent, { capture: true });
       document.removeEventListener('touchend', blockEvent, { capture: true });
       document.removeEventListener('touchmove', blockEvent, { capture: true });
-      document.removeEventListener('click', blockEvent, { capture: true });
-      document.removeEventListener('mousedown', blockEvent, { capture: true });
     };
-  }, [isOpen]);
+  }, [isOpen, isMounted]);
 
   useEffect(() => {
     if (isOpen) {
@@ -208,10 +224,7 @@ export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
     <div 
       ref={overlayRef}
       className="fixed inset-0 z-[9999] md:hidden bg-black"
-      style={{ touchAction: 'none' }}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchMove={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+      style={{ touchAction: 'none', pointerEvents: 'auto' }}
     >
       <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
     </div>,
