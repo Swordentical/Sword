@@ -267,94 +267,138 @@ function LiveWallpaper() {
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
-  const [isAnalog, setIsAnalog] = useState(() => {
-    try {
-      return localStorage.getItem(CLOCK_STORAGE_KEY) === "analog";
-    } catch {
-      return false;
-    }
-  });
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const toggleClockStyle = () => {
-    const newStyle = !isAnalog;
-    setIsAnalog(newStyle);
-    localStorage.setItem(CLOCK_STORAGE_KEY, newStyle ? "analog" : "digital");
-  };
-
-  const hours = time.getHours() % 12;
+  const hours = time.getHours();
+  const hours12 = hours % 12;
   const minutes = time.getMinutes();
   const seconds = time.getSeconds();
+  const isAM = hours < 12;
   
-  const hourDeg = (hours * 30) + (minutes * 0.5);
-  const minuteDeg = minutes * 6;
-  const secondDeg = seconds * 6;
+  const dialRotation = ((hours % 12) * 30) + (minutes * 0.5) - 90;
+  const isNight = hours >= 18 || hours < 6;
+  
+  const skyGradient = isNight 
+    ? "from-indigo-900 via-purple-900 to-slate-900" 
+    : "from-sky-400 via-blue-300 to-cyan-200";
 
   return (
     <div 
-      className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 p-3 sm:p-4 md:p-5 rounded-xl bg-gradient-to-br from-primary/8 via-primary/4 to-transparent border border-primary/15 cursor-pointer hover-elevate transition-all duration-300 backdrop-blur-sm"
-      onClick={toggleClockStyle}
-      title="Click to toggle clock style"
-      data-testid="button-clock-toggle"
+      className="flex flex-col items-center p-4 rounded-2xl bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950 border border-white/10 shadow-2xl backdrop-blur-sm"
+      data-testid="widget-clock"
     >
-      {isAnalog ? (
-        <div className="relative h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 rounded-full border-2 border-primary/20 bg-gradient-to-br from-card to-muted/30 shadow-lg">
-          <div className="absolute inset-1 rounded-full border border-primary/10" />
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute inset-0 flex justify-center"
-              style={{ transform: `rotate(${i * 30}deg)` }}
-            >
-              <div className={`${i % 3 === 0 ? 'h-2 w-0.5 bg-foreground/60 mt-1' : 'h-1.5 w-px bg-muted-foreground/40 mt-1.5'}`} />
-            </div>
-          ))}
-          <div 
-            className="absolute inset-0 flex justify-center"
-            style={{ transform: `rotate(${hourDeg}deg)` }}
-          >
-            <div className="w-1 h-[25%] bg-foreground rounded-full mt-[25%] shadow-sm" />
-          </div>
-          <div 
-            className="absolute inset-0 flex justify-center"
-            style={{ transform: `rotate(${minuteDeg}deg)` }}
-          >
-            <div className="w-0.5 h-[35%] bg-foreground/80 rounded-full mt-[15%]" />
-          </div>
-          <div 
-            className="absolute inset-0 flex justify-center"
-            style={{ transform: `rotate(${secondDeg}deg)` }}
-          >
-            <div className="w-px h-[35%] bg-primary rounded-full mt-[15%]" />
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-primary shadow-sm z-10" />
-          </div>
+      <div className="relative w-32 h-32 mb-3">
+        <svg viewBox="0 0 120 120" className="w-full h-full">
+          <defs>
+            <linearGradient id="dialGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#d774e8" />
+              <stop offset="50%" stopColor="#5fc1e1" />
+              <stop offset="100%" stopColor="#2be2de" />
+            </linearGradient>
+            <linearGradient id="skyGradientDay" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#87CEEB" />
+              <stop offset="100%" stopColor="#C4F7FB" />
+            </linearGradient>
+            <linearGradient id="skyGradientNight" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#1e1b4b" />
+              <stop offset="100%" stopColor="#312e81" />
+            </linearGradient>
+            <clipPath id="mountainClip">
+              <circle cx="60" cy="60" r="45" />
+            </clipPath>
+          </defs>
+          
+          <circle cx="60" cy="60" r="50" fill="url(#dialGradient)" opacity="0.15" />
+          <circle cx="60" cy="60" r="45" fill={isNight ? "url(#skyGradientNight)" : "url(#skyGradientDay)"} />
+          
+          {isNight ? (
+            <g>
+              <circle cx="75" cy="35" r="8" fill="#f5f3ce" opacity="0.9" />
+              <circle cx="78" cy="33" r="6" fill={isNight ? "#312e81" : "#87CEEB"} />
+              {[...Array(5)].map((_, i) => (
+                <circle 
+                  key={i} 
+                  cx={30 + i * 15} 
+                  cy={25 + (i % 2) * 10} 
+                  r={0.8 + Math.random() * 0.5} 
+                  fill="white" 
+                  opacity={0.6 + Math.random() * 0.4}
+                  style={{
+                    animation: `twinkle ${1 + Math.random()}s ease-in-out infinite`,
+                    animationDelay: `${i * 0.2}s`
+                  }}
+                />
+              ))}
+            </g>
+          ) : (
+            <g>
+              <circle cx="45" cy="35" r="12" fill="#FFD700" opacity="0.9" />
+              <circle cx="45" cy="35" r="15" fill="#FFD700" opacity="0.2" />
+              <g opacity="0.6">
+                <ellipse cx="70" cy="30" rx="12" ry="6" fill="white" opacity="0.8" />
+                <ellipse cx="78" cy="28" rx="8" ry="4" fill="white" opacity="0.7" />
+              </g>
+            </g>
+          )}
+          
+          <g clipPath="url(#mountainClip)">
+            <polygon points="15,105 35,65 55,105" fill="#5ca1fc" opacity="0.8" />
+            <polygon points="35,105 60,55 85,105" fill="#80c3ff" opacity="0.9" />
+            <polygon points="65,105 90,70 105,105" fill="#5ca1fc" opacity="0.7" />
+          </g>
+          
+          <circle 
+            cx="60" cy="60" r="40" 
+            fill="none" 
+            stroke="url(#dialGradient)" 
+            strokeWidth="1.5" 
+            strokeDasharray="2 4"
+            opacity="0.5"
+          />
+          
+          <g style={{ transform: `rotate(${dialRotation}deg)`, transformOrigin: '60px 60px', transition: 'transform 0.5s ease-out' }}>
+            <circle cx="100" cy="60" r="3" fill="#ab295b" />
+          </g>
+          
+          {[0, 3, 6, 9].map((hour, i) => {
+            const angle = (hour * 30 - 90) * (Math.PI / 180);
+            const x = 60 + 52 * Math.cos(angle);
+            const y = 60 + 52 * Math.sin(angle);
+            const labels = ['12', '3', '6', '9'];
+            return (
+              <text 
+                key={hour} 
+                x={x} 
+                y={y + 3} 
+                textAnchor="middle" 
+                fontSize="8" 
+                fill="#686571" 
+                fontWeight="600"
+              >
+                {labels[i]}{hour < 6 ? 'AM' : 'PM'}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+      
+      <div className="text-center">
+        <div className="text-xs uppercase tracking-widest text-gray-500 mb-1">Local Time</div>
+        <div className="text-3xl font-bold text-white tabular-nums tracking-tight">
+          {format(time, "h:mm")}
+          <span className="text-xl text-gray-400 animate-pulse">:</span>
+          <span className="text-xl text-gray-400">{format(time, "ss")}</span>
+          <span className="text-sm ml-1 text-primary">{isAM ? 'AM' : 'PM'}</span>
         </div>
-      ) : (
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="p-2 sm:p-2.5 rounded-lg bg-primary/10">
-            <Clock className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-primary" />
-          </div>
-          <div className="text-2xl sm:text-3xl md:text-4xl font-bold tabular-nums tracking-tight">
-            {format(time, "HH:mm")}
-            <span className="text-lg sm:text-xl md:text-2xl text-muted-foreground animate-pulse">:</span>
-            <span className="text-lg sm:text-xl md:text-2xl text-muted-foreground">{format(time, "ss")}</span>
-          </div>
-        </div>
-      )}
-      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-1 sm:gap-0.5 text-center sm:text-right">
-        <div className="text-xs sm:text-sm font-medium text-muted-foreground">
-          {format(time, "EEEE")}
-        </div>
-        <span className="text-muted-foreground/50 sm:hidden">-</span>
-        <div className="text-sm sm:text-base md:text-lg font-semibold">
-          {format(time, "MMM d, yyyy")}
-        </div>
+      </div>
+      
+      <div className="mt-3 text-center border-t border-white/10 pt-3 w-full">
+        <div className="text-sm font-medium text-gray-400">{format(time, "EEEE")}</div>
+        <div className="text-base font-semibold text-white">{format(time, "MMMM d, yyyy")}</div>
       </div>
     </div>
   );
