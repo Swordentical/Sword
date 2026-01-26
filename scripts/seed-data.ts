@@ -1,7 +1,8 @@
 import { db } from "../server/db";
 import { 
   patients, users, appointments, treatments, patientTreatments,
-  invoices, invoiceItems, payments, expenses, inventoryItems, labCases
+  invoices, invoiceItems, payments, expenses, inventoryItems, labCases,
+  doctorPayments, insuranceClaims
 } from "../shared/schema";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
@@ -516,6 +517,110 @@ async function seed() {
     });
   }
 
+  // Generate doctor payments (salary payments for each month)
+  console.log("Creating doctor payments...");
+  let doctorPaymentCount = 0;
+  for (let month = 0; month < 13; month++) {
+    const monthDate = new Date(oneYearAgo.getFullYear(), oneYearAgo.getMonth() + month, 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    const paymentDate = new Date(monthDate.getFullYear(), monthDate.getMonth(), 28);
+    
+    for (const doc of createdDoctors) {
+      // Monthly salary payment
+      const baseSalary = 25000 + randomInt(-2000, 5000);
+      await db.insert(doctorPayments).values({
+        doctorId: doc.id,
+        amount: baseSalary.toString(),
+        paymentType: "salary",
+        paymentMethod: "bank_transfer",
+        paymentDate: paymentDate.toISOString().split("T")[0],
+        paymentPeriodStart: monthDate.toISOString().split("T")[0],
+        paymentPeriodEnd: monthEnd.toISOString().split("T")[0],
+        referenceNumber: `SAL-${monthDate.getFullYear()}${String(monthDate.getMonth() + 1).padStart(2, "0")}-${doc.id.slice(0, 4)}`,
+        notes: `Monthly salary for ${monthDate.toLocaleString("default", { month: "long", year: "numeric" })}`,
+      });
+      doctorPaymentCount++;
+      
+      // Occasional bonus (quarterly)
+      if (month % 3 === 2 && Math.random() > 0.3) {
+        const bonus = randomInt(2000, 8000);
+        await db.insert(doctorPayments).values({
+          doctorId: doc.id,
+          amount: bonus.toString(),
+          paymentType: "bonus",
+          paymentMethod: "bank_transfer",
+          paymentDate: paymentDate.toISOString().split("T")[0],
+          notes: `Quarterly performance bonus - Q${Math.floor(month / 3) + 1}`,
+        });
+        doctorPaymentCount++;
+      }
+      
+      // Commission payments (based on production)
+      if (Math.random() > 0.5) {
+        const commission = randomInt(1000, 5000);
+        await db.insert(doctorPayments).values({
+          doctorId: doc.id,
+          amount: commission.toString(),
+          paymentType: "commission",
+          paymentMethod: "bank_transfer",
+          paymentDate: randomDate(monthDate, monthEnd).toISOString().split("T")[0],
+          notes: `Production commission for ${monthDate.toLocaleString("default", { month: "long" })}`,
+        });
+        doctorPaymentCount++;
+      }
+    }
+  }
+  console.log(`Created ${doctorPaymentCount} doctor payments`);
+
+  // Generate insurance claims
+  console.log("Creating insurance claims...");
+  const insuranceProviders = ["Daman", "AXA", "Cigna", "MetLife", "Oman Insurance", "Dubai Insurance"];
+  let claimCounter = 1000;
+  
+  // Get invoices with insurance payments to create claims
+  const allInvoices = await db.select().from(invoices);
+  const insuranceInvoices = allInvoices.filter(() => Math.random() > 0.7).slice(0, 150);
+  
+  for (const invoice of insuranceInvoices) {
+    const patient = createdPatients.find(p => p.id === invoice.patientId);
+    if (!patient) continue;
+    
+    const claimDate = new Date(invoice.issuedDate);
+    const daysSinceClaim = Math.floor((now.getTime() - claimDate.getTime()) / (24 * 60 * 60 * 1000));
+    
+    let status: "draft" | "submitted" | "pending" | "approved" | "denied" | "paid";
+    if (daysSinceClaim > 60) {
+      status = randomChoice(["approved", "paid", "paid", "denied"] as const);
+    } else if (daysSinceClaim > 30) {
+      status = randomChoice(["submitted", "pending", "approved"] as const);
+    } else if (daysSinceClaim > 14) {
+      status = randomChoice(["draft", "submitted", "pending"] as const);
+    } else {
+      status = randomChoice(["draft", "submitted"] as const);
+    }
+    
+    const claimAmount = parseFloat(invoice.finalAmount?.toString() || "0");
+    const approvedAmount = (status === "approved" || status === "paid") ? claimAmount * (0.7 + Math.random() * 0.3) : null;
+    const paidAmount = status === "paid" ? approvedAmount : null;
+    
+    await db.insert(insuranceClaims).values({
+      claimNumber: `CLM-${claimCounter++}`,
+      patientId: invoice.patientId,
+      invoiceId: invoice.id,
+      insuranceProvider: randomChoice(insuranceProviders),
+      policyNumber: `POL-${randomInt(100000, 999999)}`,
+      subscriberName: patient.name,
+      subscriberRelation: "self",
+      status,
+      claimAmount: claimAmount.toString(),
+      approvedAmount: approvedAmount ? approvedAmount.toFixed(2) : null,
+      paidAmount: paidAmount ? paidAmount.toFixed(2) : null,
+      denialReason: status === "denied" ? randomChoice(["Pre-existing condition", "Coverage limit reached", "Treatment not covered", "Missing documentation"]) : null,
+      submittedDate: status !== "draft" ? new Date(claimDate.getTime() + randomInt(1, 5) * 24 * 60 * 60 * 1000).toISOString().split("T")[0] : null,
+      processedDate: (status === "approved" || status === "paid" || status === "denied") ? new Date(claimDate.getTime() + randomInt(15, 45) * 24 * 60 * 60 * 1000).toISOString().split("T")[0] : null,
+    });
+  }
+
   console.log("\n=== Data Generation Complete ===");
   console.log("Summary:");
   const patientCount = await db.select({ count: sql<number>`count(*)` }).from(patients);
@@ -524,6 +629,8 @@ async function seed() {
   const paymentCount = await db.select({ count: sql<number>`count(*)` }).from(payments);
   const expenseCount = await db.select({ count: sql<number>`count(*)` }).from(expenses);
   const labCount = await db.select({ count: sql<number>`count(*)` }).from(labCases);
+  const doctorPaymentCountFinal = await db.select({ count: sql<number>`count(*)` }).from(doctorPayments);
+  const insuranceClaimCount = await db.select({ count: sql<number>`count(*)` }).from(insuranceClaims);
   
   console.log(`  Patients: ${patientCount[0].count}`);
   console.log(`  Appointments: ${appointmentCount[0].count}`);
@@ -531,6 +638,8 @@ async function seed() {
   console.log(`  Payments: ${paymentCount[0].count}`);
   console.log(`  Expenses: ${expenseCount[0].count}`);
   console.log(`  Lab Cases: ${labCount[0].count}`);
+  console.log(`  Doctor Payments: ${doctorPaymentCountFinal[0].count}`);
+  console.log(`  Insurance Claims: ${insuranceClaimCount[0].count}`);
   
   process.exit(0);
 }
