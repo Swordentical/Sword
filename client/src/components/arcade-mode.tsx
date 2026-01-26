@@ -175,7 +175,13 @@ export function ArcadeMobileOverlay({ isOpen, onClose }: ArcadeModeProps) {
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] md:hidden bg-black">
+    <div 
+      className="fixed inset-0 z-[9999] md:hidden bg-black"
+      style={{ touchAction: 'none' }}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <ArcadeContent onClose={onClose} showCelebration={showCelebration} />
     </div>,
     document.body
@@ -250,31 +256,41 @@ function GameMenu({ onSelectGame }: { onSelectGame: (game: GameType) => void }) 
     { id: "runner" as GameType, name: "Runner", description: "Jump over obstacles", icon: Zap },
   ];
 
+  const handleGameSelect = (game: GameType) => {
+    onSelectGame(game);
+  };
+
   return (
     <div className="h-full flex flex-col items-center justify-center gap-4 sm:gap-6 px-4">
       <p className="text-white/60 text-sm">Select a game to play</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full max-w-2xl">
         {games.map((game) => (
-          <button
+          <div
             key={game.id}
-            onClick={() => onSelectGame(game.id)}
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGameSelect(game.id);
+            }}
             onTouchEnd={(e) => {
-              e.preventDefault();
-              onSelectGame(game.id);
+              e.stopPropagation();
+              handleGameSelect(game.id);
             }}
             onMouseEnter={() => sounds.menuHover()}
-            className="group p-4 sm:p-6 rounded-lg border-2 border-white/20 bg-white/10 active:bg-white/20 transition-all duration-200 text-left min-h-[100px] touch-manipulation"
+            className="group p-4 sm:p-6 rounded-lg border-2 border-white/20 bg-white/10 active:bg-white/30 transition-all duration-200 text-left min-h-[100px] cursor-pointer select-none"
+            style={{ touchAction: 'manipulation' }}
             data-testid={`button-game-${game.id}`}
           >
-            <div className="mb-2 sm:mb-3">
+            <div className="mb-2 sm:mb-3 pointer-events-none">
               <game.icon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
             </div>
-            <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{game.name}</h3>
-            <p className="text-xs sm:text-sm text-white/60">{game.description}</p>
-          </button>
+            <h3 className="text-base sm:text-lg font-semibold text-white mb-1 pointer-events-none">{game.name}</h3>
+            <p className="text-xs sm:text-sm text-white/60 pointer-events-none">{game.description}</p>
+          </div>
         ))}
       </div>
-      <p className="text-white/40 text-xs mt-2 sm:mt-4 text-center">Tap a game to play. Use touch controls or swipe.</p>
+      <p className="text-white/40 text-xs mt-2 sm:mt-4 text-center">Tap a game to play</p>
     </div>
   );
 }
