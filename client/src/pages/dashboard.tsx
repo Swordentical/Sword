@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider";
 import { useArcade } from "@/contexts/arcade-context";
 import { ArcadeEmbedded } from "@/components/arcade-mode";
+import { MountainScene } from "@/components/mountain-scene";
 import type { AppointmentWithDetails as AppointmentWithPatient, Patient, InventoryItem, ActivityLog, Appointment } from "@shared/schema";
 
 const STATUS_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -1073,13 +1074,15 @@ export default function Dashboard() {
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
       <LiveWallpaper />
-      <div className="shrink-0 border-b p-3 sm:p-4 backdrop-blur-[var(--elements-blur,2px)] [background-color:hsl(var(--card)/var(--elements-transparency,0.5))]">
+      <div className="shrink-0 border-b relative overflow-hidden">
+        <MountainScene />
+        <div className="relative z-10 p-3 sm:p-4 backdrop-blur-[var(--elements-blur,1px)]">
         <div className="max-w-[1400px] mx-auto">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight" data-testid="text-greeting">
+                  <h1 className="text-3xl sm:text-4xl font-bold truncate tracking-tight drop-shadow-sm" data-testid="text-greeting">
                     <span>Good </span>
                     <span className="inline-block min-w-[120px] sm:min-w-[160px]">
                       {displayText}
@@ -1091,7 +1094,7 @@ export default function Dashboard() {
                         style={{ animationDuration: '530ms' }}
                       />
                     </span>
-                    , <span className="text-primary">{user?.firstName}</span>
+                    , <span className="text-primary drop-shadow-sm">{user?.firstName}</span>
                   </h1>
                   <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
                     <SheetTrigger asChild>
@@ -1118,7 +1121,7 @@ export default function Dashboard() {
                     </SheetContent>
                   </Sheet>
                 </div>
-                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden sm:block">
+                <p className="text-sm sm:text-base text-muted-foreground font-medium hidden sm:block drop-shadow-sm">
                   Here's your clinic overview
                 </p>
               </div>
@@ -1129,6 +1132,7 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
 
