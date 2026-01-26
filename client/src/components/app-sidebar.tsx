@@ -307,7 +307,7 @@ export function AppSidebar() {
                       isActive={isActive}
                       data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     >
-                      <Link href={item.url}>
+                      <Link href={item.url} onClick={() => sounds.tabChange()}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>
                       </Link>
@@ -333,7 +333,7 @@ export function AppSidebar() {
                         isActive={isActive}
                         data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                       >
-                        <Link href={item.url}>
+                        <Link href={item.url} onClick={() => sounds.tabChange()}>
                           <item.icon className="h-4 w-4" />
                           <span>{item.title}</span>
                         </Link>
