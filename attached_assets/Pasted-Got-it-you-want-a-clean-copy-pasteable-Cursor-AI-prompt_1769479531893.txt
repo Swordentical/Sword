@@ -1,0 +1,73 @@
+Got it — you want a **clean, copy-pasteable Cursor AI prompt** that explains the goal without over-specifying implementation. Here’s a strong version that Cursor will understand and act on, followed by a slightly stricter variant in case it gets hand-wavy.
+
+---
+
+### **Primary Cursor AI Prompt (recommended)**
+
+> I have an existing web application for organizing clinic information. I won’t go into how the app currently works internally.
+>
+> I want you to update the existing database schema and application logic so that the app supports **multiple clinics**, where data is fully isolated per clinic.
+>
+> Requirements:
+>
+> * Each clinic should have its own logical database or data partition.
+> * Users (doctors/staff) must belong to exactly one clinic.
+> * Add a `clinic_id` (or equivalent) relationship to the user model.
+> * One clinic can have many users/doctors.
+> * All clinic-specific data must be associated with a clinic.
+>
+> Access rules:
+>
+> * Users can only read and write data that belongs to their own clinic.
+> * Doctors in the same clinic should see the same shared clinic data.
+> * Doctors from different clinics must not be able to access or query each other’s data.
+>
+> Tasks:
+>
+> * Propose and implement the necessary database schema changes.
+> * Update existing queries, models, and relationships to enforce clinic isolation.
+> * Ensure authorization checks are applied consistently so clinic boundaries are enforced at the application level.
+>
+> Do not rewrite unrelated parts of the app. Focus only on schema changes, data relationships, and access control needed to support multi-clinic isolation.
+
+---
+
+### **Stricter / More Opinionated Variant (if Cursor needs guardrails)**
+
+> Modify the existing app to support **multi-tenant clinic isolation**.
+>
+> Treat each clinic as a tenant. Add a `clinics` table/model and associate all users and clinic-owned data with a `clinic_id`.
+>
+> Enforce the following:
+>
+> * A user belongs to one clinic.
+> * A clinic has many users.
+> * All clinic data is filtered by `clinic_id`.
+> * No cross-clinic data access is possible, even accidentally.
+>
+> Update:
+>
+> * Database schema
+> * ORM models
+> * Queries
+> * Authorization logic
+>
+> Assume the app already works for a single clinic and you are generalizing it to support multiple clinics safely.
+
+---
+
+### **Quick tip**
+
+If your stack is something like **Prisma / Rails / Django / Supabase / Postgres**, you can add one line at the top like:
+
+> The app uses **[STACK NAME HERE]**.
+
+That helps Cursor choose the *right* patterns instead of guessing.
+
+If you want, tell me:
+
+* your backend framework
+* your ORM (if any)
+* whether you want **separate physical databases** vs **shared DB with clinic_id**
+
+…and I’ll tighten this prompt even more 🔧✨
