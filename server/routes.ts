@@ -1,11 +1,20 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, type ClinicScopeOptions } from "./storage";
 import { setupAuth } from "./auth";
 import { db } from "./db";
 import { subscriptionService } from "./subscription";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { requireClinicScope } from "./middleware/clinic-scope";
 import bcrypt from "bcrypt";
+
+// Helper to get clinic scope from request
+function getScope(req: Request): ClinicScopeOptions {
+  return {
+    clinicId: req.clinicId,
+    isSuperAdmin: req.isSuperAdmin
+  };
+}
 import {
   insertPatientSchema,
   insertTreatmentSchema,
@@ -92,9 +101,9 @@ export async function registerRoutes(
   registerObjectStorageRoutes(app);
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/stats", requireClinicScope, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const stats = await storage.getDashboardStats(getScope(req));
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });
@@ -102,9 +111,9 @@ export async function registerRoutes(
   });
 
   // Activity log - admin only access
-  app.get("/api/activity/all", requireRole("admin"), async (req, res) => {
+  app.get("/api/activity/all", requireClinicScope, async (req, res) => {
     try {
-      const activity = await storage.getRecentActivity(100);
+      const activity = await storage.getRecentActivity(100, getScope(req));
       res.json(activity);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch activity" });
@@ -113,7 +122,7 @@ export async function registerRoutes(
 
   // Audit logs - admin only, immutable records for financial integrity
   // These logs are append-only and cannot be modified or deleted
-  app.get("/api/audit-logs", requireRole("admin"), async (req, res) => {
+  app.get("/api/audit-logs", requireClinicScope, async (req, res) => {
     try {
       const { entityType, entityId, userId, actionType, startDate, endDate, limit } = req.query;
       const auditLogs = await storage.getAuditLogs({
@@ -124,7 +133,7 @@ export async function registerRoutes(
         startDate: startDate as string,
         endDate: endDate as string,
         limit: limit ? parseInt(limit as string) : 200,
-      });
+      }, getScope(req));
       res.json(auditLogs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
@@ -132,9 +141,9 @@ export async function registerRoutes(
   });
 
   // Get list of users for audit log filtering
-  app.get("/api/audit-logs/users", requireRole("admin"), async (req, res) => {
+  app.get("/api/audit-logs/users", requireClinicScope, async (req, res) => {
     try {
-      const usersList = await storage.getUsers({});
+      const usersList = await storage.getUsers({}, getScope(req));
       res.json(usersList.map(u => ({ id: u.id, firstName: u.firstName, lastName: u.lastName, role: u.role })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch users list" });
@@ -142,23 +151,25 @@ export async function registerRoutes(
   });
 
   // Users
-  app.get("/api/users", requireAuth, async (req, res) => {
+  app.get("/api/users", requireClinicScope, async (req, res) => {
     try {
       const role = req.query.role as string | undefined;
-      const usersList = await storage.getUsers({ role });
+      const usersList = await storage.getUsers({ role }, getScope(req));
       res.json(usersList.map(u => ({ ...u, password: undefined })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
-  app.post("/api/users", requireRole("admin"), async (req, res) => {
+  app.post("/api/users", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       const parsed = insertUserSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
       }
 
+      // Check for existing user (unscoped for username uniqueness check across all clinics)
       const existingUser = await storage.getUserByUsername(parsed.data.username);
       if (existingUser) {
         return res.status(409).json({ message: "Username already exists" });
@@ -167,9 +178,11 @@ export async function registerRoutes(
       const bcrypt = await import("bcrypt");
       const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
 
+      // Set organizationId from authenticated user's clinic
       const user = await storage.createUser({
         ...parsed.data,
         password: hashedPassword,
+        organizationId: scope.clinicId || parsed.data.organizationId,
       });
 
       await storage.logActivity({
@@ -186,16 +199,17 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/users/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/users/:id", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = req.body;
+      const scope = getScope(req);
       
       // Don't allow password updates through this endpoint
       delete updates.password;
       delete updates.username;
       
-      const user = await storage.updateUser(id, updates);
+      const user = await storage.updateUser(id, updates, scope);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -214,21 +228,22 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/users/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/users/:id", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const currentUserId = (req.user as any).id;
+      const scope = getScope(req);
       
       if (id === currentUserId) {
         return res.status(400).json({ message: "Cannot delete your own account" });
       }
       
-      const user = await storage.getUser(id);
+      const user = await storage.getUser(id, scope);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
-      await storage.deleteUser(id);
+      await storage.deleteUser(id, scope);
 
       await storage.logActivity({
         userId: currentUserId,
@@ -245,9 +260,9 @@ export async function registerRoutes(
   });
 
   // Get pending users for admin approval
-  app.get("/api/users/pending", requireRole("admin"), async (req, res) => {
+  app.get("/api/users/pending", requireClinicScope, async (req, res) => {
     try {
-      const pendingUsers = await storage.getUsers({ role: "pending" });
+      const pendingUsers = await storage.getUsers({ role: "pending" }, getScope(req));
       res.json(pendingUsers.map(u => ({ ...u, password: undefined })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch pending users" });
@@ -255,10 +270,11 @@ export async function registerRoutes(
   });
 
   // Approve user and assign role (admin only)
-  app.post("/api/users/:id/approve", requireRole("admin"), async (req, res) => {
+  app.post("/api/users/:id/approve", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const { role } = req.body;
+      const scope = getScope(req);
       
       const validRoles = ["admin", "doctor", "staff", "student"];
       if (!role || !validRoles.includes(role)) {
@@ -267,7 +283,7 @@ export async function registerRoutes(
         });
       }
       
-      const user = await storage.getUser(id);
+      const user = await storage.getUser(id, scope);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -277,7 +293,7 @@ export async function registerRoutes(
       }
       
       const previousRole = user.role;
-      const updatedUser = await storage.updateUser(id, { role });
+      const updatedUser = await storage.updateUser(id, { role }, scope);
       
       // Log the role assignment with full audit trail
       await storage.logActivity({
@@ -298,10 +314,11 @@ export async function registerRoutes(
   });
 
   // Change user role (admin only) - for users already approved
-  app.post("/api/users/:id/role", requireRole("admin"), async (req, res) => {
+  app.post("/api/users/:id/role", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const { role } = req.body;
+      const scope = getScope(req);
       
       const validRoles = ["admin", "doctor", "staff", "student", "pending"];
       if (!role || !validRoles.includes(role)) {
@@ -310,7 +327,7 @@ export async function registerRoutes(
         });
       }
       
-      const user = await storage.getUser(id);
+      const user = await storage.getUser(id, scope);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -321,7 +338,7 @@ export async function registerRoutes(
       }
       
       const previousRole = user.role;
-      const updatedUser = await storage.updateUser(id, { role });
+      const updatedUser = await storage.updateUser(id, { role }, scope);
       
       // Log the role change with full audit trail
       await storage.logActivity({
@@ -344,7 +361,7 @@ export async function registerRoutes(
   // ==================== PASSWORD MANAGEMENT ====================
 
   // Change own password (for logged-in users)
-  app.post("/api/users/change-password", requireAuth, async (req, res) => {
+  app.post("/api/users/change-password", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { currentPassword, newPassword } = req.body;
@@ -358,7 +375,8 @@ export async function registerRoutes(
       }
 
       // Get user with current password
-      const dbUser = await storage.getUser(user.id);
+      const scope = getScope(req);
+      const dbUser = await storage.getUser(user.id, scope);
       if (!dbUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -371,7 +389,7 @@ export async function registerRoutes(
 
       // Hash new password and update
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(user.id, { password: hashedPassword });
+      await storage.updateUser(user.id, { password: hashedPassword }, scope);
 
       // Log the password change
       await storage.logActivity({
@@ -390,11 +408,12 @@ export async function registerRoutes(
   });
 
   // Admin reset password for any user
-  app.post("/api/users/:id/reset-password", requireRole("admin"), async (req, res) => {
+  app.post("/api/users/:id/reset-password", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const { newPassword } = req.body;
       const adminUser = req.user as any;
+      const scope = getScope(req);
 
       if (!newPassword) {
         return res.status(400).json({ message: "New password is required" });
@@ -404,14 +423,14 @@ export async function registerRoutes(
         return res.status(400).json({ message: "New password must be at least 6 characters" });
       }
 
-      const targetUser = await storage.getUser(id);
+      const targetUser = await storage.getUser(id, scope);
       if (!targetUser) {
         return res.status(404).json({ message: "User not found" });
       }
 
       // Hash new password and update
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(id, { password: hashedPassword });
+      await storage.updateUser(id, { password: hashedPassword }, scope);
 
       // Create audit log entry for admin password reset
       await db.insert(passwordResetTokens).values({
@@ -460,7 +479,10 @@ export async function registerRoutes(
       }
 
       // Find user by email, phone, or username
-      const allUsers = await storage.getUsers();
+      // Use super admin scope for password reset lookup since this is a legitimate public endpoint
+      // The response deliberately doesn't reveal if a user exists for security
+      const systemScope: ClinicScopeOptions = { isSuperAdmin: true };
+      const allUsers = await storage.getUsers({}, systemScope);
       const user = allUsers.find((u: any) => 
         u.email === identifier || 
         u.phone === identifier || 
@@ -546,8 +568,10 @@ export async function registerRoutes(
       }
 
       // Hash new password and update user
+      // Use super admin scope for password reset since this is a legitimate token-based reset
+      const systemScope: ClinicScopeOptions = { isSuperAdmin: true };
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await storage.updateUser(resetToken.userId, { password: hashedPassword });
+      await storage.updateUser(resetToken.userId, { password: hashedPassword }, systemScope);
 
       // Mark token as used
       await db
@@ -556,7 +580,7 @@ export async function registerRoutes(
         .where(eq(passwordResetTokens.id, resetToken.id));
 
       // Log the activity
-      const user = await storage.getUser(resetToken.userId);
+      const user = await storage.getUser(resetToken.userId, systemScope);
       await storage.logActivity({
         userId: resetToken.userId,
         action: "password_reset",
@@ -577,7 +601,7 @@ export async function registerRoutes(
   // ==================== NOTIFICATIONS ====================
 
   // Get user notifications
-  app.get("/api/notifications", requireAuth, async (req, res) => {
+  app.get("/api/notifications", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { unreadOnly } = req.query;
@@ -600,7 +624,7 @@ export async function registerRoutes(
   });
 
   // Get unread notification count
-  app.get("/api/notifications/unread-count", requireAuth, async (req, res) => {
+  app.get("/api/notifications/unread-count", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -616,7 +640,7 @@ export async function registerRoutes(
   });
 
   // Mark notification as read
-  app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  app.patch("/api/notifications/:id/read", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { id } = req.params;
@@ -639,7 +663,7 @@ export async function registerRoutes(
   });
 
   // Mark all notifications as read
-  app.patch("/api/notifications/mark-all-read", requireAuth, async (req, res) => {
+  app.patch("/api/notifications/mark-all-read", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -655,7 +679,7 @@ export async function registerRoutes(
   });
 
   // Delete notification
-  app.delete("/api/notifications/:id", requireAuth, async (req, res) => {
+  app.delete("/api/notifications/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { id } = req.params;
@@ -676,7 +700,7 @@ export async function registerRoutes(
   });
 
   // Clear all notifications
-  app.delete("/api/notifications", requireAuth, async (req, res) => {
+  app.delete("/api/notifications", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -690,7 +714,7 @@ export async function registerRoutes(
   });
 
   // Get notification preferences
-  app.get("/api/notification-preferences", requireAuth, async (req, res) => {
+  app.get("/api/notification-preferences", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -714,7 +738,7 @@ export async function registerRoutes(
   });
 
   // Update notification preferences
-  app.patch("/api/notification-preferences", requireAuth, async (req, res) => {
+  app.patch("/api/notification-preferences", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -764,23 +788,23 @@ export async function registerRoutes(
   // ==================== END NOTIFICATIONS ====================
 
   // Patients
-  app.get("/api/patients", requireAuth, async (req, res) => {
+  app.get("/api/patients", requireClinicScope, async (req, res) => {
     try {
       const { search, assignedDoctorId, assignedStudentId } = req.query;
       const patientsList = await storage.getPatients({
         search: search as string,
         assignedDoctorId: assignedDoctorId as string,
         assignedStudentId: assignedStudentId as string,
-      });
+      }, getScope(req));
       res.json(patientsList);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch patients" });
     }
   });
 
-  app.get("/api/patients/:id", requireAuth, async (req, res) => {
+  app.get("/api/patients/:id", requireClinicScope, async (req, res) => {
     try {
-      const patient = await storage.getPatient(req.params.id);
+      const patient = await storage.getPatient(req.params.id, getScope(req));
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -790,8 +814,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/patients", requireAuth, async (req, res) => {
+  app.post("/api/patients", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       const parsed = insertPatientSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -801,6 +826,7 @@ export async function registerRoutes(
       const patient = await storage.createPatient({
         ...parsed.data,
         createdById: user.id,
+        organizationId: scope.clinicId,
       });
 
       await storage.logActivity({
@@ -829,7 +855,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/patients/:id", requireAuth, async (req, res) => {
+  app.patch("/api/patients/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       if (user.role === "student") {
@@ -866,9 +892,10 @@ export async function registerRoutes(
       }
 
       // Get previous state for audit log
-      const previousPatient = await storage.getPatient(req.params.id);
+      const scope = getScope(req);
+      const previousPatient = await storage.getPatient(req.params.id, scope);
 
-      const patient = await storage.updatePatient(req.params.id, parsed.data);
+      const patient = await storage.updatePatient(req.params.id, parsed.data, scope);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -899,18 +926,19 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/patients/:id", requireRole("admin", "doctor"), async (req, res) => {
+  app.delete("/api/patients/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
-      const patient = await storage.getPatient(req.params.id);
+      const scope = getScope(req);
+      const patient = await storage.getPatient(req.params.id, scope);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
 
       // Check for related records that would prevent deletion
-      const treatments = await storage.getPatientTreatments(req.params.id);
-      const invoices = await storage.getPatientInvoices(req.params.id);
-      const appointments = await storage.getAppointments({});
+      const treatments = await storage.getPatientTreatments(req.params.id, scope);
+      const invoices = await storage.getPatientInvoices(req.params.id, scope);
+      const appointments = await storage.getAppointments({}, scope);
       const patientAppointments = appointments.filter(a => a.patientId === req.params.id);
 
       if (treatments.length > 0 || invoices.length > 0 || patientAppointments.length > 0) {
@@ -924,7 +952,7 @@ export async function registerRoutes(
         });
       }
 
-      const deleted = await storage.deletePatient(req.params.id);
+      const deleted = await storage.deletePatient(req.params.id, scope);
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete patient" });
       }
@@ -956,12 +984,13 @@ export async function registerRoutes(
   });
 
   // Patient treatments
-  app.get("/api/patients/:id/treatments", requireAuth, async (req, res) => {
+  app.get("/api/patients/:id/treatments", requireClinicScope, async (req, res) => {
     try {
-      const treatments = await storage.getPatientTreatments(req.params.id);
+      const scope = getScope(req);
+      const treatments = await storage.getPatientTreatments(req.params.id, scope);
       
       // Get treatment details for each
-      const treatmentsList = await storage.getTreatments();
+      const treatmentsList = await storage.getTreatments(scope);
       const treatmentMap = new Map(treatmentsList.map(t => [t.id, t]));
       
       const enriched = treatments.map(pt => ({
@@ -975,7 +1004,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/patients/:id/treatments", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/patients/:id/treatments", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertPatientTreatmentSchema.safeParse({
         ...req.body,
@@ -1033,7 +1062,7 @@ export async function registerRoutes(
   });
 
   // Update patient treatment status
-  app.patch("/api/patients/:id/treatments/:treatmentId", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.patch("/api/patients/:id/treatments/:treatmentId", requireClinicScope, async (req, res) => {
     try {
       const { status, notes } = req.body;
       const existingTreatment = await storage.getPatientTreatment(req.params.treatmentId);
@@ -1090,7 +1119,7 @@ export async function registerRoutes(
   });
 
   // Delete patient treatment
-  app.delete("/api/patients/:id/treatments/:treatmentId", requireRole("admin", "doctor"), async (req, res) => {
+  app.delete("/api/patients/:id/treatments/:treatmentId", requireClinicScope, async (req, res) => {
     try {
       await storage.deletePatientTreatment(req.params.treatmentId);
       res.sendStatus(204);
@@ -1101,7 +1130,7 @@ export async function registerRoutes(
   });
 
   // Patient invoices
-  app.get("/api/patients/:id/invoices", requireAuth, async (req, res) => {
+  app.get("/api/patients/:id/invoices", requireClinicScope, async (req, res) => {
     try {
       const invoicesList = await storage.getPatientInvoices(req.params.id);
       res.json(invoicesList);
@@ -1111,7 +1140,7 @@ export async function registerRoutes(
   });
 
   // Patient documents
-  app.get("/api/patients/:id/documents", requireAuth, async (req, res) => {
+  app.get("/api/patients/:id/documents", requireClinicScope, async (req, res) => {
     try {
       const docs = await storage.getPatientDocuments(req.params.id);
       res.json(docs);
@@ -1120,7 +1149,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/patients/:id/documents", requireAuth, async (req, res) => {
+  app.post("/api/patients/:id/documents", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertDocumentSchema.safeParse({
         ...req.body,
@@ -1138,7 +1167,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/documents/:id", requireAuth, async (req, res) => {
+  app.delete("/api/documents/:id", requireClinicScope, async (req, res) => {
     try {
       const deleted = await storage.deleteDocument(req.params.id);
       if (!deleted) {
@@ -1151,23 +1180,25 @@ export async function registerRoutes(
   });
 
   // Treatments (Services catalog)
-  app.get("/api/treatments", requireAuth, async (req, res) => {
+  app.get("/api/treatments", requireClinicScope, async (req, res) => {
     try {
-      const treatmentsList = await storage.getTreatments();
+      const treatmentsList = await storage.getTreatments(getScope(req));
       res.json(treatmentsList);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch treatments" });
     }
   });
 
-  app.post("/api/treatments", requireRole("admin", "doctor"), async (req, res) => {
+  app.post("/api/treatments", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       // Generate unique code
       const code = `SVC-${Date.now().toString(36).toUpperCase()}`;
       
       const parsed = insertTreatmentSchema.safeParse({
         ...req.body,
         code,
+        organizationId: scope.clinicId,
       });
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -1180,10 +1211,11 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/treatments/:id", requireRole("admin", "doctor"), async (req, res) => {
+  app.patch("/api/treatments/:id", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
-      const existingTreatment = await storage.getTreatment(id);
+      const scope = getScope(req);
+      const existingTreatment = await storage.getTreatment(id, scope);
       if (!existingTreatment) {
         return res.status(404).json({ message: "Treatment not found" });
       }
@@ -1194,7 +1226,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
-      const updated = await storage.updateTreatment(id, parsed.data);
+      const updated = await storage.updateTreatment(id, parsed.data, scope);
       res.json(updated);
     } catch (error) {
       console.error("Error updating treatment:", error);
@@ -1202,7 +1234,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/treatments/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/treatments/:id", requireClinicScope, async (req, res) => {
     try {
       const { id } = req.params;
       const existingTreatment = await storage.getTreatment(id);
@@ -1219,24 +1251,25 @@ export async function registerRoutes(
   });
 
   // Appointments
-  app.get("/api/appointments", requireAuth, async (req, res) => {
+  app.get("/api/appointments", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       const { start, end, status, doctorId } = req.query;
       const appointmentsList = await storage.getAppointments({
         start: start ? new Date(start as string) : undefined,
         end: end ? new Date(end as string) : undefined,
         status: status as string,
         doctorId: doctorId as string,
-      });
+      }, scope);
 
       // Enrich with patient data
-      const patientsList = await storage.getPatients({});
+      const patientsList = await storage.getPatients({}, scope);
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
       // Enrich with doctor data
       let doctorMap = new Map();
       try {
-        const doctorsList = await storage.getUsers({ role: "doctor" });
+        const doctorsList = await storage.getUsers({ role: "doctor" }, scope);
         doctorMap = new Map(doctorsList.map(d => [d.id, d]));
       } catch (docError) {
         console.error("Error fetching doctors for enrichment:", docError);
@@ -1255,18 +1288,19 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/appointments/today", requireAuth, async (req, res) => {
+  app.get("/api/appointments/today", requireClinicScope, async (req, res) => {
     try {
-      const appointmentsList = await storage.getTodayAppointments();
+      const scope = getScope(req);
+      const appointmentsList = await storage.getTodayAppointments(scope);
       
       // Enrich with patient data
-      const patientsList = await storage.getPatients({});
+      const patientsList = await storage.getPatients({}, scope);
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
       // Enrich with doctor data
       let doctorMap = new Map();
       try {
-        const doctorsList = await storage.getUsers({ role: "doctor" });
+        const doctorsList = await storage.getUsers({ role: "doctor" }, scope);
         doctorMap = new Map(doctorsList.map(d => [d.id, d]));
       } catch (docError) {
         console.error("Error fetching doctors for enrichment:", docError);
@@ -1285,9 +1319,9 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/appointments/:id", requireAuth, async (req, res) => {
+  app.get("/api/appointments/:id", requireClinicScope, async (req, res) => {
     try {
-      const appointment = await storage.getAppointment(req.params.id);
+      const appointment = await storage.getAppointment(req.params.id, getScope(req));
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
@@ -1297,11 +1331,13 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/appointments", requireAuth, async (req, res) => {
+  app.post("/api/appointments", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       const parsed = insertAppointmentSchema.safeParse({
         ...req.body,
         createdById: (req.user as any).id,
+        organizationId: scope.clinicId,
       });
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
@@ -1311,7 +1347,7 @@ export async function registerRoutes(
       const appointment = await storage.createAppointment(parsed.data);
 
       // Get patient for activity log
-      const patient = await storage.getPatient(parsed.data.patientId);
+      const patient = await storage.getPatient(parsed.data.patientId, scope);
 
       // Log activity
       try {
@@ -1345,7 +1381,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/appointments/:id", requireAuth, async (req, res) => {
+  app.patch("/api/appointments/:id", requireClinicScope, async (req, res) => {
     try {
       const updateSchema = insertAppointmentSchema.pick({
         title: true,
@@ -1390,7 +1426,7 @@ export async function registerRoutes(
   });
 
   // Invoices - restricted to admin, doctor, staff (not students)
-  app.get("/api/invoices", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/invoices", requireClinicScope, async (req, res) => {
     try {
       const { patientId, status } = req.query;
       const invoicesList = await storage.getInvoices({
@@ -1413,7 +1449,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/invoices", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/invoices", requireClinicScope, async (req, res) => {
     try {
       // Generate unique invoice number
       const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
@@ -1474,7 +1510,7 @@ export async function registerRoutes(
   });
 
   // Get single invoice with items
-  app.get("/api/invoices/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/invoices/:id", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -1493,7 +1529,7 @@ export async function registerRoutes(
   });
 
   // Update invoice (status changes, send/void, etc.)
-  app.patch("/api/invoices/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.patch("/api/invoices/:id", requireClinicScope, async (req, res) => {
     try {
       const updateSchema = insertInvoiceSchema.pick({
         status: true,
@@ -1551,7 +1587,7 @@ export async function registerRoutes(
   });
 
   // Send invoice (change status from draft to sent)
-  app.post("/api/invoices/:id/send", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/invoices/:id/send", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -1578,7 +1614,7 @@ export async function registerRoutes(
   });
 
   // Void/cancel invoice
-  app.post("/api/invoices/:id/void", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/invoices/:id/void", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -1605,7 +1641,7 @@ export async function registerRoutes(
   });
 
   // Invoice items management
-  app.post("/api/invoices/:id/items", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/invoices/:id/items", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -1647,7 +1683,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/invoices/:invoiceId/items/:itemId", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.delete("/api/invoices/:invoiceId/items/:itemId", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.invoiceId);
       if (!invoice) {
@@ -1682,7 +1718,7 @@ export async function registerRoutes(
   });
 
   // Payments - restricted to admin, doctor, staff (not students)
-  app.get("/api/payments", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/payments", requireClinicScope, async (req, res) => {
     try {
       const { invoiceId } = req.query;
       const paymentsList = await storage.getPayments({
@@ -1694,7 +1730,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/payments", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/payments", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const parsed = insertPaymentSchema.safeParse({
@@ -1735,7 +1771,7 @@ export async function registerRoutes(
   });
 
   // Refund payment
-  app.post("/api/payments/:id/refund", requireRole("admin", "doctor"), async (req, res) => {
+  app.post("/api/payments/:id/refund", requireClinicScope, async (req, res) => {
     try {
       const { reason } = req.body;
       if (!reason || typeof reason !== 'string') {
@@ -1783,7 +1819,7 @@ export async function registerRoutes(
   });
 
   // Payment Plans
-  app.get("/api/payment-plans", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/payment-plans", requireClinicScope, async (req, res) => {
     try {
       const { invoiceId, patientId, status } = req.query;
       const plans = await storage.getPaymentPlans({
@@ -1808,7 +1844,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/payment-plans/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/payment-plans/:id", requireClinicScope, async (req, res) => {
     try {
       const plan = await storage.getPaymentPlan(req.params.id);
       if (!plan) {
@@ -1827,7 +1863,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/payment-plans", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/payment-plans", requireClinicScope, async (req, res) => {
     try {
       const { installments: installmentDates, ...planData } = req.body;
 
@@ -1893,7 +1929,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/payment-plans/:id", requireRole("admin", "doctor"), async (req, res) => {
+  app.patch("/api/payment-plans/:id", requireClinicScope, async (req, res) => {
     try {
       const updateSchema = insertPaymentPlanSchema.pick({
         status: true,
@@ -1917,7 +1953,7 @@ export async function registerRoutes(
   });
 
   // Payment plan installments - pay an installment
-  app.post("/api/payment-plans/:planId/installments/:installmentId/pay", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/payment-plans/:planId/installments/:installmentId/pay", requireClinicScope, async (req, res) => {
     try {
       const { amount, paymentMethod, referenceNumber, notes } = req.body;
       
@@ -1960,7 +1996,7 @@ export async function registerRoutes(
   });
 
   // Invoice Adjustments (write-offs, discounts, corrections, fees)
-  app.get("/api/invoices/:id/adjustments", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/invoices/:id/adjustments", requireClinicScope, async (req, res) => {
     try {
       const adjustments = await storage.getInvoiceAdjustments(req.params.id);
       res.json(adjustments);
@@ -1969,7 +2005,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/invoices/:id/adjustments", requireRole("admin", "doctor"), async (req, res) => {
+  app.post("/api/invoices/:id/adjustments", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -2008,7 +2044,7 @@ export async function registerRoutes(
   });
 
   // Write-off invoice balance (shorthand for creating write-off adjustment)
-  app.post("/api/invoices/:id/write-off", requireRole("admin"), async (req, res) => {
+  app.post("/api/invoices/:id/write-off", requireClinicScope, async (req, res) => {
     try {
       const invoice = await storage.getInvoice(req.params.id);
       if (!invoice) {
@@ -2053,7 +2089,7 @@ export async function registerRoutes(
   });
 
   // Expenses - restricted to admin only
-  app.get("/api/expenses", requireRole("admin"), async (req, res) => {
+  app.get("/api/expenses", requireClinicScope, async (req, res) => {
     try {
       const { category, startDate, endDate } = req.query;
       const expensesList = await storage.getExpenses({
@@ -2067,7 +2103,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+  app.get("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
       const expense = await storage.getExpense(req.params.id);
       if (!expense) {
@@ -2079,7 +2115,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/expenses", requireRole("admin"), async (req, res) => {
+  app.post("/api/expenses", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const parsed = insertExpenseSchema.safeParse({
@@ -2119,7 +2155,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2161,7 +2197,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/expenses/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2204,7 +2240,7 @@ export async function registerRoutes(
   });
 
   // Doctor Payments - restricted to admin only
-  app.get("/api/doctor-payments", requireRole("admin"), async (req, res) => {
+  app.get("/api/doctor-payments", requireClinicScope, async (req, res) => {
     try {
       const { doctorId, startDate, endDate, paymentType } = req.query;
       const paymentsList = await storage.getDoctorPayments({
@@ -2219,7 +2255,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+  app.get("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
       const payment = await storage.getDoctorPayment(req.params.id);
       if (!payment) {
@@ -2231,7 +2267,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/doctor-payments", requireRole("admin"), async (req, res) => {
+  app.post("/api/doctor-payments", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const parsed = insertDoctorPaymentSchema.safeParse({
@@ -2286,7 +2322,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2326,7 +2362,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/doctor-payments/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2367,7 +2403,7 @@ export async function registerRoutes(
   });
 
   // My Payments endpoint - doctors can view their own payments
-  app.get("/api/my-payments", requireAuth, async (req, res) => {
+  app.get("/api/my-payments", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { startDate, endDate } = req.query;
@@ -2385,7 +2421,7 @@ export async function registerRoutes(
   });
 
   // Financial Reports - restricted to admin only
-  app.get("/api/reports/revenue", requireRole("admin"), async (req, res) => {
+  app.get("/api/reports/revenue", requireClinicScope, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
       if (!startDate || !endDate) {
@@ -2398,7 +2434,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/reports/ar-aging", requireRole("admin"), async (req, res) => {
+  app.get("/api/reports/ar-aging", requireClinicScope, async (req, res) => {
     try {
       const report = await storage.getARAgingReport();
       res.json(report);
@@ -2407,7 +2443,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/reports/production-by-doctor", requireRole("admin"), async (req, res) => {
+  app.get("/api/reports/production-by-doctor", requireClinicScope, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
       if (!startDate || !endDate) {
@@ -2421,7 +2457,7 @@ export async function registerRoutes(
   });
 
   // Detailed doctor report (for sending to doctors or admin viewing)
-  app.get("/api/reports/doctor/:doctorId", requireRole("admin", "doctor"), async (req, res) => {
+  app.get("/api/reports/doctor/:doctorId", requireClinicScope, async (req, res) => {
     try {
       const { doctorId } = req.params;
       const { startDate, endDate } = req.query;
@@ -2444,7 +2480,7 @@ export async function registerRoutes(
   });
 
   // Endpoint for doctor to view their own financial dashboard
-  app.get("/api/my-production", requireRole("doctor"), async (req, res) => {
+  app.get("/api/my-production", requireClinicScope, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
       if (!startDate || !endDate) {
@@ -2459,7 +2495,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/reports/expenses", requireRole("admin"), async (req, res) => {
+  app.get("/api/reports/expenses", requireClinicScope, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
       if (!startDate || !endDate) {
@@ -2472,7 +2508,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/reports/net-profit", requireRole("admin"), async (req, res) => {
+  app.get("/api/reports/net-profit", requireClinicScope, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
       if (!startDate || !endDate) {
@@ -2487,7 +2523,7 @@ export async function registerRoutes(
   });
 
   // Insurance Claims - restricted to admin and staff
-  app.get("/api/insurance-claims", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/insurance-claims", requireClinicScope, async (req, res) => {
     try {
       const { status, patientId } = req.query;
       const claims = await storage.getInsuranceClaims({
@@ -2500,7 +2536,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/insurance-claims/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
       const claim = await storage.getInsuranceClaim(req.params.id);
       if (!claim) {
@@ -2512,7 +2548,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/insurance-claims", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/insurance-claims", requireClinicScope, async (req, res) => {
     try {
       const claimNumber = await storage.generateClaimNumber();
       const parsed = insertInsuranceClaimSchema.safeParse({
@@ -2542,7 +2578,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/insurance-claims/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.patch("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
       const claim = await storage.updateInsuranceClaim(req.params.id, req.body);
       if (!claim) {
@@ -2563,7 +2599,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/insurance-claims/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
       const success = await storage.deleteInsuranceClaim(req.params.id);
       if (!success) {
@@ -2585,7 +2621,7 @@ export async function registerRoutes(
   });
 
   // Inventory - restricted to admin, doctor, staff (not students)
-  app.get("/api/inventory", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.get("/api/inventory", requireClinicScope, async (req, res) => {
     try {
       const { category, status } = req.query;
       const items = await storage.getInventoryItems({
@@ -2598,7 +2634,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/inventory/low-stock", requireAuth, async (req, res) => {
+  app.get("/api/inventory/low-stock", requireClinicScope, async (req, res) => {
     try {
       const items = await storage.getInventoryItems({});
       const lowStockItems = items.filter(item => 
@@ -2610,7 +2646,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/inventory", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.post("/api/inventory", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertInventoryItemSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2638,7 +2674,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/inventory/:id", requireRole("admin", "doctor", "staff"), async (req, res) => {
+  app.patch("/api/inventory/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2709,7 +2745,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/inventory/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/inventory/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const item = await storage.getInventoryItem(req.params.id);
@@ -2741,7 +2777,7 @@ export async function registerRoutes(
   });
 
   // Lab Cases - restricted to admin and doctor (not students or staff)
-  app.get("/api/lab-cases", requireRole("admin", "doctor"), async (req, res) => {
+  app.get("/api/lab-cases", requireClinicScope, async (req, res) => {
     try {
       const { status, patientId } = req.query;
       const cases = await storage.getLabCases({
@@ -2765,7 +2801,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/lab-cases", requireRole("admin", "doctor"), async (req, res) => {
+  app.post("/api/lab-cases", requireClinicScope, async (req, res) => {
     try {
       console.log("Creating lab case with body:", JSON.stringify(req.body, null, 2));
       const parsed = insertLabCaseSchema.safeParse({
@@ -2809,7 +2845,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/lab-cases/:id", requireRole("admin", "doctor"), async (req, res) => {
+  app.patch("/api/lab-cases/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       
@@ -2862,7 +2898,7 @@ export async function registerRoutes(
   });
 
   // External Labs - admin only for modifications
-  app.get("/api/external-labs", requireAuth, async (req, res) => {
+  app.get("/api/external-labs", requireClinicScope, async (req, res) => {
     try {
       const labs = await storage.getExternalLabs();
       res.json(labs);
@@ -2871,7 +2907,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/external-labs/:id", requireAuth, async (req, res) => {
+  app.get("/api/external-labs/:id", requireClinicScope, async (req, res) => {
     try {
       const lab = await storage.getExternalLab(req.params.id);
       if (!lab) {
@@ -2883,7 +2919,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/external-labs/:id/services", requireAuth, async (req, res) => {
+  app.get("/api/external-labs/:id/services", requireClinicScope, async (req, res) => {
     try {
       const services = await storage.getLabServices(req.params.id);
       res.json(services);
@@ -2892,7 +2928,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/external-labs", requireRole("admin"), async (req, res) => {
+  app.post("/api/external-labs", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertExternalLabSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2905,7 +2941,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/external-labs/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/external-labs/:id", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertExternalLabSchema.partial().safeParse(req.body);
       if (!parsed.success) {
@@ -2921,7 +2957,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/external-labs/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/external-labs/:id", requireClinicScope, async (req, res) => {
     try {
       const deleted = await storage.deleteExternalLab(req.params.id);
       if (!deleted) {
@@ -2934,7 +2970,7 @@ export async function registerRoutes(
   });
 
   // Lab Services - admin only for modifications
-  app.get("/api/lab-services", requireAuth, async (req, res) => {
+  app.get("/api/lab-services", requireClinicScope, async (req, res) => {
     try {
       const labId = req.query.labId as string | undefined;
       const services = await storage.getLabServices(labId);
@@ -2944,7 +2980,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/lab-services/:id", requireAuth, async (req, res) => {
+  app.get("/api/lab-services/:id", requireClinicScope, async (req, res) => {
     try {
       const service = await storage.getLabService(req.params.id);
       if (!service) {
@@ -2956,7 +2992,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/lab-services", requireRole("admin"), async (req, res) => {
+  app.post("/api/lab-services", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertLabServiceSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2969,7 +3005,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/lab-services/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/lab-services/:id", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertLabServiceSchema.partial().safeParse(req.body);
       if (!parsed.success) {
@@ -2985,7 +3021,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/lab-services/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/lab-services/:id", requireClinicScope, async (req, res) => {
     try {
       const deleted = await storage.deleteLabService(req.params.id);
       if (!deleted) {
@@ -2998,7 +3034,7 @@ export async function registerRoutes(
   });
 
   // Doctors management - admin only for modifications
-  app.get("/api/doctors", requireAuth, async (req, res) => {
+  app.get("/api/doctors", requireClinicScope, async (req, res) => {
     try {
       const doctors = await storage.getUsers({ role: "doctor" });
       res.json(doctors.map(d => ({ ...d, password: undefined })));
@@ -3007,7 +3043,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/doctors", requireRole("admin"), async (req, res) => {
+  app.post("/api/doctors", requireClinicScope, async (req, res) => {
     try {
       const parsed = insertUserSchema.safeParse({
         ...req.body,
@@ -3044,7 +3080,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/doctors/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/doctors/:id", requireClinicScope, async (req, res) => {
     try {
       const updateSchema = insertUserSchema.pick({
         firstName: true,
@@ -3072,7 +3108,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/doctors/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/doctors/:id", requireClinicScope, async (req, res) => {
     try {
       // Check for assigned patients
       const assignedPatients = await storage.getPatients({ assignedDoctorId: req.params.id });
@@ -3102,7 +3138,7 @@ export async function registerRoutes(
   });
 
   // Patient financial summary
-  app.get("/api/patients/:id/financials", requireAuth, async (req, res) => {
+  app.get("/api/patients/:id/financials", requireClinicScope, async (req, res) => {
     try {
       const patientId = req.params.id;
       
@@ -3173,7 +3209,7 @@ export async function registerRoutes(
   });
 
   // Clinic Settings
-  app.get("/api/clinic-settings", requireAuth, async (req, res) => {
+  app.get("/api/clinic-settings", requireClinicScope, async (req, res) => {
     try {
       const settings = await storage.getClinicSettings();
       res.json(settings);
@@ -3182,7 +3218,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/clinic-settings", requireRole("admin"), async (req, res) => {
+  app.patch("/api/clinic-settings", requireClinicScope, async (req, res) => {
     try {
       const settings = await storage.updateClinicSettings(req.body);
       
@@ -3201,7 +3237,7 @@ export async function registerRoutes(
   });
 
   // Clinic Rooms
-  app.get("/api/clinic-rooms", requireAuth, async (req, res) => {
+  app.get("/api/clinic-rooms", requireClinicScope, async (req, res) => {
     try {
       const rooms = await storage.getClinicRooms();
       res.json(rooms);
@@ -3210,7 +3246,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/clinic-rooms", requireRole("admin"), async (req, res) => {
+  app.post("/api/clinic-rooms", requireClinicScope, async (req, res) => {
     try {
       // Auto-generate roomNumber based on existing rooms
       const existingRooms = await storage.getClinicRooms();
@@ -3236,7 +3272,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch("/api/clinic-rooms/:id", requireRole("admin"), async (req, res) => {
+  app.patch("/api/clinic-rooms/:id", requireClinicScope, async (req, res) => {
     try {
       const room = await storage.updateClinicRoom(req.params.id, req.body);
       if (!room) {
@@ -3257,7 +3293,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete("/api/clinic-rooms/:id", requireRole("admin"), async (req, res) => {
+  app.delete("/api/clinic-rooms/:id", requireClinicScope, async (req, res) => {
     try {
       const room = await storage.getClinicRoom(req.params.id);
       if (!room) {
@@ -3281,7 +3317,7 @@ export async function registerRoutes(
   });
 
   // Backup - Export all data as JSON (admin only)
-  app.post("/api/backup", requireRole("admin"), async (req, res) => {
+  app.post("/api/backup", requireClinicScope, async (req, res) => {
     try {
       const { includeFiles } = req.body || {};
       
@@ -3458,7 +3494,7 @@ export async function registerRoutes(
   // Restore - Import data from JSON backup (admin only)
   // This uses direct database inserts to preserve original IDs and relationships
   // All operations are wrapped in a transaction for consistency
-  app.post("/api/restore", requireRole("admin"), async (req, res) => {
+  app.post("/api/restore", requireClinicScope, async (req, res) => {
     try {
       const { data } = req.body;
 
@@ -3867,7 +3903,7 @@ export async function registerRoutes(
     password: z.string().min(1, "Password is required"),
   });
 
-  app.post("/api/delete-all-data", requireRole("admin"), async (req, res) => {
+  app.post("/api/delete-all-data", requireClinicScope, async (req, res) => {
     try {
       // Validate request body
       const parsed = deleteAllDataSchema.safeParse(req.body);
@@ -3946,7 +3982,7 @@ export async function registerRoutes(
   });
 
   // Get current user's subscription context
-  app.get("/api/subscription/context", requireAuth, async (req, res) => {
+  app.get("/api/subscription/context", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const context = await subscriptionService.getSubscriptionContext(user.id);
@@ -3971,7 +4007,7 @@ export async function registerRoutes(
   });
 
   // Create organization (during signup)
-  app.post("/api/subscription/create-organization", requireAuth, async (req, res) => {
+  app.post("/api/subscription/create-organization", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { name, planType, promoCodeId } = req.body;
@@ -4003,7 +4039,7 @@ export async function registerRoutes(
   });
 
   // Check if can add patient
-  app.get("/api/subscription/can-add-patient", requireAuth, async (req, res) => {
+  app.get("/api/subscription/can-add-patient", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       if (!user.organizationId) {
@@ -4017,7 +4053,7 @@ export async function registerRoutes(
   });
 
   // Check if can add user
-  app.get("/api/subscription/can-add-user", requireAuth, async (req, res) => {
+  app.get("/api/subscription/can-add-user", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       if (!user.organizationId) {
@@ -4031,7 +4067,7 @@ export async function registerRoutes(
   });
 
   // Check feature access
-  app.get("/api/subscription/has-feature/:feature", requireAuth, async (req, res) => {
+  app.get("/api/subscription/has-feature/:feature", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const feature = req.params.feature as keyof PlanFeatures;
@@ -4048,7 +4084,7 @@ export async function registerRoutes(
   });
 
   // Get organization details (admin/owner only)
-  app.get("/api/organization", requireAuth, async (req, res) => {
+  app.get("/api/organization", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       if (!user.organizationId) {
@@ -4074,7 +4110,7 @@ export async function registerRoutes(
   });
 
   // Update organization (owner only)
-  app.patch("/api/organization", requireAuth, async (req, res) => {
+  app.patch("/api/organization", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       if (!user.organizationId || !user.isOrganizationOwner) {
@@ -4162,7 +4198,7 @@ export async function registerRoutes(
   });
 
   // Create checkout session
-  app.post("/api/stripe/checkout", requireAuth, async (req, res) => {
+  app.post("/api/stripe/checkout", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const { priceId, planType, promoCode } = req.body;
@@ -4278,7 +4314,7 @@ export async function registerRoutes(
   });
 
   // Create customer portal session
-  app.post("/api/stripe/portal", requireAuth, async (req, res) => {
+  app.post("/api/stripe/portal", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
       const organization = await db.query.organizations.findFirst({

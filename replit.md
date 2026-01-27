@@ -52,6 +52,23 @@ Scoped methods include:
 - Clinic Settings, Clinic Rooms
 - External Labs, Lab Services
 
+### API Routes Multi-Tenant Support (Complete)
+All routes now use `requireClinicScope` middleware for clinic isolation:
+- **All data-access routes** now use `requireClinicScope` instead of `requireRole`/`requireAuth`
+- **Dashboard**: Stats route passes scope
+- **Activity/Audit Logs**: Scoped access for admin-only logs
+- **User Management**: Create, update, delete, approve, role changes, password reset all scoped
+- **Patient Management**: List, get, create routes scoped with organizationId
+- **Treatment Management**: List, get, create, update routes scoped
+- **Appointment Management**: List, today's appointments, get, create routes scoped
+- **Invoices/Payments**: All routes use requireClinicScope
+- **Inventory/Lab Cases**: All routes use requireClinicScope
+- **Password Reset**: Uses systemScope with `isSuperAdmin: true` for legitimate token-based operations
+
+Helper function `getScope(req)` extracts `clinicId` and `isSuperAdmin` from authenticated request.
+
+Note: Additional storage method scoping may be needed for full isolation in some routes.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
