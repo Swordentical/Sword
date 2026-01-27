@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const userRoleEnum = pgEnum("user_role", ["admin", "doctor", "staff", "student", "pending"]);
+export const userRoleEnum = pgEnum("user_role", ["super_admin", "clinic_admin", "admin", "doctor", "staff", "student", "pending"]);
 export const genderEnum = pgEnum("gender", ["male", "female", "other"]);
 export const appointmentStatusEnum = pgEnum("appointment_status", ["confirmed", "pending", "canceled", "completed"]);
 export const appointmentCategoryEnum = pgEnum("appointment_category", ["new_visit", "follow_up", "discussion", "surgery", "checkup", "cleaning"]);
@@ -281,7 +281,8 @@ export const patients = pgTable("patients", {
 // Treatments/Services catalog
 export const treatments = pgTable("treatments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  code: text("code").notNull().unique(),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
+  code: text("code").notNull(),
   name: text("name").notNull(),
   category: serviceCategoryEnum("category").notNull(),
   description: text("description"),
@@ -295,6 +296,7 @@ export const treatments = pgTable("treatments", {
 // Patient treatments (treatment history and plans)
 export const patientTreatments = pgTable("patient_treatments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   treatmentId: varchar("treatment_id", { length: 36 }).notNull().references(() => treatments.id),
   appointmentId: varchar("appointment_id", { length: 36 }),
@@ -313,6 +315,7 @@ export const patientTreatments = pgTable("patient_treatments", {
 // Appointments
 export const appointments = pgTable("appointments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   doctorId: varchar("doctor_id", { length: 36 }).references(() => users.id),
   title: text("title").notNull(),
@@ -329,7 +332,8 @@ export const appointments = pgTable("appointments", {
 // Invoices
 export const invoices = pgTable("invoices", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  invoiceNumber: text("invoice_number").notNull().unique(),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
+  invoiceNumber: text("invoice_number").notNull(),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   discountType: text("discount_type"),
@@ -347,6 +351,7 @@ export const invoices = pgTable("invoices", {
 // Invoice items
 export const invoiceItems = pgTable("invoice_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
   patientTreatmentId: varchar("patient_treatment_id", { length: 36 }),
   description: text("description").notNull(),
@@ -358,6 +363,7 @@ export const invoiceItems = pgTable("invoice_items", {
 // Payments
 export const payments = pgTable("payments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
   paymentPlanInstallmentId: varchar("payment_plan_installment_id", { length: 36 }),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -375,6 +381,7 @@ export const payments = pgTable("payments", {
 // Payment Plans
 export const paymentPlans = pgTable("payment_plans", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
@@ -392,6 +399,7 @@ export const paymentPlans = pgTable("payment_plans", {
 // Payment Plan Installments
 export const paymentPlanInstallments = pgTable("payment_plan_installments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   paymentPlanId: varchar("payment_plan_id", { length: 36 }).notNull().references(() => paymentPlans.id),
   installmentNumber: integer("installment_number").notNull(),
   dueDate: date("due_date").notNull(),
@@ -405,6 +413,7 @@ export const paymentPlanInstallments = pgTable("payment_plan_installments", {
 // Invoice Adjustments (discounts, write-offs, corrections, fees)
 export const invoiceAdjustments = pgTable("invoice_adjustments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   invoiceId: varchar("invoice_id", { length: 36 }).notNull().references(() => invoices.id),
   type: adjustmentTypeEnum("type").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -417,6 +426,7 @@ export const invoiceAdjustments = pgTable("invoice_adjustments", {
 // Expenses for clinic operations
 export const expenses = pgTable("expenses", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   description: text("description").notNull(),
   category: expenseCategoryEnum("category").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
@@ -434,6 +444,7 @@ export const expenses = pgTable("expenses", {
 // Doctor payments (salaries, bonuses, commissions)
 export const doctorPayments = pgTable("doctor_payments", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   doctorId: varchar("doctor_id", { length: 36 }).notNull().references(() => users.id),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentType: doctorPaymentTypeEnum("payment_type").notNull(),
@@ -450,7 +461,8 @@ export const doctorPayments = pgTable("doctor_payments", {
 // Insurance claims
 export const insuranceClaims = pgTable("insurance_claims", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  claimNumber: text("claim_number").notNull().unique(),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
+  claimNumber: text("claim_number").notNull(),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   invoiceId: varchar("invoice_id", { length: 36 }).references(() => invoices.id),
   insuranceProvider: text("insurance_provider").notNull(),
@@ -473,6 +485,7 @@ export const insuranceClaims = pgTable("insurance_claims", {
 // Inventory items
 export const inventoryItems = pgTable("inventory_items", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   name: text("name").notNull(),
   category: inventoryCategoryEnum("category").notNull(),
   currentQuantity: integer("current_quantity").notNull().default(0),
@@ -489,6 +502,7 @@ export const inventoryItems = pgTable("inventory_items", {
 // Lab cases
 export const labCases = pgTable("lab_cases", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   doctorId: varchar("doctor_id", { length: 36 }).references(() => users.id),
   externalLabId: varchar("external_lab_id", { length: 36 }).references(() => externalLabs.id),
@@ -510,6 +524,7 @@ export const labCases = pgTable("lab_cases", {
 // External Labs
 export const externalLabs = pgTable("external_labs", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   name: text("name").notNull(),
   phone: text("phone"),
   email: text("email"),
@@ -522,6 +537,7 @@ export const externalLabs = pgTable("external_labs", {
 // Lab Services
 export const labServices = pgTable("lab_services", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   labId: varchar("lab_id", { length: 36 }).notNull().references(() => externalLabs.id),
   name: text("name").notNull(),
   description: text("description"),
@@ -533,6 +549,7 @@ export const labServices = pgTable("lab_services", {
 // Documents (for patient files, X-rays, photos)
 export const documents = pgTable("documents", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   fileName: text("file_name").notNull(),
   fileType: text("file_type").notNull(),
@@ -547,6 +564,7 @@ export const documents = pgTable("documents", {
 // Orthodontic progress notes
 export const orthodonticNotes = pgTable("orthodontic_notes", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   patientId: varchar("patient_id", { length: 36 }).notNull().references(() => patients.id),
   appointmentId: varchar("appointment_id", { length: 36 }),
   stage: text("stage").notNull(),
@@ -559,6 +577,7 @@ export const orthodonticNotes = pgTable("orthodontic_notes", {
 // Activity log for dashboard
 export const activityLog = pgTable("activity_log", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   userId: varchar("user_id", { length: 36 }).references(() => users.id),
   action: text("action").notNull(),
   entityType: text("entity_type").notNull(),
@@ -576,9 +595,10 @@ export const auditEntityTypeEnum = pgEnum("audit_entity_type", [
   "expense", "payment_plan", "invoice_adjustment", "user", "treatment", "doctor_payment"
 ]);
 
-// Clinic Settings - singleton table for clinic configuration
+// Clinic Settings - per-organization configuration
 export const clinicSettings = pgTable("clinic_settings", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   clinicName: text("clinic_name").notNull().default("DentalCare Clinic"),
   phone: text("phone"),
   email: text("email"),
@@ -598,6 +618,7 @@ export const clinicSettings = pgTable("clinic_settings", {
 // Clinic Rooms for appointments
 export const clinicRooms = pgTable("clinic_rooms", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   roomNumber: integer("room_number").notNull(),
   name: text("name").notNull(),
   description: text("description"),
@@ -609,6 +630,7 @@ export const clinicRooms = pgTable("clinic_rooms", {
 // This table is append-only and records CANNOT be modified or deleted
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id", { length: 36 }).references(() => organizations.id),
   userId: varchar("user_id", { length: 36 }).notNull().references(() => users.id),
   userRole: text("user_role").notNull(), // Captures role at time of action
   actionType: auditActionTypeEnum("action_type").notNull(),
@@ -940,7 +962,7 @@ export interface PlanFeatures {
 }
 
 // Role type
-export type UserRole = "admin" | "doctor" | "staff" | "student";
+export type UserRole = "super_admin" | "clinic_admin" | "admin" | "doctor" | "staff" | "student" | "pending";
 
 // Helper types for frontend
 export type AppointmentWithPatient = Appointment & { patient: Patient };

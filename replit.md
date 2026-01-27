@@ -3,7 +3,36 @@
 
 ## Overview
 
-GLAZER is a comprehensive, full-stack TypeScript application designed for single-clinic dental operations. Its primary purpose is to streamline patient management, appointment scheduling, treatment tracking, financial operations, inventory control, and lab work coordination. The system aims to enhance efficiency and organization within a dental practice, offering a robust solution for managing all aspects of clinic operations. Key capabilities include managing patient profiles, scheduling and tracking appointments, overseeing treatment plans, handling invoicing and payments, controlling inventory, coordinating lab work, and managing user roles.
+GLAZER is a comprehensive, full-stack TypeScript application designed for multi-tenant dental clinic operations. Its primary purpose is to streamline patient management, appointment scheduling, treatment tracking, financial operations, inventory control, and lab work coordination. The system aims to enhance efficiency and organization within dental practices, offering a robust solution for managing all aspects of clinic operations with complete data isolation between clinics. Key capabilities include managing patient profiles, scheduling and tracking appointments, overseeing treatment plans, handling invoicing and payments, controlling inventory, coordinating lab work, and managing user roles.
+
+## Multi-Tenant Architecture (In Progress)
+
+The system is being transformed into a multi-tenant SaaS platform with the following design:
+
+### Data Isolation Strategy
+- **Shared Database Model**: All clinics share a single PostgreSQL database
+- **Organization ID Filtering**: Every clinic-owned table has an `organizationId` foreign key
+- **Query Scoping**: All queries are filtered by `organizationId` to ensure strict data isolation
+- **Super Admin Bypass**: Super admins can query across all clinics for administrative purposes
+
+### User Roles
+- **super_admin**: Cross-clinic access, can view/manage all organizations
+- **clinic_admin**: Clinic owner/administrator, full access within their clinic
+- **admin**: Administrative staff within a clinic
+- **doctor**: Dental practitioners
+- **staff**: Front desk and support staff
+- **student**: Dental students with limited access
+- **pending**: Newly registered users awaiting approval
+
+### Key Files
+- `shared/schema.ts`: Database schema with organizationId on all clinic tables
+- `server/middleware/clinic-scope.ts`: Express middleware for clinic isolation
+- `server/storage.ts`: Storage interface with ClinicScopeOptions support
+- `server/scripts/migrate-to-multi-tenant.ts`: Data migration script for existing data
+
+### Migration Notes
+- Existing data has been migrated to a default organization
+- Default organization slug: `default-clinic`
 
 ## User Preferences
 

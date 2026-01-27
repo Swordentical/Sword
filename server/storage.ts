@@ -5,7 +5,7 @@ import {
   invoices, invoiceItems, payments, paymentPlans, paymentPlanInstallments,
   invoiceAdjustments, expenses, doctorPayments, insuranceClaims, inventoryItems, labCases,
   documents, orthodonticNotes, activityLog, auditLogs, clinicSettings, clinicRooms,
-  externalLabs, labServices,
+  externalLabs, labServices, organizations,
   type User, type InsertUser,
   type Patient, type InsertPatient,
   type Treatment, type InsertTreatment,
@@ -30,23 +30,37 @@ import {
   type ClinicRoom, type InsertClinicRoom,
   type ExternalLab, type InsertExternalLab,
   type LabService, type InsertLabService,
+  type Organization, type InsertOrganization,
 } from "@shared/schema";
 
+export interface ClinicScopeOptions {
+  clinicId?: string;
+  isSuperAdmin?: boolean;
+}
+
 export interface IStorage {
+  // Organizations
+  getOrganization(id: string): Promise<Organization | undefined>;
+  getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
+  getOrganizations(): Promise<Organization[]>;
+  createOrganization(org: InsertOrganization): Promise<Organization>;
+  updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization | undefined>;
+
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
-  getUsers(filters?: { role?: string }): Promise<User[]>;
+  getUsers(filters?: { role?: string }, scope?: ClinicScopeOptions): Promise<User[]>;
+  getUsersByClinic(clinicId: string): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
 
   // Patients
-  getPatient(id: string): Promise<Patient | undefined>;
-  getPatients(filters?: { search?: string; assignedDoctorId?: string; assignedStudentId?: string }): Promise<Patient[]>;
+  getPatient(id: string, scope?: ClinicScopeOptions): Promise<Patient | undefined>;
+  getPatients(filters?: { search?: string; assignedDoctorId?: string; assignedStudentId?: string }, scope?: ClinicScopeOptions): Promise<Patient[]>;
   createPatient(patient: InsertPatient): Promise<Patient>;
-  updatePatient(id: string, data: Partial<InsertPatient>): Promise<Patient | undefined>;
-  deletePatient(id: string): Promise<boolean>;
+  updatePatient(id: string, data: Partial<InsertPatient>, scope?: ClinicScopeOptions): Promise<Patient | undefined>;
+  deletePatient(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Treatments (Services catalog)
   getTreatment(id: string): Promise<Treatment | undefined>;
@@ -252,6 +266,31 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Organizations
+  async getOrganization(id: string): Promise<Organization | undefined> {
+    const result = await db.select().from(organizations).where(eq(organizations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
+    const result = await db.select().from(organizations).where(eq(organizations.slug, slug)).limit(1);
+    return result[0];
+  }
+
+  async getOrganizations(): Promise<Organization[]> {
+    return db.select().from(organizations).orderBy(organizations.name);
+  }
+
+  async createOrganization(org: InsertOrganization): Promise<Organization> {
+    const result = await db.insert(organizations).values(org).returning();
+    return result[0];
+  }
+
+  async updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization | undefined> {
+    const result = await db.update(organizations).set(data).where(eq(organizations.id, id)).returning();
+    return result[0];
+  }
+
   // Users
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
@@ -263,12 +302,25 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getUsers(filters?: { role?: string }): Promise<User[]> {
-    let query = db.select().from(users);
+  async getUsers(filters?: { role?: string }, scope?: ClinicScopeOptions): Promise<User[]> {
+    let conditions = [];
+    
     if (filters?.role) {
-      return db.select().from(users).where(eq(users.role, filters.role as any));
+      conditions.push(eq(users.role, filters.role as any));
+    }
+    
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(users.organizationId, scope.clinicId));
+    }
+    
+    if (conditions.length > 0) {
+      return db.select().from(users).where(and(...conditions));
     }
     return db.select().from(users);
+  }
+
+  async getUsersByClinic(clinicId: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.organizationId, clinicId));
   }
 
   async createUser(user: InsertUser): Promise<User> {
@@ -287,13 +339,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Patients
-  async getPatient(id: string): Promise<Patient | undefined> {
-    const result = await db.select().from(patients).where(eq(patients.id, id)).limit(1);
+  async getPatient(id: string, scope?: ClinicScopeOptions): Promise<Patient | undefined> {
+    let conditions = [eq(patients.id, id)];
+    
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patients.organizationId, scope.clinicId));
+    }
+    
+    const result = await db.select().from(patients).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getPatients(filters?: { search?: string; assignedDoctorId?: string; assignedStudentId?: string }): Promise<Patient[]> {
+  async getPatients(filters?: { search?: string; assignedDoctorId?: string; assignedStudentId?: string }, scope?: ClinicScopeOptions): Promise<Patient[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patients.organizationId, scope.clinicId));
+    }
 
     if (filters?.search) {
       conditions.push(
@@ -326,13 +388,25 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePatient(id: string, data: Partial<InsertPatient>): Promise<Patient | undefined> {
-    const result = await db.update(patients).set(data).where(eq(patients.id, id)).returning();
+  async updatePatient(id: string, data: Partial<InsertPatient>, scope?: ClinicScopeOptions): Promise<Patient | undefined> {
+    let conditions = [eq(patients.id, id)];
+    
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patients.organizationId, scope.clinicId));
+    }
+    
+    const result = await db.update(patients).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deletePatient(id: string): Promise<boolean> {
-    const result = await db.delete(patients).where(eq(patients.id, id)).returning();
+  async deletePatient(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(patients.id, id)];
+    
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patients.organizationId, scope.clinicId));
+    }
+    
+    const result = await db.delete(patients).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
