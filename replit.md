@@ -34,6 +34,24 @@ The system is being transformed into a multi-tenant SaaS platform with the follo
 - Existing data has been migrated to a default organization
 - Default organization slug: `default-clinic`
 
+### Storage Layer Multi-Tenant Support (Completed)
+All storage methods now support `ClinicScopeOptions` parameter for clinic isolation:
+- **Pattern**: `scope?.clinicId && !scope?.isSuperAdmin` filters by organizationId
+- **Read operations**: Get/List methods filter results by clinic
+- **Write operations**: Update/Delete methods verify clinic ownership before modifying
+- **Create operations**: Receive organizationId as part of the data payload
+- **Super admin bypass**: Setting `isSuperAdmin: true` allows cross-clinic queries
+
+Scoped methods include:
+- Users, Patients, Treatments, Patient Treatments
+- Appointments, Invoices, Invoice Items, Invoice Adjustments
+- Payments, Payment Plans, Payment Plan Installments
+- Expenses, Doctor Payments, Insurance Claims
+- Inventory Items, Lab Cases, Documents
+- Activity Log, Audit Logs, Dashboard Stats
+- Clinic Settings, Clinic Rooms
+- External Labs, Lab Services
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

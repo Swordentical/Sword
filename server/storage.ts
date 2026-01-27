@@ -47,13 +47,13 @@ export interface IStorage {
   updateOrganization(id: string, data: Partial<InsertOrganization>): Promise<Organization | undefined>;
 
   // Users
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUser(id: string, scope?: ClinicScopeOptions): Promise<User | undefined>;
+  getUserByUsername(username: string, scope?: ClinicScopeOptions): Promise<User | undefined>;
   getUsers(filters?: { role?: string }, scope?: ClinicScopeOptions): Promise<User[]>;
-  getUsersByClinic(clinicId: string): Promise<User[]>;
+  getUsersByClinic(clinicId: string, scope?: ClinicScopeOptions): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined>;
-  deleteUser(id: string): Promise<boolean>;
+  updateUser(id: string, data: Partial<InsertUser>, scope?: ClinicScopeOptions): Promise<User | undefined>;
+  deleteUser(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Patients
   getPatient(id: string, scope?: ClinicScopeOptions): Promise<Patient | undefined>;
@@ -63,90 +63,90 @@ export interface IStorage {
   deletePatient(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Treatments (Services catalog)
-  getTreatment(id: string): Promise<Treatment | undefined>;
-  getTreatments(): Promise<Treatment[]>;
+  getTreatment(id: string, scope?: ClinicScopeOptions): Promise<Treatment | undefined>;
+  getTreatments(scope?: ClinicScopeOptions): Promise<Treatment[]>;
   createTreatment(treatment: InsertTreatment): Promise<Treatment>;
-  updateTreatment(id: string, data: Partial<InsertTreatment>): Promise<Treatment | undefined>;
-  deleteTreatment(id: string): Promise<boolean>;
+  updateTreatment(id: string, data: Partial<InsertTreatment>, scope?: ClinicScopeOptions): Promise<Treatment | undefined>;
+  deleteTreatment(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Patient Treatments
-  getPatientTreatments(patientId: string): Promise<PatientTreatment[]>;
-  getPatientTreatment(id: string): Promise<PatientTreatment | undefined>;
+  getPatientTreatments(patientId: string, scope?: ClinicScopeOptions): Promise<PatientTreatment[]>;
+  getPatientTreatment(id: string, scope?: ClinicScopeOptions): Promise<PatientTreatment | undefined>;
   createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
-  updatePatientTreatment(id: string, data: Partial<InsertPatientTreatment>): Promise<PatientTreatment | undefined>;
+  updatePatientTreatment(id: string, data: Partial<InsertPatientTreatment>, scope?: ClinicScopeOptions): Promise<PatientTreatment | undefined>;
 
   // Appointments
-  getAppointment(id: string): Promise<Appointment | undefined>;
-  getAppointments(filters?: { start?: Date; end?: Date; status?: string; doctorId?: string }): Promise<Appointment[]>;
-  getTodayAppointments(): Promise<Appointment[]>;
+  getAppointment(id: string, scope?: ClinicScopeOptions): Promise<Appointment | undefined>;
+  getAppointments(filters?: { start?: Date; end?: Date; status?: string; doctorId?: string }, scope?: ClinicScopeOptions): Promise<Appointment[]>;
+  getTodayAppointments(scope?: ClinicScopeOptions): Promise<Appointment[]>;
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
-  updateAppointment(id: string, data: Partial<InsertAppointment>): Promise<Appointment | undefined>;
-  deleteAppointment(id: string): Promise<boolean>;
+  updateAppointment(id: string, data: Partial<InsertAppointment>, scope?: ClinicScopeOptions): Promise<Appointment | undefined>;
+  deleteAppointment(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Invoices
-  getInvoice(id: string): Promise<Invoice | undefined>;
-  getInvoices(filters?: { patientId?: string; status?: string }): Promise<Invoice[]>;
-  getPatientInvoices(patientId: string): Promise<Invoice[]>;
+  getInvoice(id: string, scope?: ClinicScopeOptions): Promise<Invoice | undefined>;
+  getInvoices(filters?: { patientId?: string; status?: string }, scope?: ClinicScopeOptions): Promise<Invoice[]>;
+  getPatientInvoices(patientId: string, scope?: ClinicScopeOptions): Promise<Invoice[]>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
-  updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  updateInvoice(id: string, data: Partial<InsertInvoice>, scope?: ClinicScopeOptions): Promise<Invoice | undefined>;
 
   // Invoice Items
-  getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]>;
+  getInvoiceItems(invoiceId: string, scope?: ClinicScopeOptions): Promise<InvoiceItem[]>;
   createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
-  deleteInvoiceItem(id: string): Promise<void>;
+  deleteInvoiceItem(id: string, scope?: ClinicScopeOptions): Promise<void>;
 
   // Payments
-  getPayment(id: string): Promise<Payment | undefined>;
-  getPayments(filters?: { invoiceId?: string }): Promise<Payment[]>;
+  getPayment(id: string, scope?: ClinicScopeOptions): Promise<Payment | undefined>;
+  getPayments(filters?: { invoiceId?: string }, scope?: ClinicScopeOptions): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
-  updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
-  refundPayment(id: string, reason: string): Promise<Payment | undefined>;
+  updatePayment(id: string, data: Partial<InsertPayment>, scope?: ClinicScopeOptions): Promise<Payment | undefined>;
+  refundPayment(id: string, reason: string, scope?: ClinicScopeOptions): Promise<Payment | undefined>;
 
   // Payment Plans
-  getPaymentPlan(id: string): Promise<PaymentPlan | undefined>;
-  getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }): Promise<PaymentPlan[]>;
+  getPaymentPlan(id: string, scope?: ClinicScopeOptions): Promise<PaymentPlan | undefined>;
+  getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }, scope?: ClinicScopeOptions): Promise<PaymentPlan[]>;
   createPaymentPlan(plan: InsertPaymentPlan): Promise<PaymentPlan>;
-  updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>): Promise<PaymentPlan | undefined>;
+  updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>, scope?: ClinicScopeOptions): Promise<PaymentPlan | undefined>;
 
   // Payment Plan Installments
-  getPaymentPlanInstallments(paymentPlanId: string): Promise<PaymentPlanInstallment[]>;
+  getPaymentPlanInstallments(paymentPlanId: string, scope?: ClinicScopeOptions): Promise<PaymentPlanInstallment[]>;
   createPaymentPlanInstallment(installment: InsertPaymentPlanInstallment): Promise<PaymentPlanInstallment>;
-  updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>): Promise<PaymentPlanInstallment | undefined>;
+  updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>, scope?: ClinicScopeOptions): Promise<PaymentPlanInstallment | undefined>;
 
   // Invoice Adjustments
-  getInvoiceAdjustments(invoiceId: string): Promise<InvoiceAdjustment[]>;
+  getInvoiceAdjustments(invoiceId: string, scope?: ClinicScopeOptions): Promise<InvoiceAdjustment[]>;
   createInvoiceAdjustment(adjustment: InsertInvoiceAdjustment): Promise<InvoiceAdjustment>;
 
   // Expenses
-  getExpense(id: string): Promise<Expense | undefined>;
-  getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }): Promise<Expense[]>;
+  getExpense(id: string, scope?: ClinicScopeOptions): Promise<Expense | undefined>;
+  getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }, scope?: ClinicScopeOptions): Promise<Expense[]>;
   createExpense(expense: InsertExpense): Promise<Expense>;
-  updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined>;
-  deleteExpense(id: string): Promise<boolean>;
+  updateExpense(id: string, data: Partial<InsertExpense>, scope?: ClinicScopeOptions): Promise<Expense | undefined>;
+  deleteExpense(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Doctor Payments
-  getDoctorPayment(id: string): Promise<DoctorPayment | undefined>;
-  getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }): Promise<(DoctorPayment & { doctor?: User })[]>;
+  getDoctorPayment(id: string, scope?: ClinicScopeOptions): Promise<DoctorPayment | undefined>;
+  getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }, scope?: ClinicScopeOptions): Promise<(DoctorPayment & { doctor?: User })[]>;
   createDoctorPayment(payment: InsertDoctorPayment): Promise<DoctorPayment>;
-  updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>): Promise<DoctorPayment | undefined>;
-  deleteDoctorPayment(id: string): Promise<boolean>;
+  updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>, scope?: ClinicScopeOptions): Promise<DoctorPayment | undefined>;
+  deleteDoctorPayment(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Insurance Claims
-  getInsuranceClaim(id: string): Promise<InsuranceClaim | undefined>;
-  getInsuranceClaims(filters?: { status?: string; patientId?: string }): Promise<InsuranceClaim[]>;
+  getInsuranceClaim(id: string, scope?: ClinicScopeOptions): Promise<InsuranceClaim | undefined>;
+  getInsuranceClaims(filters?: { status?: string; patientId?: string }, scope?: ClinicScopeOptions): Promise<InsuranceClaim[]>;
   createInsuranceClaim(claim: InsertInsuranceClaim): Promise<InsuranceClaim>;
-  updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>): Promise<InsuranceClaim | undefined>;
-  deleteInsuranceClaim(id: string): Promise<boolean>;
-  generateClaimNumber(): Promise<string>;
+  updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>, scope?: ClinicScopeOptions): Promise<InsuranceClaim | undefined>;
+  deleteInsuranceClaim(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
+  generateClaimNumber(scope?: ClinicScopeOptions): Promise<string>;
 
   // Financial Reports
-  getRevenueReport(startDate: string, endDate: string): Promise<{
+  getRevenueReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     totalRevenue: number;
     totalCollections: number;
     totalAdjustments: number;
     byMonth: { month: string; revenue: number; collections: number }[];
   }>;
-  getARAgingReport(): Promise<{
+  getARAgingReport(scope?: ClinicScopeOptions): Promise<{
     current: number;
     thirtyDays: number;
     sixtyDays: number;
@@ -154,7 +154,7 @@ export interface IStorage {
     overNinety: number;
     total: number;
   }>;
-  getProductionByDoctorReport(startDate: string, endDate: string): Promise<{
+  getProductionByDoctorReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     doctorId: string;
     doctorName: string;
     totalProduction: number;
@@ -164,7 +164,7 @@ export interface IStorage {
     treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
   }[]>;
   
-  getDoctorDetailedReport(doctorId: string, startDate: string, endDate: string): Promise<{
+  getDoctorDetailedReport(doctorId: string, startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     doctorId: string;
     doctorName: string;
     totalProduction: number;
@@ -181,12 +181,12 @@ export interface IStorage {
     treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
     monthlyBreakdown: { month: string; production: number; treatments: number; patients: number }[];
   }>;
-  getExpenseReport(startDate: string, endDate: string): Promise<{
+  getExpenseReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     total: number;
     byCategory: { category: string; amount: number }[];
     byMonth: { month: string; amount: number }[];
   }>;
-  getNetProfitReport(startDate: string, endDate: string): Promise<{
+  getNetProfitReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     grossRevenue: number;
     totalCollections: number;
     serviceCosts: number;
@@ -198,37 +198,37 @@ export interface IStorage {
   }>;
 
   // Inventory
-  getInventoryItem(id: string): Promise<InventoryItem | undefined>;
-  getInventoryItems(filters?: { category?: string; status?: string }): Promise<InventoryItem[]>;
+  getInventoryItem(id: string, scope?: ClinicScopeOptions): Promise<InventoryItem | undefined>;
+  getInventoryItems(filters?: { category?: string; status?: string }, scope?: ClinicScopeOptions): Promise<InventoryItem[]>;
   createInventoryItem(item: InsertInventoryItem): Promise<InventoryItem>;
-  updateInventoryItem(id: string, data: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined>;
-  deleteInventoryItem(id: string): Promise<boolean>;
+  updateInventoryItem(id: string, data: Partial<InsertInventoryItem>, scope?: ClinicScopeOptions): Promise<InventoryItem | undefined>;
+  deleteInventoryItem(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Lab Cases
-  getLabCase(id: string): Promise<LabCase | undefined>;
-  getLabCases(filters?: { status?: string; patientId?: string }): Promise<LabCase[]>;
+  getLabCase(id: string, scope?: ClinicScopeOptions): Promise<LabCase | undefined>;
+  getLabCases(filters?: { status?: string; patientId?: string }, scope?: ClinicScopeOptions): Promise<LabCase[]>;
   createLabCase(labCase: InsertLabCase): Promise<LabCase>;
-  updateLabCase(id: string, data: Partial<InsertLabCase>): Promise<LabCase | undefined>;
+  updateLabCase(id: string, data: Partial<InsertLabCase>, scope?: ClinicScopeOptions): Promise<LabCase | undefined>;
 
   // Documents
-  getPatientDocuments(patientId: string): Promise<Document[]>;
+  getPatientDocuments(patientId: string, scope?: ClinicScopeOptions): Promise<Document[]>;
   createDocument(document: InsertDocument): Promise<Document>;
-  deleteDocument(id: string): Promise<boolean>;
+  deleteDocument(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Activity Log
-  getRecentActivity(limit?: number): Promise<ActivityLog[]>;
+  getRecentActivity(limit?: number, scope?: ClinicScopeOptions): Promise<ActivityLog[]>;
   logActivity(log: InsertActivityLog): Promise<ActivityLog>;
 
   // Clinic Settings
-  getClinicSettings(): Promise<ClinicSettings>;
-  updateClinicSettings(data: Partial<InsertClinicSettings>): Promise<ClinicSettings>;
+  getClinicSettings(scope?: ClinicScopeOptions): Promise<ClinicSettings>;
+  updateClinicSettings(data: Partial<InsertClinicSettings>, scope?: ClinicScopeOptions): Promise<ClinicSettings>;
 
   // Clinic Rooms
-  getClinicRooms(): Promise<ClinicRoom[]>;
-  getClinicRoom(id: string): Promise<ClinicRoom | undefined>;
+  getClinicRooms(scope?: ClinicScopeOptions): Promise<ClinicRoom[]>;
+  getClinicRoom(id: string, scope?: ClinicScopeOptions): Promise<ClinicRoom | undefined>;
   createClinicRoom(room: InsertClinicRoom): Promise<ClinicRoom>;
-  updateClinicRoom(id: string, data: Partial<InsertClinicRoom>): Promise<ClinicRoom | undefined>;
-  deleteClinicRoom(id: string): Promise<boolean>;
+  updateClinicRoom(id: string, data: Partial<InsertClinicRoom>, scope?: ClinicScopeOptions): Promise<ClinicRoom | undefined>;
+  deleteClinicRoom(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Audit Logs (Immutable - admin only access)
   getAuditLogs(filters?: { 
@@ -239,11 +239,11 @@ export interface IStorage {
     startDate?: string;
     endDate?: string;
     limit?: number 
-  }): Promise<(AuditLog & { user?: User })[]>;
+  }, scope?: ClinicScopeOptions): Promise<(AuditLog & { user?: User })[]>;
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 
   // Dashboard stats
-  getDashboardStats(): Promise<{
+  getDashboardStats(scope?: ClinicScopeOptions): Promise<{
     totalPatients: number;
     todayAppointments: number;
     monthlyRevenue: number;
@@ -251,18 +251,18 @@ export interface IStorage {
   }>;
 
   // External Labs
-  getExternalLab(id: string): Promise<ExternalLab | undefined>;
-  getExternalLabs(): Promise<ExternalLab[]>;
+  getExternalLab(id: string, scope?: ClinicScopeOptions): Promise<ExternalLab | undefined>;
+  getExternalLabs(scope?: ClinicScopeOptions): Promise<ExternalLab[]>;
   createExternalLab(lab: InsertExternalLab): Promise<ExternalLab>;
-  updateExternalLab(id: string, data: Partial<InsertExternalLab>): Promise<ExternalLab | undefined>;
-  deleteExternalLab(id: string): Promise<boolean>;
+  updateExternalLab(id: string, data: Partial<InsertExternalLab>, scope?: ClinicScopeOptions): Promise<ExternalLab | undefined>;
+  deleteExternalLab(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 
   // Lab Services
-  getLabService(id: string): Promise<LabService | undefined>;
-  getLabServices(labId?: string): Promise<LabService[]>;
+  getLabService(id: string, scope?: ClinicScopeOptions): Promise<LabService | undefined>;
+  getLabServices(labId?: string, scope?: ClinicScopeOptions): Promise<LabService[]>;
   createLabService(service: InsertLabService): Promise<LabService>;
-  updateLabService(id: string, data: Partial<InsertLabService>): Promise<LabService | undefined>;
-  deleteLabService(id: string): Promise<boolean>;
+  updateLabService(id: string, data: Partial<InsertLabService>, scope?: ClinicScopeOptions): Promise<LabService | undefined>;
+  deleteLabService(id: string, scope?: ClinicScopeOptions): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -292,13 +292,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Users
-  async getUser(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  async getUser(id: string, scope?: ClinicScopeOptions): Promise<User | undefined> {
+    let conditions = [eq(users.id, id)];
+    
+    // For scoped access, filter by organizationId
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(users.organizationId, scope.clinicId));
+    }
+    // Note: Unscoped access is allowed for authentication flows (login/session restore)
+    // where the user's org is not yet known. Routes should pass scope after authentication.
+    
+    const result = await db.select().from(users).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+  async getUserByUsername(username: string, scope?: ClinicScopeOptions): Promise<User | undefined> {
+    let conditions = [eq(users.username, username)];
+    
+    // For scoped access, filter by organizationId
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(users.organizationId, scope.clinicId));
+    }
+    // Note: Unscoped access is allowed for authentication flows (login)
+    // where the user's org is not yet known.
+    
+    const result = await db.select().from(users).where(and(...conditions)).limit(1);
     return result[0];
   }
 
@@ -319,7 +337,18 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(users);
   }
 
-  async getUsersByClinic(clinicId: string): Promise<User[]> {
+  async getUsersByClinic(clinicId: string, scope?: ClinicScopeOptions): Promise<User[]> {
+    // Scope is required for this operation
+    if (!scope) {
+      throw new Error('getUsersByClinic requires scope parameter for multi-tenant security');
+    }
+    
+    // For non-super admins, always use scope.clinicId to prevent arbitrary clinic access
+    if (scope.clinicId && !scope.isSuperAdmin) {
+      // Ignore passed clinicId and use scope.clinicId instead for security
+      return db.select().from(users).where(eq(users.organizationId, scope.clinicId));
+    }
+    // Super admin can query any clinic
     return db.select().from(users).where(eq(users.organizationId, clinicId));
   }
 
@@ -328,13 +357,39 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateUser(id: string, data: Partial<InsertUser>): Promise<User | undefined> {
-    const result = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  async updateUser(id: string, data: Partial<InsertUser>, scope?: ClinicScopeOptions): Promise<User | undefined> {
+    // Scope is required for this operation
+    if (!scope) {
+      throw new Error('updateUser requires scope parameter for multi-tenant security');
+    }
+    
+    let conditions = [eq(users.id, id)];
+    
+    if (scope.clinicId && !scope.isSuperAdmin) {
+      conditions.push(eq(users.organizationId, scope.clinicId));
+      // Prevent non-super admins from changing organizationId
+      if ('organizationId' in data) {
+        delete (data as any).organizationId;
+      }
+    }
+    
+    const result = await db.update(users).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteUser(id: string): Promise<boolean> {
-    const result = await db.delete(users).where(eq(users.id, id)).returning();
+  async deleteUser(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    // Scope is required for this operation
+    if (!scope) {
+      throw new Error('deleteUser requires scope parameter for multi-tenant security');
+    }
+    
+    let conditions = [eq(users.id, id)];
+    
+    if (scope.clinicId && !scope.isSuperAdmin) {
+      conditions.push(eq(users.organizationId, scope.clinicId));
+    }
+    
+    const result = await db.delete(users).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
@@ -411,13 +466,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Treatments (Services catalog)
-  async getTreatment(id: string): Promise<Treatment | undefined> {
-    const result = await db.select().from(treatments).where(eq(treatments.id, id)).limit(1);
+  async getTreatment(id: string, scope?: ClinicScopeOptions): Promise<Treatment | undefined> {
+    let conditions = [eq(treatments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(treatments.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(treatments).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getTreatments(): Promise<Treatment[]> {
-    return db.select().from(treatments).where(eq(treatments.isActive, true)).orderBy(treatments.category, treatments.name);
+  async getTreatments(scope?: ClinicScopeOptions): Promise<Treatment[]> {
+    let conditions = [eq(treatments.isActive, true)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(treatments.organizationId, scope.clinicId));
+    }
+    return db.select().from(treatments).where(and(...conditions)).orderBy(treatments.category, treatments.name);
   }
 
   async createTreatment(treatment: InsertTreatment): Promise<Treatment> {
@@ -425,23 +488,39 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateTreatment(id: string, data: Partial<InsertTreatment>): Promise<Treatment | undefined> {
-    const result = await db.update(treatments).set(data).where(eq(treatments.id, id)).returning();
+  async updateTreatment(id: string, data: Partial<InsertTreatment>, scope?: ClinicScopeOptions): Promise<Treatment | undefined> {
+    let conditions = [eq(treatments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(treatments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(treatments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteTreatment(id: string): Promise<boolean> {
-    const result = await db.delete(treatments).where(eq(treatments.id, id)).returning();
+  async deleteTreatment(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(treatments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(treatments.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(treatments).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Patient Treatments
-  async getPatientTreatments(patientId: string): Promise<PatientTreatment[]> {
-    return db.select().from(patientTreatments).where(eq(patientTreatments.patientId, patientId)).orderBy(desc(patientTreatments.createdAt));
+  async getPatientTreatments(patientId: string, scope?: ClinicScopeOptions): Promise<PatientTreatment[]> {
+    let conditions = [eq(patientTreatments.patientId, patientId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patientTreatments.organizationId, scope.clinicId));
+    }
+    return db.select().from(patientTreatments).where(and(...conditions)).orderBy(desc(patientTreatments.createdAt));
   }
 
-  async getPatientTreatment(id: string): Promise<PatientTreatment | undefined> {
-    const result = await db.select().from(patientTreatments).where(eq(patientTreatments.id, id)).limit(1);
+  async getPatientTreatment(id: string, scope?: ClinicScopeOptions): Promise<PatientTreatment | undefined> {
+    let conditions = [eq(patientTreatments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patientTreatments.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(patientTreatments).where(and(...conditions)).limit(1);
     return result[0];
   }
 
@@ -450,8 +529,12 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePatientTreatment(id: string, data: Partial<InsertPatientTreatment>): Promise<PatientTreatment | undefined> {
-    const result = await db.update(patientTreatments).set(data).where(eq(patientTreatments.id, id)).returning();
+  async updatePatientTreatment(id: string, data: Partial<InsertPatientTreatment>, scope?: ClinicScopeOptions): Promise<PatientTreatment | undefined> {
+    let conditions = [eq(patientTreatments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(patientTreatments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(patientTreatments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
@@ -460,13 +543,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Appointments
-  async getAppointment(id: string): Promise<Appointment | undefined> {
-    const result = await db.select().from(appointments).where(eq(appointments.id, id)).limit(1);
+  async getAppointment(id: string, scope?: ClinicScopeOptions): Promise<Appointment | undefined> {
+    let conditions = [eq(appointments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(appointments.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(appointments).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getAppointments(filters?: { start?: Date; end?: Date; status?: string; doctorId?: string }): Promise<Appointment[]> {
+  async getAppointments(filters?: { start?: Date; end?: Date; status?: string; doctorId?: string }, scope?: ClinicScopeOptions): Promise<Appointment[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(appointments.organizationId, scope.clinicId));
+    }
 
     if (filters?.start) {
       conditions.push(gte(appointments.startTime, filters.start));
@@ -488,14 +579,19 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(appointments).orderBy(appointments.startTime);
   }
 
-  async getTodayAppointments(): Promise<Appointment[]> {
+  async getTodayAppointments(scope?: ClinicScopeOptions): Promise<Appointment[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    let conditions = [gte(appointments.startTime, today), lte(appointments.startTime, tomorrow)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(appointments.organizationId, scope.clinicId));
+    }
+
     return db.select().from(appointments)
-      .where(and(gte(appointments.startTime, today), lte(appointments.startTime, tomorrow)))
+      .where(and(...conditions))
       .orderBy(appointments.startTime);
   }
 
@@ -504,24 +600,40 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateAppointment(id: string, data: Partial<InsertAppointment>): Promise<Appointment | undefined> {
-    const result = await db.update(appointments).set(data).where(eq(appointments.id, id)).returning();
+  async updateAppointment(id: string, data: Partial<InsertAppointment>, scope?: ClinicScopeOptions): Promise<Appointment | undefined> {
+    let conditions = [eq(appointments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(appointments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(appointments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteAppointment(id: string): Promise<boolean> {
-    const result = await db.delete(appointments).where(eq(appointments.id, id)).returning();
+  async deleteAppointment(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(appointments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(appointments.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(appointments).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Invoices
-  async getInvoice(id: string): Promise<Invoice | undefined> {
-    const result = await db.select().from(invoices).where(eq(invoices.id, id)).limit(1);
+  async getInvoice(id: string, scope?: ClinicScopeOptions): Promise<Invoice | undefined> {
+    let conditions = [eq(invoices.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(invoices).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getInvoices(filters?: { patientId?: string; status?: string }): Promise<Invoice[]> {
+  async getInvoices(filters?: { patientId?: string; status?: string }, scope?: ClinicScopeOptions): Promise<Invoice[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
 
     if (filters?.patientId) {
       conditions.push(eq(invoices.patientId, filters.patientId));
@@ -537,8 +649,12 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(invoices).orderBy(desc(invoices.issuedDate));
   }
 
-  async getPatientInvoices(patientId: string): Promise<Invoice[]> {
-    return db.select().from(invoices).where(eq(invoices.patientId, patientId)).orderBy(desc(invoices.issuedDate));
+  async getPatientInvoices(patientId: string, scope?: ClinicScopeOptions): Promise<Invoice[]> {
+    let conditions = [eq(invoices.patientId, patientId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
+    return db.select().from(invoices).where(and(...conditions)).orderBy(desc(invoices.issuedDate));
   }
 
   async createInvoice(invoice: InsertInvoice): Promise<Invoice> {
@@ -546,14 +662,22 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined> {
-    const result = await db.update(invoices).set(data).where(eq(invoices.id, id)).returning();
+  async updateInvoice(id: string, data: Partial<InsertInvoice>, scope?: ClinicScopeOptions): Promise<Invoice | undefined> {
+    let conditions = [eq(invoices.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
+    const result = await db.update(invoices).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
   // Invoice Items
-  async getInvoiceItems(invoiceId: string): Promise<InvoiceItem[]> {
-    return db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+  async getInvoiceItems(invoiceId: string, scope?: ClinicScopeOptions): Promise<InvoiceItem[]> {
+    let conditions = [eq(invoiceItems.invoiceId, invoiceId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoiceItems.organizationId, scope.clinicId));
+    }
+    return db.select().from(invoiceItems).where(and(...conditions));
   }
 
   async createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem> {
@@ -561,19 +685,34 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async deleteInvoiceItem(id: string): Promise<void> {
-    await db.delete(invoiceItems).where(eq(invoiceItems.id, id));
+  async deleteInvoiceItem(id: string, scope?: ClinicScopeOptions): Promise<void> {
+    let conditions = [eq(invoiceItems.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoiceItems.organizationId, scope.clinicId));
+    }
+    await db.delete(invoiceItems).where(and(...conditions));
   }
 
   // Payments
-  async getPayment(id: string): Promise<Payment | undefined> {
-    const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+  async getPayment(id: string, scope?: ClinicScopeOptions): Promise<Payment | undefined> {
+    let conditions = [eq(payments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(payments.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(payments).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getPayments(filters?: { invoiceId?: string }): Promise<Payment[]> {
+  async getPayments(filters?: { invoiceId?: string }, scope?: ClinicScopeOptions): Promise<Payment[]> {
+    let conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(payments.organizationId, scope.clinicId));
+    }
     if (filters?.invoiceId) {
-      return db.select().from(payments).where(eq(payments.invoiceId, filters.invoiceId)).orderBy(desc(payments.paymentDate));
+      conditions.push(eq(payments.invoiceId, filters.invoiceId));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(payments).where(and(...conditions)).orderBy(desc(payments.paymentDate));
     }
     return db.select().from(payments).orderBy(desc(payments.paymentDate));
   }
@@ -619,24 +758,31 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined> {
-    const result = await db.update(payments).set(data).where(eq(payments.id, id)).returning();
+  async updatePayment(id: string, data: Partial<InsertPayment>, scope?: ClinicScopeOptions): Promise<Payment | undefined> {
+    let conditions = [eq(payments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(payments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(payments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async refundPayment(id: string, reason: string): Promise<Payment | undefined> {
-    const payment = await this.getPayment(id);
+  async refundPayment(id: string, reason: string, scope?: ClinicScopeOptions): Promise<Payment | undefined> {
+    const payment = await this.getPayment(id, scope);
     if (!payment || payment.isRefunded) return undefined;
 
-    // Mark payment as refunded
+    let conditions = [eq(payments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(payments.organizationId, scope.clinicId));
+    }
+
     const result = await db.update(payments).set({
       isRefunded: true,
       refundedAt: new Date(),
       refundReason: reason,
-    }).where(eq(payments.id, id)).returning();
+    }).where(and(...conditions)).returning();
 
-    // Reduce invoice paid amount
-    const invoice = await this.getInvoice(payment.invoiceId);
+    const invoice = await this.getInvoice(payment.invoiceId, scope);
     if (invoice) {
       const currentPaid = Number(invoice.paidAmount || 0);
       const newPaid = Math.max(0, currentPaid - Number(payment.amount));
@@ -654,20 +800,28 @@ export class DatabaseStorage implements IStorage {
       await this.updateInvoice(payment.invoiceId, {
         paidAmount: String(newPaid),
         status,
-      });
+      }, scope);
     }
 
     return result[0];
   }
 
   // Payment Plans
-  async getPaymentPlan(id: string): Promise<PaymentPlan | undefined> {
-    const result = await db.select().from(paymentPlans).where(eq(paymentPlans.id, id)).limit(1);
+  async getPaymentPlan(id: string, scope?: ClinicScopeOptions): Promise<PaymentPlan | undefined> {
+    let conditions = [eq(paymentPlans.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(paymentPlans.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(paymentPlans).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }): Promise<PaymentPlan[]> {
+  async getPaymentPlans(filters?: { invoiceId?: string; patientId?: string; status?: string }, scope?: ClinicScopeOptions): Promise<PaymentPlan[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(paymentPlans.organizationId, scope.clinicId));
+    }
 
     if (filters?.invoiceId) {
       conditions.push(eq(paymentPlans.invoiceId, filters.invoiceId));
@@ -691,15 +845,23 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>): Promise<PaymentPlan | undefined> {
-    const result = await db.update(paymentPlans).set(data).where(eq(paymentPlans.id, id)).returning();
+  async updatePaymentPlan(id: string, data: Partial<InsertPaymentPlan>, scope?: ClinicScopeOptions): Promise<PaymentPlan | undefined> {
+    let conditions = [eq(paymentPlans.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(paymentPlans.organizationId, scope.clinicId));
+    }
+    const result = await db.update(paymentPlans).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
   // Payment Plan Installments
-  async getPaymentPlanInstallments(paymentPlanId: string): Promise<PaymentPlanInstallment[]> {
+  async getPaymentPlanInstallments(paymentPlanId: string, scope?: ClinicScopeOptions): Promise<PaymentPlanInstallment[]> {
+    let conditions = [eq(paymentPlanInstallments.paymentPlanId, paymentPlanId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(paymentPlanInstallments.organizationId, scope.clinicId));
+    }
     return db.select().from(paymentPlanInstallments)
-      .where(eq(paymentPlanInstallments.paymentPlanId, paymentPlanId))
+      .where(and(...conditions))
       .orderBy(paymentPlanInstallments.installmentNumber);
   }
 
@@ -708,15 +870,23 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>): Promise<PaymentPlanInstallment | undefined> {
-    const result = await db.update(paymentPlanInstallments).set(data).where(eq(paymentPlanInstallments.id, id)).returning();
+  async updatePaymentPlanInstallment(id: string, data: Partial<InsertPaymentPlanInstallment>, scope?: ClinicScopeOptions): Promise<PaymentPlanInstallment | undefined> {
+    let conditions = [eq(paymentPlanInstallments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(paymentPlanInstallments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(paymentPlanInstallments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
   // Invoice Adjustments
-  async getInvoiceAdjustments(invoiceId: string): Promise<InvoiceAdjustment[]> {
+  async getInvoiceAdjustments(invoiceId: string, scope?: ClinicScopeOptions): Promise<InvoiceAdjustment[]> {
+    let conditions = [eq(invoiceAdjustments.invoiceId, invoiceId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoiceAdjustments.organizationId, scope.clinicId));
+    }
     return db.select().from(invoiceAdjustments)
-      .where(eq(invoiceAdjustments.invoiceId, invoiceId))
+      .where(and(...conditions))
       .orderBy(desc(invoiceAdjustments.appliedDate));
   }
 
@@ -759,13 +929,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Expenses
-  async getExpense(id: string): Promise<Expense | undefined> {
-    const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+  async getExpense(id: string, scope?: ClinicScopeOptions): Promise<Expense | undefined> {
+    let conditions = [eq(expenses.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(expenses.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(expenses).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }): Promise<Expense[]> {
+  async getExpenses(filters?: { category?: string; startDate?: string; endDate?: string }, scope?: ClinicScopeOptions): Promise<Expense[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(expenses.organizationId, scope.clinicId));
+    }
 
     if (filters?.category) {
       conditions.push(eq(expenses.category, filters.category as any));
@@ -789,23 +967,35 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateExpense(id: string, data: Partial<InsertExpense>): Promise<Expense | undefined> {
-    const result = await db.update(expenses).set(data).where(eq(expenses.id, id)).returning();
+  async updateExpense(id: string, data: Partial<InsertExpense>, scope?: ClinicScopeOptions): Promise<Expense | undefined> {
+    let conditions = [eq(expenses.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(expenses.organizationId, scope.clinicId));
+    }
+    const result = await db.update(expenses).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteExpense(id: string): Promise<boolean> {
-    const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
+  async deleteExpense(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(expenses.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(expenses.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(expenses).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Doctor Payments
-  async getDoctorPayment(id: string): Promise<DoctorPayment | undefined> {
-    const result = await db.select().from(doctorPayments).where(eq(doctorPayments.id, id)).limit(1);
+  async getDoctorPayment(id: string, scope?: ClinicScopeOptions): Promise<DoctorPayment | undefined> {
+    let conditions = [eq(doctorPayments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(doctorPayments).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }): Promise<(DoctorPayment & { doctor?: User })[]> {
+  async getDoctorPayments(filters?: { doctorId?: string; startDate?: string; endDate?: string; paymentType?: string }, scope?: ClinicScopeOptions): Promise<(DoctorPayment & { doctor?: User })[]> {
     let query = db.select({
       payment: doctorPayments,
       doctor: users,
@@ -813,6 +1003,9 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(doctorPayments.doctorId, users.id));
 
     const conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
     if (filters?.doctorId) {
       conditions.push(eq(doctorPayments.doctorId, filters.doctorId));
     }
@@ -842,24 +1035,40 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>): Promise<DoctorPayment | undefined> {
-    const result = await db.update(doctorPayments).set(data).where(eq(doctorPayments.id, id)).returning();
+  async updateDoctorPayment(id: string, data: Partial<InsertDoctorPayment>, scope?: ClinicScopeOptions): Promise<DoctorPayment | undefined> {
+    let conditions = [eq(doctorPayments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
+    const result = await db.update(doctorPayments).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteDoctorPayment(id: string): Promise<boolean> {
-    const result = await db.delete(doctorPayments).where(eq(doctorPayments.id, id)).returning();
+  async deleteDoctorPayment(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(doctorPayments.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(doctorPayments).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Insurance Claims
-  async getInsuranceClaim(id: string): Promise<InsuranceClaim | undefined> {
-    const result = await db.select().from(insuranceClaims).where(eq(insuranceClaims.id, id)).limit(1);
+  async getInsuranceClaim(id: string, scope?: ClinicScopeOptions): Promise<InsuranceClaim | undefined> {
+    let conditions = [eq(insuranceClaims.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(insuranceClaims.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(insuranceClaims).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getInsuranceClaims(filters?: { status?: string; patientId?: string }): Promise<InsuranceClaim[]> {
+  async getInsuranceClaims(filters?: { status?: string; patientId?: string }, scope?: ClinicScopeOptions): Promise<InsuranceClaim[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(insuranceClaims.organizationId, scope.clinicId));
+    }
 
     if (filters?.status) {
       conditions.push(eq(insuranceClaims.status, filters.status as any));
@@ -880,19 +1089,33 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>): Promise<InsuranceClaim | undefined> {
-    const result = await db.update(insuranceClaims).set(data).where(eq(insuranceClaims.id, id)).returning();
+  async updateInsuranceClaim(id: string, data: Partial<InsertInsuranceClaim>, scope?: ClinicScopeOptions): Promise<InsuranceClaim | undefined> {
+    let conditions = [eq(insuranceClaims.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(insuranceClaims.organizationId, scope.clinicId));
+    }
+    const result = await db.update(insuranceClaims).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteInsuranceClaim(id: string): Promise<boolean> {
-    const result = await db.delete(insuranceClaims).where(eq(insuranceClaims.id, id)).returning();
+  async deleteInsuranceClaim(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(insuranceClaims.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(insuranceClaims.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(insuranceClaims).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
-  async generateClaimNumber(): Promise<string> {
+  async generateClaimNumber(scope?: ClinicScopeOptions): Promise<string> {
     const year = new Date().getFullYear();
-    const result = await db.select({ count: sql<number>`COUNT(*)` }).from(insuranceClaims);
+    let conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(insuranceClaims.organizationId, scope.clinicId));
+    }
+    const result = conditions.length > 0
+      ? await db.select({ count: sql<number>`COUNT(*)` }).from(insuranceClaims).where(and(...conditions))
+      : await db.select({ count: sql<number>`COUNT(*)` }).from(insuranceClaims);
     const count = Number(result[0].count) + 1;
     return `CLM-${year}-${String(count).padStart(5, '0')}`;
   }
@@ -1507,14 +1730,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Inventory
-  async getInventoryItem(id: string): Promise<InventoryItem | undefined> {
-    const result = await db.select().from(inventoryItems).where(eq(inventoryItems.id, id)).limit(1);
+  async getInventoryItem(id: string, scope?: ClinicScopeOptions): Promise<InventoryItem | undefined> {
+    let conditions = [eq(inventoryItems.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(inventoryItems.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(inventoryItems).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getInventoryItems(filters?: { category?: string; status?: string }): Promise<InventoryItem[]> {
+  async getInventoryItems(filters?: { category?: string; status?: string }, scope?: ClinicScopeOptions): Promise<InventoryItem[]> {
+    let conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(inventoryItems.organizationId, scope.clinicId));
+    }
     if (filters?.category) {
-      return db.select().from(inventoryItems).where(eq(inventoryItems.category, filters.category as any)).orderBy(inventoryItems.name);
+      conditions.push(eq(inventoryItems.category, filters.category as any));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(inventoryItems).where(and(...conditions)).orderBy(inventoryItems.name);
     }
     return db.select().from(inventoryItems).orderBy(inventoryItems.name);
   }
@@ -1524,24 +1758,40 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateInventoryItem(id: string, data: Partial<InsertInventoryItem>): Promise<InventoryItem | undefined> {
-    const result = await db.update(inventoryItems).set(data).where(eq(inventoryItems.id, id)).returning();
+  async updateInventoryItem(id: string, data: Partial<InsertInventoryItem>, scope?: ClinicScopeOptions): Promise<InventoryItem | undefined> {
+    let conditions = [eq(inventoryItems.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(inventoryItems.organizationId, scope.clinicId));
+    }
+    const result = await db.update(inventoryItems).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteInventoryItem(id: string): Promise<boolean> {
-    const result = await db.delete(inventoryItems).where(eq(inventoryItems.id, id)).returning();
+  async deleteInventoryItem(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(inventoryItems.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(inventoryItems.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(inventoryItems).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Lab Cases
-  async getLabCase(id: string): Promise<LabCase | undefined> {
-    const result = await db.select().from(labCases).where(eq(labCases.id, id)).limit(1);
+  async getLabCase(id: string, scope?: ClinicScopeOptions): Promise<LabCase | undefined> {
+    let conditions = [eq(labCases.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labCases.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(labCases).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getLabCases(filters?: { status?: string; patientId?: string }): Promise<LabCase[]> {
+  async getLabCases(filters?: { status?: string; patientId?: string }, scope?: ClinicScopeOptions): Promise<LabCase[]> {
     let conditions = [];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labCases.organizationId, scope.clinicId));
+    }
 
     if (filters?.status) {
       conditions.push(eq(labCases.status, filters.status as any));
@@ -1562,14 +1812,22 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateLabCase(id: string, data: Partial<InsertLabCase>): Promise<LabCase | undefined> {
-    const result = await db.update(labCases).set(data).where(eq(labCases.id, id)).returning();
+  async updateLabCase(id: string, data: Partial<InsertLabCase>, scope?: ClinicScopeOptions): Promise<LabCase | undefined> {
+    let conditions = [eq(labCases.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labCases.organizationId, scope.clinicId));
+    }
+    const result = await db.update(labCases).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
   // Documents
-  async getPatientDocuments(patientId: string): Promise<Document[]> {
-    return db.select().from(documents).where(eq(documents.patientId, patientId)).orderBy(desc(documents.createdAt));
+  async getPatientDocuments(patientId: string, scope?: ClinicScopeOptions): Promise<Document[]> {
+    let conditions = [eq(documents.patientId, patientId)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(documents.organizationId, scope.clinicId));
+    }
+    return db.select().from(documents).where(and(...conditions)).orderBy(desc(documents.createdAt));
   }
 
   async createDocument(document: InsertDocument): Promise<Document> {
@@ -1577,13 +1835,24 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async deleteDocument(id: string): Promise<boolean> {
-    const result = await db.delete(documents).where(eq(documents.id, id)).returning();
+  async deleteDocument(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(documents.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(documents.organizationId, scope.clinicId));
+    }
+    const result = await db.delete(documents).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Activity Log
-  async getRecentActivity(limit: number = 20): Promise<ActivityLog[]> {
+  async getRecentActivity(limit: number = 20, scope?: ClinicScopeOptions): Promise<ActivityLog[]> {
+    let conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(activityLog.organizationId, scope.clinicId));
+    }
+    if (conditions.length > 0) {
+      return db.select().from(activityLog).where(and(...conditions)).orderBy(desc(activityLog.createdAt)).limit(limit);
+    }
     return db.select().from(activityLog).orderBy(desc(activityLog.createdAt)).limit(limit);
   }
 
@@ -1593,33 +1862,48 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard stats
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(scope?: ClinicScopeOptions): Promise<{
     totalPatients: number;
     todayAppointments: number;
     monthlyRevenue: number;
     pendingPayments: number;
   }> {
-    const [patientCount] = await db.select({ count: sql<number>`count(*)` }).from(patients);
+    let patientConditions = [];
+    let appointmentConditions = [];
+    let invoiceConditions = [];
+    let pendingConditions = [];
+    
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      patientConditions.push(eq(patients.organizationId, scope.clinicId));
+      appointmentConditions.push(eq(appointments.organizationId, scope.clinicId));
+      invoiceConditions.push(eq(invoices.organizationId, scope.clinicId));
+      pendingConditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
+
+    const [patientCount] = patientConditions.length > 0 
+      ? await db.select({ count: sql<number>`count(*)` }).from(patients).where(and(...patientConditions))
+      : await db.select({ count: sql<number>`count(*)` }).from(patients);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
+    appointmentConditions.push(gte(appointments.startTime, today), lte(appointments.startTime, tomorrow));
     const [todayCount] = await db.select({ count: sql<number>`count(*)` })
       .from(appointments)
-      .where(and(gte(appointments.startTime, today), lte(appointments.startTime, tomorrow)));
+      .where(and(...appointmentConditions));
 
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    invoiceConditions.push(gte(invoices.issuedDate, monthStart.toISOString().split('T')[0]));
     const [revenueResult] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(paid_amount as DECIMAL)), 0)` })
       .from(invoices)
-      .where(gte(invoices.issuedDate, monthStart.toISOString().split('T')[0]));
+      .where(and(...invoiceConditions));
 
+    pendingConditions.push(or(eq(invoices.status, 'sent'), eq(invoices.status, 'partial'), eq(invoices.status, 'overdue')));
     const [pendingResult] = await db.select({ total: sql<number>`COALESCE(SUM(CAST(final_amount as DECIMAL) - CAST(paid_amount as DECIMAL)), 0)` })
       .from(invoices)
-      .where(and(
-        or(eq(invoices.status, 'sent'), eq(invoices.status, 'partial'), eq(invoices.status, 'overdue')),
-      ));
+      .where(and(...pendingConditions));
 
     return {
       totalPatients: Number(patientCount?.count || 0),
@@ -1638,8 +1922,11 @@ export class DatabaseStorage implements IStorage {
     startDate?: string;
     endDate?: string;
     limit?: number 
-  }): Promise<(AuditLog & { user?: User })[]> {
+  }, scope?: ClinicScopeOptions): Promise<(AuditLog & { user?: User })[]> {
     const conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(auditLogs.organizationId, scope.clinicId));
+    }
     if (filters?.entityType) {
       conditions.push(eq(auditLogs.entityType, filters.entityType as any));
     }
@@ -1691,31 +1978,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Clinic Settings
-  async getClinicSettings(): Promise<ClinicSettings> {
-    const result = await db.select().from(clinicSettings).limit(1);
+  async getClinicSettings(scope?: ClinicScopeOptions): Promise<ClinicSettings> {
+    let conditions = [];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicSettings.organizationId, scope.clinicId));
+    }
+    const result = conditions.length > 0 
+      ? await db.select().from(clinicSettings).where(and(...conditions)).limit(1)
+      : await db.select().from(clinicSettings).limit(1);
     if (result.length === 0) {
-      const initial = await db.insert(clinicSettings).values({}).returning();
+      const initial = await db.insert(clinicSettings).values({
+        organizationId: scope?.clinicId
+      }).returning();
       return initial[0];
     }
     return result[0];
   }
 
-  async updateClinicSettings(data: Partial<InsertClinicSettings>): Promise<ClinicSettings> {
-    const settings = await this.getClinicSettings();
+  async updateClinicSettings(data: Partial<InsertClinicSettings>, scope?: ClinicScopeOptions): Promise<ClinicSettings> {
+    const settings = await this.getClinicSettings(scope);
+    let conditions = [eq(clinicSettings.id, settings.id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicSettings.organizationId, scope.clinicId));
+    }
     const result = await db.update(clinicSettings)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(clinicSettings.id, settings.id))
+      .where(and(...conditions))
       .returning();
     return result[0];
   }
 
   // Clinic Rooms
-  async getClinicRooms(): Promise<ClinicRoom[]> {
-    return db.select().from(clinicRooms).where(eq(clinicRooms.isActive, true)).orderBy(clinicRooms.name);
+  async getClinicRooms(scope?: ClinicScopeOptions): Promise<ClinicRoom[]> {
+    let conditions = [eq(clinicRooms.isActive, true)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicRooms.organizationId, scope.clinicId));
+    }
+    return db.select().from(clinicRooms).where(and(...conditions)).orderBy(clinicRooms.name);
   }
 
-  async getClinicRoom(id: string): Promise<ClinicRoom | undefined> {
-    const result = await db.select().from(clinicRooms).where(eq(clinicRooms.id, id)).limit(1);
+  async getClinicRoom(id: string, scope?: ClinicScopeOptions): Promise<ClinicRoom | undefined> {
+    let conditions = [eq(clinicRooms.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicRooms.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(clinicRooms).where(and(...conditions)).limit(1);
     return result[0];
   }
 
@@ -1724,24 +2031,40 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateClinicRoom(id: string, data: Partial<InsertClinicRoom>): Promise<ClinicRoom | undefined> {
-    const result = await db.update(clinicRooms).set(data).where(eq(clinicRooms.id, id)).returning();
+  async updateClinicRoom(id: string, data: Partial<InsertClinicRoom>, scope?: ClinicScopeOptions): Promise<ClinicRoom | undefined> {
+    let conditions = [eq(clinicRooms.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicRooms.organizationId, scope.clinicId));
+    }
+    const result = await db.update(clinicRooms).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteClinicRoom(id: string): Promise<boolean> {
-    const result = await db.update(clinicRooms).set({ isActive: false }).where(eq(clinicRooms.id, id)).returning();
+  async deleteClinicRoom(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(clinicRooms.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(clinicRooms.organizationId, scope.clinicId));
+    }
+    const result = await db.update(clinicRooms).set({ isActive: false }).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // External Labs
-  async getExternalLab(id: string): Promise<ExternalLab | undefined> {
-    const result = await db.select().from(externalLabs).where(eq(externalLabs.id, id)).limit(1);
+  async getExternalLab(id: string, scope?: ClinicScopeOptions): Promise<ExternalLab | undefined> {
+    let conditions = [eq(externalLabs.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(externalLabs.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(externalLabs).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getExternalLabs(): Promise<ExternalLab[]> {
-    return db.select().from(externalLabs).where(eq(externalLabs.isActive, true)).orderBy(externalLabs.name);
+  async getExternalLabs(scope?: ClinicScopeOptions): Promise<ExternalLab[]> {
+    let conditions = [eq(externalLabs.isActive, true)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(externalLabs.organizationId, scope.clinicId));
+    }
+    return db.select().from(externalLabs).where(and(...conditions)).orderBy(externalLabs.name);
   }
 
   async createExternalLab(lab: InsertExternalLab): Promise<ExternalLab> {
@@ -1749,29 +2072,43 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateExternalLab(id: string, data: Partial<InsertExternalLab>): Promise<ExternalLab | undefined> {
-    const result = await db.update(externalLabs).set(data).where(eq(externalLabs.id, id)).returning();
+  async updateExternalLab(id: string, data: Partial<InsertExternalLab>, scope?: ClinicScopeOptions): Promise<ExternalLab | undefined> {
+    let conditions = [eq(externalLabs.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(externalLabs.organizationId, scope.clinicId));
+    }
+    const result = await db.update(externalLabs).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteExternalLab(id: string): Promise<boolean> {
-    const result = await db.update(externalLabs).set({ isActive: false }).where(eq(externalLabs.id, id)).returning();
+  async deleteExternalLab(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(externalLabs.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(externalLabs.organizationId, scope.clinicId));
+    }
+    const result = await db.update(externalLabs).set({ isActive: false }).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
   // Lab Services
-  async getLabService(id: string): Promise<LabService | undefined> {
-    const result = await db.select().from(labServices).where(eq(labServices.id, id)).limit(1);
+  async getLabService(id: string, scope?: ClinicScopeOptions): Promise<LabService | undefined> {
+    let conditions = [eq(labServices.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labServices.organizationId, scope.clinicId));
+    }
+    const result = await db.select().from(labServices).where(and(...conditions)).limit(1);
     return result[0];
   }
 
-  async getLabServices(labId?: string): Promise<LabService[]> {
-    if (labId) {
-      return db.select().from(labServices)
-        .where(and(eq(labServices.labId, labId), eq(labServices.isActive, true)))
-        .orderBy(labServices.name);
+  async getLabServices(labId?: string, scope?: ClinicScopeOptions): Promise<LabService[]> {
+    let conditions = [eq(labServices.isActive, true)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labServices.organizationId, scope.clinicId));
     }
-    return db.select().from(labServices).where(eq(labServices.isActive, true)).orderBy(labServices.name);
+    if (labId) {
+      conditions.push(eq(labServices.labId, labId));
+    }
+    return db.select().from(labServices).where(and(...conditions)).orderBy(labServices.name);
   }
 
   async createLabService(service: InsertLabService): Promise<LabService> {
@@ -1779,13 +2116,21 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateLabService(id: string, data: Partial<InsertLabService>): Promise<LabService | undefined> {
-    const result = await db.update(labServices).set(data).where(eq(labServices.id, id)).returning();
+  async updateLabService(id: string, data: Partial<InsertLabService>, scope?: ClinicScopeOptions): Promise<LabService | undefined> {
+    let conditions = [eq(labServices.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labServices.organizationId, scope.clinicId));
+    }
+    const result = await db.update(labServices).set(data).where(and(...conditions)).returning();
     return result[0];
   }
 
-  async deleteLabService(id: string): Promise<boolean> {
-    const result = await db.update(labServices).set({ isActive: false }).where(eq(labServices.id, id)).returning();
+  async deleteLabService(id: string, scope?: ClinicScopeOptions): Promise<boolean> {
+    let conditions = [eq(labServices.id, id)];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(labServices.organizationId, scope.clinicId));
+    }
+    const result = await db.update(labServices).set({ isActive: false }).where(and(...conditions)).returning();
     return result.length > 0;
   }
 }
