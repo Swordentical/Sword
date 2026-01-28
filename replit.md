@@ -5,9 +5,9 @@
 
 GLAZER is a comprehensive, full-stack TypeScript application designed for multi-tenant dental clinic operations. Its primary purpose is to streamline patient management, appointment scheduling, treatment tracking, financial operations, inventory control, and lab work coordination. The system aims to enhance efficiency and organization within dental practices, offering a robust solution for managing all aspects of clinic operations with complete data isolation between clinics. Key capabilities include managing patient profiles, scheduling and tracking appointments, overseeing treatment plans, handling invoicing and payments, controlling inventory, coordinating lab work, and managing user roles.
 
-## Multi-Tenant Architecture (In Progress)
+## Multi-Tenant Architecture (Complete)
 
-The system is being transformed into a multi-tenant SaaS platform with the following design:
+The system has been transformed into a multi-tenant SaaS platform with the following design:
 
 ### Data Isolation Strategy
 - **Shared Database Model**: All clinics share a single PostgreSQL database
@@ -68,6 +68,24 @@ All routes now use `requireClinicScope` middleware for clinic isolation:
 Helper function `getScope(req)` extracts `clinicId` and `isSuperAdmin` from authenticated request.
 
 Note: Additional storage method scoping may be needed for full isolation in some routes.
+
+### Registration Flow (Simplified - Free)
+The registration system has been simplified to a free, two-step flow:
+
+**Step 1: Choose Mode**
+- **Create New Clinic**: User becomes `clinic_admin` with their own organization
+- **Join Existing Clinic**: User becomes `pending` and awaits admin approval
+
+**Step 2: Fill Registration Form**
+- Personal details (name, username, email, phone)
+- Password
+- Optional: Specialty
+
+**Endpoints:**
+- `POST /api/register` - Handles both modes (no Stripe required)
+- `GET /api/clinics` - Lists available clinics for "Join Clinic" dropdown
+
+**Note:** Stripe payment integration has been disabled. Registration is now free.
 
 ## User Preferences
 

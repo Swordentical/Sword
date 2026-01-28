@@ -247,7 +247,6 @@ function Router() {
       <ProtectedRoute path="/subscription" component={ManageSubscriptionPageWrapper} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />
-      <Route path="/registration/success" component={RegistrationSuccessPage} />
       <Route component={NotFound} />
     </Switch>
   );

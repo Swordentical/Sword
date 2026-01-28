@@ -4343,7 +4343,193 @@ export async function registerRoutes(
 
   // ==================== END SUBSCRIPTION ROUTES ====================
 
-  // ==================== REGISTRATION ROUTES (Payment-First Flow) ====================
+  // ==================== SIMPLE REGISTRATION (Free - No Stripe) ====================
+
+  // Simple registration endpoint - creates organization and user directly
+  app.post("/api/register", async (req, res) => {
+    try {
+      const { 
+        mode, // 'create_clinic' or 'join_clinic'
+        clinicName, // required for create_clinic mode
+        clinicSlug, // required for join_clinic mode
+        firstName,
+        lastName,
+        username,
+        email,
+        phone,
+        password,
+        role, // 'doctor', 'staff', 'student' for join_clinic mode
+        specialty,
+        university,
+        yearOfStudy,
+      } = req.body;
+
+      // Validate required fields
+      if (!firstName || !lastName || !username || !password) {
+        return res.status(400).json({ message: "First name, last name, username, and password are required" });
+      }
+
+      if (!mode || !['create_clinic', 'join_clinic'].includes(mode)) {
+        return res.status(400).json({ message: "Mode must be 'create_clinic' or 'join_clinic'" });
+      }
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Check if email already exists (if provided)
+      if (email) {
+        const systemScope: ClinicScopeOptions = { isSuperAdmin: true };
+        const allUsers = await storage.getUsers({}, systemScope);
+        const emailExists = allUsers.some((u: any) => u.email === email);
+        if (emailExists) {
+          return res.status(400).json({ message: "Email already exists" });
+        }
+      }
+
+      let organizationId: string;
+      let userRole: string;
+
+      if (mode === 'create_clinic') {
+        // Create new organization
+        if (!clinicName) {
+          return res.status(400).json({ message: "Clinic name is required for creating a new clinic" });
+        }
+
+        // Generate slug from clinic name
+        const slug = clinicName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        
+        // Check if slug already exists
+        const existingOrg = await db.execute(sql`
+          SELECT id FROM organizations WHERE slug = ${slug}
+        `);
+        
+        if (existingOrg.rows.length > 0) {
+          return res.status(400).json({ message: "A clinic with this name already exists. Please choose a different name." });
+        }
+
+        // Create organization
+        const orgId = crypto.randomUUID();
+        await db.execute(sql`
+          INSERT INTO organizations (id, name, slug, created_at, updated_at)
+          VALUES (${orgId}, ${clinicName}, ${slug}, NOW(), NOW())
+        `);
+        
+        organizationId = orgId;
+        userRole = 'clinic_admin'; // First user becomes clinic admin
+
+        // Create default clinic settings via direct insert
+        await db.execute(sql`
+          INSERT INTO clinic_settings (organization_id, clinic_name, address, phone, email, website, currency, timezone, appointment_duration, working_hours_start, working_hours_end, working_days, created_at, updated_at)
+          VALUES (${organizationId}, ${clinicName}, '', ${phone || ''}, ${email || ''}, '', 'USD', 'UTC', 30, '09:00', '17:00', ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], NOW(), NOW())
+        `);
+
+      } else {
+        // Join existing clinic
+        if (!clinicSlug) {
+          return res.status(400).json({ message: "Clinic identifier is required to join an existing clinic" });
+        }
+
+        // Find organization by slug
+        const orgResult = await db.execute(sql`
+          SELECT id FROM organizations WHERE slug = ${clinicSlug}
+        `);
+        
+        if (orgResult.rows.length === 0) {
+          return res.status(400).json({ message: "Clinic not found. Please check the clinic identifier." });
+        }
+
+        organizationId = (orgResult.rows[0] as any).id;
+        userRole = 'pending'; // Needs approval from clinic admin
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        firstName,
+        lastName,
+        username,
+        email: email || null,
+        phone: phone || null,
+        password: hashedPassword,
+        role: userRole as "super_admin" | "clinic_admin" | "admin" | "doctor" | "staff" | "student" | "pending",
+        organizationId,
+        specialty: specialty || null,
+        university: university || null,
+        yearOfStudy: yearOfStudy || null,
+        isActive: userRole !== 'pending', // Active unless pending approval
+      });
+
+      // Log activity
+      await storage.logActivity({
+        userId: user.id,
+        action: 'user_registered',
+        entityType: 'user',
+        entityId: user.id,
+        details: mode === 'create_clinic' 
+          ? `New clinic "${clinicName}" created with admin user ${username}` 
+          : `User ${username} requested to join clinic`,
+      });
+
+      // If pending, notify clinic admins
+      if (userRole === 'pending') {
+        try {
+          // Get clinic admins to notify
+          const admins = await storage.getUsersByClinic(organizationId);
+          const adminUsers = admins.filter((u: any) => ['clinic_admin', 'admin'].includes(u.role));
+          
+          for (const admin of adminUsers) {
+            // Insert notification directly
+            await db.execute(sql`
+              INSERT INTO notifications (user_id, type, title, message, data, is_read, created_at)
+              VALUES (${admin.id}, 'user_approval', 'New User Registration', 
+                ${`${firstName} ${lastName} has requested to join your clinic and is awaiting approval.`},
+                ${JSON.stringify({ userId: user.id, username })}, false, NOW())
+            `);
+          }
+        } catch (notifyError) {
+          console.error("Failed to notify admins:", notifyError);
+        }
+      }
+
+      res.status(201).json({
+        message: mode === 'create_clinic' 
+          ? "Clinic and account created successfully! You can now sign in."
+          : "Registration request submitted. A clinic administrator will review your request.",
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+          isPending: userRole === 'pending',
+        },
+      });
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed. Please try again." });
+    }
+  });
+
+  // Get list of clinics (for join clinic dropdown)
+  app.get("/api/clinics", async (req, res) => {
+    try {
+      const result = await db.execute(sql`
+        SELECT id, name, slug FROM organizations ORDER BY name
+      `);
+      res.json({ clinics: result.rows });
+    } catch (error) {
+      console.error("Error fetching clinics:", error);
+      res.status(500).json({ message: "Failed to fetch clinics" });
+    }
+  });
+
+  // ==================== END SIMPLE REGISTRATION ====================
+
+  // ==================== REGISTRATION ROUTES (Payment-First Flow - LEGACY) ====================
 
   // Validate promo code for registration (no auth required)
   app.post("/api/registration/validate-promo", async (req, res) => {
