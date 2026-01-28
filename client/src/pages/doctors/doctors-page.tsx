@@ -37,7 +37,7 @@ function getSpecialtyLabel(value: string | null | undefined): string {
 export default function DoctorsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = ["super_admin", "clinic_admin", "admin"].includes(user?.role || "");
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

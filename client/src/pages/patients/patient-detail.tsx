@@ -81,7 +81,7 @@ function InfoRow({ label, value, icon: Icon }: { label: string; value: string | 
 function PatientPhotoSection({ patient, initials, age }: { patient: Patient; initials: string; age: number | null }) {
   const { toast } = useToast();
   const { user } = useAuth();
-  const canUpload = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
+  const canUpload = ["super_admin", "clinic_admin", "admin", "doctor", "staff"].includes(user?.role || "");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useState<HTMLInputElement | null>(null);
 
@@ -2812,7 +2812,7 @@ export default function PatientDetail() {
   const [editPatientOpen, setEditPatientOpen] = useState(false);
   const { user } = useAuth();
 
-  const canEditMedicalHistory = user?.role === "admin" || user?.role === "doctor" || user?.role === "staff";
+  const canEditMedicalHistory = ["super_admin", "clinic_admin", "admin", "doctor", "staff"].includes(user?.role || "");
 
   const { data: patient, isLoading } = useQuery<Patient>({
     queryKey: ["/api/patients", params.id],

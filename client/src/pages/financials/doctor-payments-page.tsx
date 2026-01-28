@@ -431,7 +431,7 @@ type SortDirection = "asc" | "desc";
 
 export default function DoctorPaymentsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = ["super_admin", "clinic_admin", "admin"].includes(user?.role || "");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editPayment, setEditPayment] = useState<DoctorPaymentWithDoctor | null>(null);
   const [deletePayment, setDeletePayment] = useState<DoctorPaymentWithDoctor | null>(null);

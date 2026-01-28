@@ -33,6 +33,7 @@ import {
   Mail,
   Phone,
   Globe,
+  Clock,
 } from "lucide-react";
 import glazerLogo from "@/assets/glazer-logo.png";
 import { Button } from "@/components/ui/button";
@@ -102,10 +103,13 @@ const userSchema = z.object({
 type UserFormValues = z.infer<typeof userSchema>;
 
 const ROLE_CONFIG = {
+  super_admin: { icon: Shield, label: "Super Admin", color: "text-red-500" },
+  clinic_admin: { icon: Building2, label: "Clinic Admin", color: "text-indigo-500" },
   admin: { icon: Shield, label: "Admin", color: "text-purple-500" },
   doctor: { icon: Stethoscope, label: "Doctor", color: "text-emerald-500" },
   staff: { icon: UserIcon, label: "Staff", color: "text-blue-500" },
   student: { icon: GraduationCap, label: "Student", color: "text-amber-500" },
+  pending: { icon: Clock, label: "Pending Approval", color: "text-gray-500" },
 };
 
 function AddUserDialog({
@@ -314,7 +318,7 @@ function ClinicSettings() {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomDescription, setNewRoomDescription] = useState("");
   
-  const isAdmin = user?.role === "admin";
+  const isAdmin = ["super_admin", "clinic_admin", "admin"].includes(user?.role || "");
 
   const { data: settings, isLoading } = useQuery<{
     id: string;
@@ -1472,7 +1476,7 @@ function DangerZone() {
   };
 
   // Only show for admins
-  if (user?.role !== "admin") {
+  if (!["super_admin", "clinic_admin", "admin"].includes(user?.role || "")) {
     return null;
   }
 
