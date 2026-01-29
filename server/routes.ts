@@ -4424,8 +4424,8 @@ export async function registerRoutes(
 
         // Create default clinic settings via direct insert
         await db.execute(sql`
-          INSERT INTO clinic_settings (organization_id, clinic_name, address, phone, email, website, currency, timezone, appointment_duration, working_hours_start, working_hours_end, working_days, created_at, updated_at)
-          VALUES (${organizationId}, ${clinicName}, '', ${phone || ''}, ${email || ''}, '', 'USD', 'UTC', 30, '09:00', '17:00', ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], NOW(), NOW())
+          INSERT INTO clinic_settings (organization_id, clinic_name, address, phone, email, website, updated_at)
+          VALUES (${organizationId}, ${clinicName}, '', ${phone || ''}, ${email || ''}, '', NOW())
         `);
 
         console.log(`[Registration] Created new clinic "${clinicName}" (${slug}) with admin user "${username}"`);
