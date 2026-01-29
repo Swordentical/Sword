@@ -21,6 +21,9 @@ import {
   Lock,
   CreditCard,
   Wallet,
+  Crown,
+  Building2,
+  UserCog,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -60,56 +63,56 @@ const mainNavItems: NavItem[] = [
     title: "Dashboard",
     url: "/",
     icon: LayoutDashboard,
-    roles: ["admin", "doctor", "staff", "student"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor", "staff", "student"],
     feature: "dashboard",
   },
   {
     title: "Patients",
     url: "/patients",
     icon: Users,
-    roles: ["admin", "doctor", "staff", "student"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor", "staff", "student"],
     feature: "patients",
   },
   {
     title: "Appointments",
     url: "/appointments",
     icon: Calendar,
-    roles: ["admin", "doctor", "staff", "student"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor", "staff", "student"],
     feature: "appointments",
   },
   {
     title: "Doctors",
     url: "/doctors",
     icon: Stethoscope,
-    roles: ["admin", "doctor", "staff"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor", "staff"],
     feature: "users",
   },
   {
     title: "Services",
     url: "/services",
     icon: ClipboardList,
-    roles: ["admin", "doctor"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor"],
     feature: "services",
   },
   {
     title: "Inventory",
     url: "/inventory",
     icon: Package,
-    roles: ["admin", "doctor"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor"],
     feature: "inventory",
   },
   {
     title: "Lab Work",
     url: "/lab-work",
     icon: FlaskConical,
-    roles: ["admin", "doctor"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor"],
     feature: "labWork",
   },
   {
     title: "Financials",
     url: "/financials",
     icon: DollarSign,
-    roles: ["admin", "doctor"],
+    roles: ["super_admin", "clinic_admin", "admin", "doctor"],
     feature: "financials",
   },
   {
@@ -123,40 +126,40 @@ const mainNavItems: NavItem[] = [
     title: "Reports",
     url: "/reports",
     icon: BarChart3,
-    roles: ["admin"],
+    roles: ["super_admin", "clinic_admin", "admin"],
     feature: "reports",
   },
   {
     title: "Expenses",
     url: "/expenses",
     icon: Receipt,
-    roles: ["admin", "staff", "student"],
+    roles: ["super_admin", "clinic_admin", "admin", "staff", "student"],
     feature: "expenses",
   },
   {
     title: "Insurance Claims",
     url: "/insurance-claims",
     icon: Shield,
-    roles: ["admin", "staff"],
+    roles: ["super_admin", "clinic_admin", "admin", "staff"],
     feature: "insuranceClaims",
   },
   {
     title: "Doctor Payments",
     url: "/doctor-payments",
     icon: Wallet,
-    roles: ["admin"],
+    roles: ["super_admin", "clinic_admin", "admin"],
   },
   {
     title: "Audit Logs",
     url: "/audit-logs",
     icon: ShieldCheck,
-    roles: ["admin"],
+    roles: ["super_admin", "clinic_admin", "admin"],
   },
   {
     title: "User Management",
     url: "/admin/users",
     icon: ShieldCheck,
-    roles: ["admin"],
+    roles: ["super_admin", "clinic_admin", "admin"],
     feature: "users",
   },
 ];
@@ -166,17 +169,23 @@ const settingsNavItems: NavItem[] = [
     title: "Settings",
     url: "/settings",
     icon: Settings,
-    roles: ["admin"],
+    roles: ["super_admin", "clinic_admin", "admin"],
     feature: "settings",
   },
 ];
 
 function getRoleIcon(role: UserRole) {
   switch (role) {
+    case "super_admin":
+      return <Crown className="h-3 w-3" />;
+    case "clinic_admin":
+      return <Building2 className="h-3 w-3" />;
     case "admin":
-      return <Settings className="h-3 w-3" />;
+      return <UserCog className="h-3 w-3" />;
     case "doctor":
       return <Stethoscope className="h-3 w-3" />;
+    case "staff":
+      return <Users className="h-3 w-3" />;
     case "student":
       return <GraduationCap className="h-3 w-3" />;
     default:
@@ -185,7 +194,16 @@ function getRoleIcon(role: UserRole) {
 }
 
 function getRoleLabel(role: UserRole) {
-  return role.charAt(0).toUpperCase() + role.slice(1);
+  const labels: Record<UserRole, string> = {
+    super_admin: "Super Admin",
+    clinic_admin: "Clinic Admin",
+    admin: "Admin",
+    doctor: "Doctor",
+    staff: "Staff",
+    student: "Student",
+    pending: "Pending"
+  };
+  return labels[role] || role;
 }
 
 export function AppSidebar() {
