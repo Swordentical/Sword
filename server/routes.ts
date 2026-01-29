@@ -1513,14 +1513,15 @@ export async function registerRoutes(
   // Get single invoice with items
   app.get("/api/invoices/:id", requireClinicScope, async (req, res) => {
     try {
-      const invoice = await storage.getInvoice(req.params.id);
+      const scope = getScope(req);
+      const invoice = await storage.getInvoice(req.params.id, scope);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
 
-      const items = await storage.getInvoiceItems(invoice.id);
-      const payments = await storage.getPayments({ invoiceId: invoice.id });
-      const patientsList = await storage.getPatients({});
+      const items = await storage.getInvoiceItems(invoice.id, scope);
+      const payments = await storage.getPayments({ invoiceId: invoice.id }, scope);
+      const patientsList = await storage.getPatients({}, scope);
       const patient = patientsList.find(p => p.id === invoice.patientId);
 
       res.json({ ...invoice, items, payments, patient });
@@ -1532,6 +1533,7 @@ export async function registerRoutes(
   // Update invoice (status changes, send/void, etc.)
   app.patch("/api/invoices/:id", requireClinicScope, async (req, res) => {
     try {
+      const scope = getScope(req);
       const updateSchema = insertInvoiceSchema.pick({
         status: true,
         notes: true,
@@ -1548,12 +1550,12 @@ export async function registerRoutes(
       }
 
       // Get previous state for audit log
-      const previousInvoice = await storage.getInvoice(req.params.id);
+      const previousInvoice = await storage.getInvoice(req.params.id, scope);
       if (!previousInvoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
 
-      const invoice = await storage.updateInvoice(req.params.id, parsed.data);
+      const invoice = await storage.updateInvoice(req.params.id, parsed.data, scope);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -1686,7 +1688,8 @@ export async function registerRoutes(
 
   app.delete("/api/invoices/:invoiceId/items/:itemId", requireClinicScope, async (req, res) => {
     try {
-      const invoice = await storage.getInvoice(req.params.invoiceId);
+      const scope = getScope(req);
+      const invoice = await storage.getInvoice(req.params.invoiceId, scope);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -1694,10 +1697,10 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Can only remove items from draft invoices" });
       }
 
-      await storage.deleteInvoiceItem(req.params.itemId);
+      await storage.deleteInvoiceItem(req.params.itemId, scope);
 
       // Recalculate invoice totals
-      const items = await storage.getInvoiceItems(invoice.id);
+      const items = await storage.getInvoiceItems(invoice.id, scope);
       const totalAmount = items.reduce((sum, i) => sum + Number(i.totalPrice), 0);
       let finalAmount = totalAmount;
       if (invoice.discountType && invoice.discountValue) {
@@ -1999,7 +2002,7 @@ export async function registerRoutes(
   // Invoice Adjustments (write-offs, discounts, corrections, fees)
   app.get("/api/invoices/:id/adjustments", requireClinicScope, async (req, res) => {
     try {
-      const adjustments = await storage.getInvoiceAdjustments(req.params.id);
+      const adjustments = await storage.getInvoiceAdjustments(req.params.id, getScope(req));
       res.json(adjustments);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch adjustments" });
@@ -2008,7 +2011,8 @@ export async function registerRoutes(
 
   app.post("/api/invoices/:id/adjustments", requireClinicScope, async (req, res) => {
     try {
-      const invoice = await storage.getInvoice(req.params.id);
+      const scope = getScope(req);
+      const invoice = await storage.getInvoice(req.params.id, scope);
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
@@ -2106,7 +2110,7 @@ export async function registerRoutes(
 
   app.get("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
-      const expense = await storage.getExpense(req.params.id);
+      const expense = await storage.getExpense(req.params.id, getScope(req));
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
@@ -2159,14 +2163,15 @@ export async function registerRoutes(
   app.patch("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
       // Get previous state for audit log
-      const previousExpense = await storage.getExpense(req.params.id);
+      const previousExpense = await storage.getExpense(req.params.id, scope);
       if (!previousExpense) {
         return res.status(404).json({ message: "Expense not found" });
       }
 
-      const expense = await storage.updateExpense(req.params.id, req.body);
+      const expense = await storage.updateExpense(req.params.id, req.body, scope);
       if (!expense) {
         return res.status(404).json({ message: "Expense not found" });
       }
@@ -2201,14 +2206,15 @@ export async function registerRoutes(
   app.delete("/api/expenses/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
       // Get previous state for audit log
-      const previousExpense = await storage.getExpense(req.params.id);
+      const previousExpense = await storage.getExpense(req.params.id, scope);
       if (!previousExpense) {
         return res.status(404).json({ message: "Expense not found" });
       }
 
-      const success = await storage.deleteExpense(req.params.id);
+      const success = await storage.deleteExpense(req.params.id, scope);
       if (!success) {
         return res.status(404).json({ message: "Expense not found" });
       }
@@ -2258,7 +2264,7 @@ export async function registerRoutes(
 
   app.get("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
-      const payment = await storage.getDoctorPayment(req.params.id);
+      const payment = await storage.getDoctorPayment(req.params.id, getScope(req));
       if (!payment) {
         return res.status(404).json({ message: "Doctor payment not found" });
       }
@@ -2326,13 +2332,14 @@ export async function registerRoutes(
   app.patch("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
-      const previousPayment = await storage.getDoctorPayment(req.params.id);
+      const previousPayment = await storage.getDoctorPayment(req.params.id, scope);
       if (!previousPayment) {
         return res.status(404).json({ message: "Doctor payment not found" });
       }
 
-      const payment = await storage.updateDoctorPayment(req.params.id, req.body);
+      const payment = await storage.updateDoctorPayment(req.params.id, req.body, scope);
       if (!payment) {
         return res.status(404).json({ message: "Doctor payment not found" });
       }
@@ -2366,13 +2373,14 @@ export async function registerRoutes(
   app.delete("/api/doctor-payments/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
-      const previousPayment = await storage.getDoctorPayment(req.params.id);
+      const previousPayment = await storage.getDoctorPayment(req.params.id, scope);
       if (!previousPayment) {
         return res.status(404).json({ message: "Doctor payment not found" });
       }
 
-      const success = await storage.deleteDoctorPayment(req.params.id);
+      const success = await storage.deleteDoctorPayment(req.params.id, scope);
       if (!success) {
         return res.status(404).json({ message: "Doctor payment not found" });
       }
@@ -2539,7 +2547,7 @@ export async function registerRoutes(
 
   app.get("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
-      const claim = await storage.getInsuranceClaim(req.params.id);
+      const claim = await storage.getInsuranceClaim(req.params.id, getScope(req));
       if (!claim) {
         return res.status(404).json({ message: "Insurance claim not found" });
       }
@@ -2581,7 +2589,7 @@ export async function registerRoutes(
 
   app.patch("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
-      const claim = await storage.updateInsuranceClaim(req.params.id, req.body);
+      const claim = await storage.updateInsuranceClaim(req.params.id, req.body, getScope(req));
       if (!claim) {
         return res.status(404).json({ message: "Insurance claim not found" });
       }
@@ -2602,7 +2610,7 @@ export async function registerRoutes(
 
   app.delete("/api/insurance-claims/:id", requireClinicScope, async (req, res) => {
     try {
-      const success = await storage.deleteInsuranceClaim(req.params.id);
+      const success = await storage.deleteInsuranceClaim(req.params.id, getScope(req));
       if (!success) {
         return res.status(404).json({ message: "Insurance claim not found" });
       }
@@ -2678,9 +2686,10 @@ export async function registerRoutes(
   app.patch("/api/inventory/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
       // Get previous state for audit log
-      const previousItem = await storage.getInventoryItem(req.params.id);
+      const previousItem = await storage.getInventoryItem(req.params.id, scope);
 
       const updateSchema = insertInventoryItemSchema.pick({
         name: true,
@@ -2700,7 +2709,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
-      const item = await storage.updateInventoryItem(req.params.id, parsed.data);
+      const item = await storage.updateInventoryItem(req.params.id, parsed.data, scope);
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
@@ -2749,12 +2758,13 @@ export async function registerRoutes(
   app.delete("/api/inventory/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
-      const item = await storage.getInventoryItem(req.params.id);
+      const scope = getScope(req);
+      const item = await storage.getInventoryItem(req.params.id, scope);
       if (!item) {
         return res.status(404).json({ message: "Item not found" });
       }
 
-      const deleted = await storage.deleteInventoryItem(req.params.id);
+      const deleted = await storage.deleteInventoryItem(req.params.id, scope);
       if (!deleted) {
         return res.status(404).json({ message: "Item not found" });
       }
@@ -2850,9 +2860,10 @@ export async function registerRoutes(
   app.patch("/api/lab-cases/:id", requireClinicScope, async (req, res) => {
     try {
       const user = req.user as any;
+      const scope = getScope(req);
       
       // Get previous state for audit log
-      const previousLabCase = await storage.getLabCase(req.params.id);
+      const previousLabCase = await storage.getLabCase(req.params.id, scope);
 
       const updateSchema = insertLabCaseSchema.pick({
         patientId: true,
@@ -2876,7 +2887,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: parsed.error.message });
       }
 
-      const labCase = await storage.updateLabCase(req.params.id, parsed.data);
+      const labCase = await storage.updateLabCase(req.params.id, parsed.data, scope);
       if (!labCase) {
         return res.status(404).json({ message: "Lab case not found" });
       }
@@ -2911,7 +2922,7 @@ export async function registerRoutes(
 
   app.get("/api/external-labs/:id", requireClinicScope, async (req, res) => {
     try {
-      const lab = await storage.getExternalLab(req.params.id);
+      const lab = await storage.getExternalLab(req.params.id, getScope(req));
       if (!lab) {
         return res.status(404).json({ message: "Lab not found" });
       }
@@ -2923,7 +2934,7 @@ export async function registerRoutes(
 
   app.get("/api/external-labs/:id/services", requireClinicScope, async (req, res) => {
     try {
-      const services = await storage.getLabServices(req.params.id);
+      const services = await storage.getLabServices(req.params.id, getScope(req));
       res.json(services);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch lab services" });
@@ -2949,7 +2960,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
       }
-      const lab = await storage.updateExternalLab(req.params.id, parsed.data);
+      const lab = await storage.updateExternalLab(req.params.id, parsed.data, getScope(req));
       if (!lab) {
         return res.status(404).json({ message: "Lab not found" });
       }
@@ -2961,7 +2972,7 @@ export async function registerRoutes(
 
   app.delete("/api/external-labs/:id", requireClinicScope, async (req, res) => {
     try {
-      const deleted = await storage.deleteExternalLab(req.params.id);
+      const deleted = await storage.deleteExternalLab(req.params.id, getScope(req));
       if (!deleted) {
         return res.status(404).json({ message: "Lab not found" });
       }
@@ -2984,7 +2995,7 @@ export async function registerRoutes(
 
   app.get("/api/lab-services/:id", requireClinicScope, async (req, res) => {
     try {
-      const service = await storage.getLabService(req.params.id);
+      const service = await storage.getLabService(req.params.id, getScope(req));
       if (!service) {
         return res.status(404).json({ message: "Service not found" });
       }
@@ -3013,7 +3024,7 @@ export async function registerRoutes(
       if (!parsed.success) {
         return res.status(400).json({ message: parsed.error.message });
       }
-      const service = await storage.updateLabService(req.params.id, parsed.data);
+      const service = await storage.updateLabService(req.params.id, parsed.data, getScope(req));
       if (!service) {
         return res.status(404).json({ message: "Service not found" });
       }
@@ -3025,7 +3036,7 @@ export async function registerRoutes(
 
   app.delete("/api/lab-services/:id", requireClinicScope, async (req, res) => {
     try {
-      const deleted = await storage.deleteLabService(req.params.id);
+      const deleted = await storage.deleteLabService(req.params.id, getScope(req));
       if (!deleted) {
         return res.status(404).json({ message: "Service not found" });
       }
@@ -3276,7 +3287,7 @@ export async function registerRoutes(
 
   app.patch("/api/clinic-rooms/:id", requireClinicScope, async (req, res) => {
     try {
-      const room = await storage.updateClinicRoom(req.params.id, req.body);
+      const room = await storage.updateClinicRoom(req.params.id, req.body, getScope(req));
       if (!room) {
         return res.status(404).json({ message: "Room not found" });
       }
@@ -3297,12 +3308,13 @@ export async function registerRoutes(
 
   app.delete("/api/clinic-rooms/:id", requireClinicScope, async (req, res) => {
     try {
-      const room = await storage.getClinicRoom(req.params.id);
+      const scope = getScope(req);
+      const room = await storage.getClinicRoom(req.params.id, scope);
       if (!room) {
         return res.status(404).json({ message: "Room not found" });
       }
 
-      await storage.deleteClinicRoom(req.params.id);
+      await storage.deleteClinicRoom(req.params.id, scope);
 
       await storage.logActivity({
         userId: (req.user as any).id,
