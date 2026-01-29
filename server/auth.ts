@@ -90,45 +90,8 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Auth routes
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const { username, password, firstName, lastName, email, phone } = req.body;
-
-      if (!username || !password || !firstName || !lastName) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(409).json({ message: "Username already exists" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Always set role to 'pending' - admin must approve and assign role
-      const user = await storage.createUser({
-        username,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        email: email || null,
-        phone: phone || null,
-        role: "pending",
-        isActive: true,
-      });
-
-      const { password: _, ...userWithoutPassword } = user;
-
-      // Don't auto-login pending users - they must wait for admin approval
-      res.status(201).json({
-        message: "Registration successful. Your account is pending approval by an administrator.",
-        user: userWithoutPassword,
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Registration failed" });
-    }
-  });
+  // NOTE: Registration is handled in routes.ts via /api/register with create_clinic and join_clinic modes
+  // The old registration endpoint has been removed in favor of the new multi-tenant registration flow
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
