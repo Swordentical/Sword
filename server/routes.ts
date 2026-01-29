@@ -1429,13 +1429,14 @@ export async function registerRoutes(
   app.get("/api/invoices", requireClinicScope, async (req, res) => {
     try {
       const { patientId, status } = req.query;
+      const scope = getScope(req);
       const invoicesList = await storage.getInvoices({
         patientId: patientId as string,
         status: status as string,
-      });
+      }, scope);
 
       // Enrich with patient data
-      const patientsList = await storage.getPatients({});
+      const patientsList = await storage.getPatients({}, scope);
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
       const enriched = invoicesList.map(inv => ({
@@ -1723,7 +1724,7 @@ export async function registerRoutes(
       const { invoiceId } = req.query;
       const paymentsList = await storage.getPayments({
         invoiceId: invoiceId as string,
-      });
+      }, getScope(req));
       res.json(paymentsList);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch payments" });
@@ -2096,7 +2097,7 @@ export async function registerRoutes(
         category: category as string,
         startDate: startDate as string,
         endDate: endDate as string,
-      });
+      }, getScope(req));
       res.json(expensesList);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch expenses" });
@@ -2248,7 +2249,7 @@ export async function registerRoutes(
         startDate: startDate as string,
         endDate: endDate as string,
         paymentType: paymentType as string,
-      });
+      }, getScope(req));
       res.json(paymentsList);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch doctor payments" });
@@ -2529,7 +2530,7 @@ export async function registerRoutes(
       const claims = await storage.getInsuranceClaims({
         status: status as string,
         patientId: patientId as string,
-      });
+      }, getScope(req));
       res.json(claims);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch insurance claims" });
@@ -2627,7 +2628,7 @@ export async function registerRoutes(
       const items = await storage.getInventoryItems({
         category: category as string,
         status: status as string,
-      });
+      }, getScope(req));
       res.json(items);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch inventory" });
@@ -2636,7 +2637,7 @@ export async function registerRoutes(
 
   app.get("/api/inventory/low-stock", requireClinicScope, async (req, res) => {
     try {
-      const items = await storage.getInventoryItems({});
+      const items = await storage.getInventoryItems({}, getScope(req));
       const lowStockItems = items.filter(item => 
         item.currentQuantity <= item.minimumQuantity
       );
@@ -2780,13 +2781,14 @@ export async function registerRoutes(
   app.get("/api/lab-cases", requireClinicScope, async (req, res) => {
     try {
       const { status, patientId } = req.query;
+      const scope = getScope(req);
       const cases = await storage.getLabCases({
         status: status as string,
         patientId: patientId as string,
-      });
+      }, scope);
 
       // Enrich with patient data
-      const patientsList = await storage.getPatients({});
+      const patientsList = await storage.getPatients({}, scope);
       const patientMap = new Map(patientsList.map(p => [p.id, p]));
 
       const enriched = cases.map(c => ({
@@ -2900,7 +2902,7 @@ export async function registerRoutes(
   // External Labs - admin only for modifications
   app.get("/api/external-labs", requireClinicScope, async (req, res) => {
     try {
-      const labs = await storage.getExternalLabs();
+      const labs = await storage.getExternalLabs(getScope(req));
       res.json(labs);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch external labs" });
@@ -2973,7 +2975,7 @@ export async function registerRoutes(
   app.get("/api/lab-services", requireClinicScope, async (req, res) => {
     try {
       const labId = req.query.labId as string | undefined;
-      const services = await storage.getLabServices(labId);
+      const services = await storage.getLabServices(labId, getScope(req));
       res.json(services);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch lab services" });
@@ -3036,7 +3038,7 @@ export async function registerRoutes(
   // Doctors management - admin only for modifications
   app.get("/api/doctors", requireClinicScope, async (req, res) => {
     try {
-      const doctors = await storage.getUsers({ role: "doctor" });
+      const doctors = await storage.getUsers({ role: "doctor" }, getScope(req));
       res.json(doctors.map(d => ({ ...d, password: undefined })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch doctors" });
@@ -3211,7 +3213,7 @@ export async function registerRoutes(
   // Clinic Settings
   app.get("/api/clinic-settings", requireClinicScope, async (req, res) => {
     try {
-      const settings = await storage.getClinicSettings();
+      const settings = await storage.getClinicSettings(getScope(req));
       res.json(settings);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch clinic settings" });
@@ -3239,7 +3241,7 @@ export async function registerRoutes(
   // Clinic Rooms
   app.get("/api/clinic-rooms", requireClinicScope, async (req, res) => {
     try {
-      const rooms = await storage.getClinicRooms();
+      const rooms = await storage.getClinicRooms(getScope(req));
       res.json(rooms);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch clinic rooms" });
