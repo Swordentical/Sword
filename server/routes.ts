@@ -4391,9 +4391,10 @@ export async function registerRoutes(
 
       let organizationId: string;
       let userRole: string;
+      let isActive: boolean;
 
       if (mode === 'create_clinic') {
-        // Create new organization
+        // Create new organization - user becomes clinic_admin immediately
         if (!clinicName) {
           return res.status(400).json({ message: "Clinic name is required for creating a new clinic" });
         }
@@ -4418,7 +4419,8 @@ export async function registerRoutes(
         `);
         
         organizationId = orgId;
-        userRole = 'clinic_admin'; // First user becomes clinic admin
+        userRole = 'clinic_admin'; // First user becomes clinic admin - NO approval needed
+        isActive = true; // Clinic admins are active immediately
 
         // Create default clinic settings via direct insert
         await db.execute(sql`
@@ -4426,8 +4428,10 @@ export async function registerRoutes(
           VALUES (${organizationId}, ${clinicName}, '', ${phone || ''}, ${email || ''}, '', 'USD', 'UTC', 30, '09:00', '17:00', ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday'], NOW(), NOW())
         `);
 
+        console.log(`[Registration] Created new clinic "${clinicName}" (${slug}) with admin user "${username}"`);
+
       } else {
-        // Join existing clinic
+        // Join existing clinic - user is pending until approved
         if (!clinicSlug) {
           return res.status(400).json({ message: "Clinic identifier is required to join an existing clinic" });
         }
@@ -4443,6 +4447,9 @@ export async function registerRoutes(
 
         organizationId = (orgResult.rows[0] as any).id;
         userRole = 'pending'; // Needs approval from clinic admin
+        isActive = false; // Pending users are NOT active until approved
+
+        console.log(`[Registration] User "${username}" requested to join clinic (slug: ${clinicSlug})`);
       }
 
       // Hash password
@@ -4461,7 +4468,8 @@ export async function registerRoutes(
         specialty: specialty || null,
         university: university || null,
         yearOfStudy: yearOfStudy || null,
-        isActive: userRole !== 'pending', // Active unless pending approval
+        isActive, // Clinic admins are active, pending users are not
+        isOrganizationOwner: mode === 'create_clinic', // Set as owner if creating clinic
       });
 
       // Log activity
