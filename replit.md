@@ -24,6 +24,29 @@ The system has been transformed into a multi-tenant SaaS platform with the follo
 - **student**: Dental students with limited access
 - **pending**: Newly registered users awaiting approval
 
+### Role-Based Access Control (Navigation Tabs)
+
+| Feature | Super Admin | Clinic Admin | Admin | Doctor | Staff | Student |
+|---------|-------------|--------------|-------|--------|-------|---------|
+| Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Patients | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Appointments | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Doctors | ✓ | ✓ | ✓ | ✓ | ✓ | - |
+| Services | ✓ | ✓ | ✓ | ✓ | - | - |
+| Inventory | ✓ | ✓ | ✓ | ✓ | - | - |
+| Lab Work | ✓ | ✓ | ✓ | ✓ | - | - |
+| Financials | ✓ | ✓ | ✓ | ✓ | - | - |
+| My Production | - | - | - | ✓ | - | - |
+| Reports | ✓ | ✓ | ✓ | - | - | - |
+| Expenses | ✓ | ✓ | ✓ | - | ✓ | ✓ |
+| Insurance Claims | ✓ | ✓ | ✓ | - | ✓ | - |
+| Doctor Payments | ✓ | ✓ | ✓ | - | - | - |
+| Audit Logs | ✓ | ✓ | ✓ | - | - | - |
+| User Management | ✓ | ✓ | ✓ | - | - | - |
+| Settings | ✓ | ✓ | ✓ | - | - | - |
+
+**Note:** Pending users have no access until approved by an admin.
+
 ### Key Files
 - `shared/schema.ts`: Database schema with organizationId on all clinic tables
 - `server/middleware/clinic-scope.ts`: Express middleware for clinic isolation

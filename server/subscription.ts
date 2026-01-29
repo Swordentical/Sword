@@ -101,22 +101,24 @@ export class SubscriptionService {
 
     const organization = org[0];
     let plan: SubscriptionPlan | null = null;
-    let features: PlanFeatures = DEFAULT_FEATURES;
+    let features: PlanFeatures = FULL_FEATURES; // Default to full features (free registration)
 
     if (organization.subscriptionPlanId) {
       const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, organization.subscriptionPlanId)).limit(1);
       if (planResult[0]) {
         plan = planResult[0];
-        features = (plan.features as PlanFeatures) || DEFAULT_FEATURES;
+        features = (plan.features as PlanFeatures) || FULL_FEATURES;
       }
     }
 
     const now = new Date();
     const isTrial = organization.subscriptionStatus === "trial";
-    const isActive = organization.subscriptionStatus === "active" || (isTrial && organization.trialEndsAt && new Date(organization.trialEndsAt) > now);
-    const isExpired = organization.subscriptionStatus === "expired" || 
+    // If no subscription plan, treat as active (free registration model)
+    const hasNoSubscription = !organization.subscriptionPlanId;
+    const isActive = hasNoSubscription || organization.subscriptionStatus === "active" || (isTrial && organization.trialEndsAt && new Date(organization.trialEndsAt) > now);
+    const isExpired = !hasNoSubscription && (organization.subscriptionStatus === "expired" || 
                      (organization.subscriptionEndDate && new Date(organization.subscriptionEndDate) < now) ||
-                     (isTrial && organization.trialEndsAt && new Date(organization.trialEndsAt) <= now);
+                     (isTrial && organization.trialEndsAt && new Date(organization.trialEndsAt) <= now));
 
     let daysRemaining: number | null = null;
     if (isTrial && organization.trialEndsAt) {
@@ -128,10 +130,10 @@ export class SubscriptionService {
     return {
       organization,
       plan,
-      features: isActive || isTrial ? features : DEFAULT_FEATURES,
+      features: isActive || isTrial || hasNoSubscription ? features : DEFAULT_FEATURES,
       limits: {
-        patientLimit: plan?.patientLimit ?? null,
-        userLimit: plan?.userLimit ?? null,
+        patientLimit: plan?.patientLimit ?? null, // null means unlimited
+        userLimit: plan?.userLimit ?? null, // null means unlimited
         currentPatientCount: organization.currentPatientCount ?? 0,
         currentUserCount: organization.currentUserCount ?? 1,
       },
@@ -150,14 +152,15 @@ export class SubscriptionService {
 
     const organization = org[0];
     
+    // If no subscription plan, allow unlimited (free registration model)
     if (!organization.subscriptionPlanId) {
-      return { allowed: false, message: "No subscription plan" };
+      return { allowed: true };
     }
 
     const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, organization.subscriptionPlanId)).limit(1);
     const plan = planResult[0];
     
-    if (!plan) return { allowed: false, message: "Subscription plan not found" };
+    if (!plan) return { allowed: true }; // No plan means unlimited
     
     if (plan.patientLimit === null) return { allowed: true };
     
@@ -178,14 +181,15 @@ export class SubscriptionService {
 
     const organization = org[0];
     
+    // If no subscription plan, allow unlimited (free registration model)
     if (!organization.subscriptionPlanId) {
-      return { allowed: false, message: "No subscription plan" };
+      return { allowed: true };
     }
 
     const planResult = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, organization.subscriptionPlanId)).limit(1);
     const plan = planResult[0];
     
-    if (!plan) return { allowed: false, message: "Subscription plan not found" };
+    if (!plan) return { allowed: true }; // No plan means unlimited
     
     if (plan.userLimit === null) return { allowed: true };
     
@@ -202,7 +206,8 @@ export class SubscriptionService {
 
   async hasFeature(organizationId: string, feature: keyof PlanFeatures): Promise<boolean> {
     const org = await db.select().from(organizations).where(eq(organizations.id, organizationId)).limit(1);
-    if (!org[0] || !org[0].subscriptionPlanId) return false;
+    // If no subscription plan, return true (free registration model - all features enabled)
+    if (!org[0] || !org[0].subscriptionPlanId) return true;
 
     const organization = org[0];
     
