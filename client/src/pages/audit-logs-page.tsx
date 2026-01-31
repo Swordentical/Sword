@@ -134,7 +134,7 @@ export default function AuditLogsPage() {
     queryKey: ["/api/audit-logs/users"],
   });
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "admin" && user?.role !== "clinic_admin" && user?.role !== "super_admin") {
     return <Redirect to="/" />;
   }
 
