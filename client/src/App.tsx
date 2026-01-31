@@ -45,6 +45,7 @@ import PlatformOrganizations from "@/pages/platform/organizations";
 import PlatformStatistics from "@/pages/platform/statistics";
 import PlatformFinancial from "@/pages/platform/financial";
 import PlatformAuditLogs from "@/pages/platform/audit-logs";
+import PlatformSettings from "@/pages/platform/settings";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -255,6 +256,7 @@ function Router() {
       <ProtectedRoute path="/platform/statistics" component={() => <MainLayout><PlatformStatistics /></MainLayout>} />
       <ProtectedRoute path="/platform/financial" component={() => <MainLayout><PlatformFinancial /></MainLayout>} />
       <ProtectedRoute path="/platform/audit-logs" component={() => <MainLayout><PlatformAuditLogs /></MainLayout>} />
+      <ProtectedRoute path="/platform/settings" component={() => <MainLayout><PlatformSettings /></MainLayout>} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />
       <Route component={NotFound} />
