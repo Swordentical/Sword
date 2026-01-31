@@ -42,6 +42,7 @@ import RegisterPage from "@/pages/register-page";
 import RegistrationSuccessPage from "@/pages/registration-success";
 import PlatformDashboard from "@/pages/platform/dashboard";
 import PlatformOrganizations from "@/pages/platform/organizations";
+import PlatformStatistics from "@/pages/platform/statistics";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -249,6 +250,7 @@ function Router() {
       <ProtectedRoute path="/subscription" component={ManageSubscriptionPageWrapper} />
       <ProtectedRoute path="/platform" component={() => <MainLayout><PlatformDashboard /></MainLayout>} />
       <ProtectedRoute path="/platform/organizations" component={() => <MainLayout><PlatformOrganizations /></MainLayout>} />
+      <ProtectedRoute path="/platform/statistics" component={() => <MainLayout><PlatformStatistics /></MainLayout>} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />
       <Route component={NotFound} />
