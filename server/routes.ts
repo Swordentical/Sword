@@ -811,6 +811,31 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platform/impersonate", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const { organizationId, role } = req.body;
+      if (!organizationId || !role) {
+        return res.status(400).json({ message: "Organization ID and role are required" });
+      }
+
+      // Find a user with that role in that organization
+      const usersInOrg = await storage.getUsersByClinic(organizationId, { isSuperAdmin: true });
+      const targetUser = usersInOrg.find(u => u.role === role);
+
+      if (!targetUser) {
+        return res.status(404).json({ message: `No user with role ${role} found in this organization` });
+      }
+
+      // Perform login as that user
+      req.login(targetUser, (err) => {
+        if (err) return res.status(500).json({ message: "Impersonation failed" });
+        res.json({ message: `Now logged in as ${targetUser.firstName} (${role})`, user: { ...targetUser, password: undefined } });
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Impersonation failed" });
+    }
+  });
+
   // ==================== END NOTIFICATIONS ====================
 
   // Patients
