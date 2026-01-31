@@ -12,7 +12,7 @@ import { ArcadeProvider, useArcade } from "@/contexts/arcade-context";
 import { ArcadeMobileOverlay } from "@/components/arcade-mode";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar, PlatformProvider } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationCenter } from "@/components/notification-center";
 import { GlobalSearch } from "@/components/global-search";
@@ -40,6 +40,7 @@ import PricingPage from "@/pages/subscription/pricing-page";
 import ManageSubscriptionPage from "@/pages/subscription/manage-page";
 import RegisterPage from "@/pages/register-page";
 import RegistrationSuccessPage from "@/pages/registration-success";
+import PlatformDashboard from "@/pages/platform/dashboard";
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -245,6 +246,7 @@ function Router() {
       <ProtectedRoute path="/admin/users" component={UserManagementPageWrapper} />
       <ProtectedRoute path="/pricing" component={PricingPageWrapper} />
       <ProtectedRoute path="/subscription" component={ManageSubscriptionPageWrapper} />
+      <ProtectedRoute path="/platform" component={() => <MainLayout><PlatformDashboard /></MainLayout>} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/register" component={RegisterPage} />
       <Route component={NotFound} />
@@ -263,15 +265,17 @@ function App() {
       <AppearanceSettingsProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <ArcadeProvider>
-              <TooltipProvider>
-                <AnimatedBackground />
-                <Router />
-                <Toaster />
-                <ThemeTransitionLayer />
-                <MobileArcadeOverlay />
-              </TooltipProvider>
-            </ArcadeProvider>
+            <PlatformProvider>
+              <ArcadeProvider>
+                <TooltipProvider>
+                  <AnimatedBackground />
+                  <Router />
+                  <Toaster />
+                  <ThemeTransitionLayer />
+                  <MobileArcadeOverlay />
+                </TooltipProvider>
+              </ArcadeProvider>
+            </PlatformProvider>
           </AuthProvider>
         </QueryClientProvider>
       </AppearanceSettingsProvider>

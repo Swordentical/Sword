@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, createContext, useContext } from "react";
 import { sounds } from "@/lib/sounds";
 import {
   LayoutDashboard,
@@ -24,6 +24,10 @@ import {
   Crown,
   Building2,
   UserCog,
+  LayoutGrid,
+  Activity,
+  History,
+  ToggleLeft,
 } from "lucide-react";
 import { ThemeSelector } from "@/components/theme-selector";
 import { Link, useLocation } from "wouter";
@@ -49,6 +53,29 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import type { UserRole, PlanFeatures } from "@shared/schema";
+
+// Platform Layer Context
+type PlatformMode = "clinic" | "platform";
+interface PlatformContextType {
+  mode: PlatformMode;
+  setMode: (mode: PlatformMode) => void;
+}
+const PlatformContext = createContext<PlatformContextType | undefined>(undefined);
+
+export function PlatformProvider({ children }: { children: React.ReactNode }) {
+  const [mode, setMode] = useState<PlatformMode>("clinic");
+  return (
+    <PlatformContext.Provider value={{ mode, setMode }}>
+      {children}
+    </PlatformContext.Provider>
+  );
+}
+
+export function usePlatform() {
+  const context = useContext(PlatformContext);
+  if (!context) throw new Error("usePlatform must be used within PlatformProvider");
+  return context;
+}
 
 type NavItem = {
   title: string;
@@ -164,6 +191,45 @@ const mainNavItems: NavItem[] = [
   },
 ];
 
+const platformNavItems: NavItem[] = [
+  {
+    title: "Dashboard",
+    url: "/platform",
+    icon: LayoutDashboard,
+    roles: ["super_admin"],
+  },
+  {
+    title: "Organizations",
+    url: "/platform/organizations",
+    icon: Building2,
+    roles: ["super_admin"],
+  },
+  {
+    title: "Statistics",
+    url: "/platform/statistics",
+    icon: Activity,
+    roles: ["super_admin"],
+  },
+  {
+    title: "Financial",
+    url: "/platform/financial",
+    icon: CreditCard,
+    roles: ["super_admin"],
+  },
+  {
+    title: "Audit Logs",
+    url: "/platform/audit-logs",
+    icon: History,
+    roles: ["super_admin"],
+  },
+  {
+    title: "Settings",
+    url: "/platform/settings",
+    icon: Settings,
+    roles: ["super_admin"],
+  },
+];
+
 const settingsNavItems: NavItem[] = [
   {
     title: "Settings",
@@ -211,6 +277,7 @@ export function AppSidebar() {
   const { user, logoutMutation } = useAuth();
   const { hasFeature, subscriptionContext, getPlanType } = useSubscription();
   const { isOpen: arcadeOpen, openArcade, closeArcade } = useArcade();
+  const { mode, setMode } = usePlatform();
   
   const clickCountRef = useRef(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -246,11 +313,15 @@ export function AppSidebar() {
 
   const userRole = (user?.role as UserRole) || "staff";
   const planType = getPlanType();
+  const isSuperAdmin = userRole === "super_admin";
+
+  const currentNavItems = mode === "platform" ? platformNavItems : mainNavItems;
   
-  const filteredMainItems = mainNavItems.filter((item) => {
+  const filteredNavItems = currentNavItems.filter((item) => {
     const hasRoleAccess = item.roles.includes(userRole);
     if (!hasRoleAccess) return false;
     
+    if (mode === "platform") return true;
     if (!user?.organizationId) return true;
     
     if (item.feature) {
@@ -276,22 +347,26 @@ export function AppSidebar() {
     : "?";
 
   return (
-    <Sidebar>
+    <Sidebar className={mode === "platform" ? "border-r-2 border-indigo-500/20" : ""}>
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-4 py-3">
           <button
             onClick={handleLogoClick}
-            className="text-2xl font-bold bg-gradient-to-r from-[#12a3b0] via-[#2089de] to-[#9b59b6] bg-clip-text text-transparent cursor-pointer select-none"
+            className={`text-2xl font-bold bg-gradient-to-r ${
+              mode === "platform" 
+                ? "from-indigo-500 via-purple-500 to-pink-500" 
+                : "from-[#12a3b0] via-[#2089de] to-[#9b59b6]"
+            } bg-clip-text text-transparent cursor-pointer select-none`}
             data-testid="button-logo"
           >
-            GLAZER
+            {mode === "platform" ? "GLAZER — PLATFORM" : "GLAZER"}
           </button>
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">
-              By Dr. Ahmad Saleh
+              {mode === "platform" ? "CONTROL TOWER" : "By Dr. Ahmad Saleh"}
             </span>
             <div className="flex items-center gap-2">
-              {planType && (
+              {planType && mode !== "platform" && (
                 <Badge 
                   variant="outline" 
                   className={`text-[10px] px-1.5 py-0 h-4 ${
@@ -311,18 +386,42 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="scrollbar-thin">
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Switch Layer</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => {
+                      setMode(mode === "clinic" ? "platform" : "clinic");
+                      sounds.click();
+                    }}
+                    className={mode === "platform" ? "bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20" : ""}
+                    data-testid="button-platform-toggle"
+                  >
+                    <ToggleLeft className={`h-4 w-4 transition-transform ${mode === "platform" ? "rotate-180" : ""}`} />
+                    <span>{mode === "clinic" ? "Enter Platform Mode" : "Return to Clinic"}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup>
-          <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+          <SidebarGroupLabel>{mode === "platform" ? "Platform Control" : "Main Menu"}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredMainItems.map((item) => {
+              {filteredNavItems.map((item) => {
                 const isActive = location === item.url || 
-                  (item.url !== "/" && location.startsWith(item.url));
+                  (item.url !== "/" && item.url !== "/platform" && location.startsWith(item.url));
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
+                      className={mode === "platform" ? "data-[active=true]:bg-indigo-500/10 data-[active=true]:text-indigo-500" : ""}
                       data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
                     >
                       <Link href={item.url} onClick={() => sounds.tabChange()}>
@@ -337,7 +436,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {filteredSettingsItems.length > 0 && (
+        {mode === "clinic" && filteredSettingsItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
