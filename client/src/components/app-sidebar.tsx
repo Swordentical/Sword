@@ -321,12 +321,16 @@ export function AppSidebar() {
     const hasRoleAccess = item.roles.includes(userRole);
     if (!hasRoleAccess) return false;
     
+    // Always show all items in platform mode for super_admin
     if (mode === "platform") return true;
-    if (!user?.organizationId) return true;
     
-    if (item.feature) {
-      return hasFeature(item.feature);
+    // If not in platform mode and user has an organization, check feature flags
+    if (user?.organizationId) {
+      if (item.feature) {
+        return hasFeature(item.feature);
+      }
     }
+    
     return true;
   });
   
