@@ -154,7 +154,14 @@ export async function registerRoutes(
   app.get("/api/users", requireClinicScope, async (req, res) => {
     try {
       const role = req.query.role as string | undefined;
-      const usersList = await storage.getUsers({ role }, getScope(req));
+      let usersList = await storage.getUsers({ role }, getScope(req));
+      
+      // Never return super_admin users to regular clinic admins/staff
+      const currentUser = req.user as any;
+      if (currentUser.role !== "super_admin") {
+        usersList = usersList.filter(u => u.role !== "super_admin");
+      }
+      
       res.json(usersList.map(u => ({ ...u, password: undefined })));
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch users" });
