@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Building2, 
@@ -12,12 +13,25 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function PlatformDashboard() {
+  const { data: metrics, isLoading } = useQuery<{
+    totalOrganizations: number;
+    activeSubscriptions: number;
+    totalRevenue: number;
+    avgChurnRate: number;
+  }>({
+    queryKey: ["/api/platform/metrics"],
+  });
+
   const stats = [
-    { title: "Total Organizations", value: "124", icon: Building2, trend: "+12% this month" },
-    { title: "Active Users", value: "1,240", icon: Users, trend: "+5% this month" },
-    { title: "Total MRR", value: "$12,400", icon: TrendingUp, trend: "+8% this month" },
-    { title: "Active Subs", value: "98", icon: CreditCard, trend: "+3% this month" },
+    { title: "Total Organizations", value: metrics?.totalOrganizations?.toString() || "0", icon: Building2, trend: "+12% this month" },
+    { title: "Active Users", value: "1,240", icon: Users, trend: "+5% this month" }, // Keeping mock for now or could add to metrics
+    { title: "Total MRR", value: `$${metrics?.totalRevenue?.toLocaleString() || "0"}`, icon: TrendingUp, trend: "+8% this month" },
+    { title: "Active Subs", value: metrics?.activeSubscriptions?.toString() || "0", icon: CreditCard, trend: "+3% this month" },
   ];
+
+  if (isLoading) {
+    return <div className="p-6">Loading dashboard metrics...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">

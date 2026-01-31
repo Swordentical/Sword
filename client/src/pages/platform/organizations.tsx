@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { type Organization } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -6,11 +8,13 @@ import { Building2, Search, LogIn } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 export default function PlatformOrganizations() {
-  const organizations = [
-    { id: "1", name: "DentalCare Clinic", type: "Clinic", plan: "Professional", users: 12, status: "Active", lastActive: "2 hours ago" },
-    { id: "2", name: "Smile Bright", type: "Clinic", plan: "Basic", users: 5, status: "Active", lastActive: "1 day ago" },
-    { id: "3", name: "Modern Lab", type: "Lab", plan: "Enterprise", users: 25, status: "Active", lastActive: "Just now" },
-  ];
+  const { data: organizations, isLoading } = useQuery<Organization[]>({
+    queryKey: ["/api/platform/organizations"],
+  });
+
+  if (isLoading) {
+    return <div className="p-6">Loading organizations...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -39,29 +43,29 @@ export default function PlatformOrganizations() {
             <TableHeader>
               <TableRow>
                 <TableHead>Org Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Users</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Subscription</TableHead>
+                <TableHead>Patients</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Last Active</TableHead>
+                <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organizations.map((org) => (
+              {organizations?.map((org) => (
                 <TableRow key={org.id}>
                   <TableCell className="font-medium">{org.name}</TableCell>
-                  <TableCell>{org.type}</TableCell>
+                  <TableCell>{org.slug}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{org.plan}</Badge>
+                    <Badge variant="outline">{org.subscriptionStatus}</Badge>
                   </TableCell>
-                  <TableCell>{org.users}</TableCell>
+                  <TableCell>{org.currentPatientCount}</TableCell>
                   <TableCell>
-                    <Badge className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-0">
-                      {org.status}
+                    <Badge className={org.isActive ? "bg-green-500/10 text-green-500 hover:bg-green-500/20 border-0" : "bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"}>
+                      {org.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{org.lastActive}</TableCell>
+                  <TableCell className="text-muted-foreground">{org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" className="gap-2">
                       <LogIn className="h-4 w-4" />

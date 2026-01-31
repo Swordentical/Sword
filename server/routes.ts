@@ -785,6 +785,32 @@ export async function registerRoutes(
     }
   });
 
+  // Platform - Organizations
+  app.get("/api/platform/organizations", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const orgs = await storage.getOrganizations();
+      res.json(orgs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch organizations" });
+    }
+  });
+
+  app.get("/api/platform/metrics", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const orgs = await storage.getOrganizations();
+      const totalRevenue = orgs.reduce((acc, org) => acc + (org.subscriptionStatus === 'active' ? 199 : 0), 0);
+      
+      res.json({
+        totalOrganizations: orgs.length,
+        activeSubscriptions: orgs.filter(o => o.subscriptionStatus === 'active').length,
+        totalRevenue: totalRevenue,
+        avgChurnRate: 1.2
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch platform metrics" });
+    }
+  });
+
   // ==================== END NOTIFICATIONS ====================
 
   // Patients
