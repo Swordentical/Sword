@@ -1,0 +1,213 @@
+SUPER ADMIN = PLATFORM LAYER (Not clinic layer)
+
+You are NOT:
+
+a clinic
+
+a doctor
+
+a lab
+
+You are:
+
+System Operator
+
+So when SUPER ADMIN mode is activated, the app is literally switching layers.
+
+🧠 Big Architecture Idea
+
+You now have:
+
+LAYER 1 → Tenant Layer (Clinics, Labs, Radiology)
+LAYER 2 → Platform Layer (Super Admin)
+
+
+Completely different purpose.
+Same codebase. Different universe.
+
+🎯 UI Behavior (VERY IMPORTANT)
+
+You said:
+
+Button in sidebar: SUPER ADMIN
+
+Correct. But it must:
+
+⚠️ Visually feel like leaving the clinic world
+
+When clicked:
+
+Sidebar changes
+
+Color accent slightly changes (to indicate platform mode)
+
+New navigation structure
+
+No patient-facing stuff
+
+This is a control tower, not a clinic.
+
+🧩 SUPER ADMIN SIDEBAR STRUCTURE
+
+Here is the clean professional version of what you designed:
+
+Sidebar Title:
+
+GLAZER — PLATFORM CONTROL
+
+🧭 Tabs
+1️⃣ Dashboard
+
+System overview.
+
+2️⃣ Organizations
+
+All tenants (clinics, labs, radiology).
+
+3️⃣ Statistics
+
+Deep analytics & usage insights.
+
+4️⃣ Financial
+
+Platform-level revenue & subscriptions.
+
+5️⃣ Audit Logs
+
+Everything that happened.
+
+6️⃣ Settings
+
+System-wide configuration.
+
+🖥️ 1️⃣ Dashboard Tab (Mission Control)
+
+Purpose:
+👉 “Is the platform healthy?”
+
+🧱 First Row — CLIENT METRICS
+Widget	Meaning
+Total Organizations	All registered clinics/labs
+New Orgs (Month/Year)	Growth
+Total Users	All users except superadmins
+Active Users (Monthly)	Engagement
+💰 Second Row — FINANCIAL
+Widget	Meaning
+Total MRR	Monthly Recurring Revenue
+Active Subscriptions	Paying tenants
+Expired Subscriptions	At risk
+Trial Accounts	Potential growth
+⚡ Quick Actions Panel
+
+Create new organization
+
+Suspend organization
+
+Reset user password
+
+Broadcast system message
+
+🏢 2️⃣ ORGANIZATIONS TAB (THE HEART)
+
+This is your control database view.
+
+List view:
+
+Org Name	Type	Plan	Users	Status	Last Active
+
+Click organization → opens:
+
+Organization Details View
+
+You can see EVERYTHING under their Tenant ID:
+
+Patients
+
+Doctors
+
+Staff
+
+Services
+
+Inventory
+
+Financial records
+
+Settings
+
+Audit logs
+
+Integrations (Lab / Radiology links)
+
+🔥 MOST IMPORTANT FEATURE HERE
+👁️ “Login as Organization”
+
+(Also called impersonation)
+
+You enter their system exactly as them to debug.
+
+This is how real SaaS support works.
+
+📊 3️⃣ Statistics Tab
+
+Deep platform analytics:
+
+Most active clinics
+
+Average patients per clinic
+
+Peak usage times
+
+Feature usage (who uses lab module etc.)
+
+Storage usage (images, files)
+
+This helps you improve product.
+
+💳 4️⃣ Financial Tab
+
+Platform money view:
+
+Subscription plans
+
+Who paid / failed payments
+
+Revenue graphs
+
+Discounts
+
+Refunds
+
+Plan upgrades/downgrades
+
+You manage BUSINESS here.
+
+📜 5️⃣ Audit Logs
+
+God view of everything:
+
+Time	Organization	User	Action	IP
+
+Deleted patient
+
+Changed price
+
+Logged in
+
+Uploaded X-ray
+
+For legal + debugging.
+
+⚙️ 6️⃣ Settings
+
+Platform-wide:
+
+Default subscription plans
+
+Feature flags
+
+Storage limits
+
+Email templates
+
+Maintenance mode
