@@ -100,7 +100,11 @@ export default function PlatformOrganizations() {
             </TableHeader>
             <TableBody>
               {organizations?.map((org) => (
-                <TableRow key={org.id}>
+                <TableRow 
+                  key={org.id}
+                  className="cursor-pointer"
+                  onDoubleClick={() => setLocation(`/platform/organizations/${org.id}`)}
+                >
                   <TableCell className="font-medium">{org.name}</TableCell>
                   <TableCell>{org.slug}</TableCell>
                   <TableCell>

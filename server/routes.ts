@@ -802,6 +802,34 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/platform/organizations/:id", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const org = await storage.getOrganization(req.params.id);
+      if (!org) return res.status(404).json({ message: "Organization not found" });
+      res.json(org);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch organization" });
+    }
+  });
+
+  app.get("/api/platform/organizations/:id/users", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const users = await storage.getUsers({}, { clinicId: req.params.id, isSuperAdmin: true });
+      res.json(users.map(u => ({ ...u, password: undefined })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch("/api/platform/organizations/:id", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const org = await storage.updateOrganization(req.params.id, req.body);
+      res.json(org);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update organization" });
+    }
+  });
+
   app.get("/api/platform/metrics", requireClinicScope, requireRole("super_admin"), async (req, res) => {
     try {
       const orgs = await storage.getOrganizations();
