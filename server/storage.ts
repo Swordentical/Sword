@@ -1121,49 +1121,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Financial Reports
-  async getRevenueReport(startDate: string, endDate: string): Promise<{
+  async getRevenueReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     totalRevenue: number;
     totalCollections: number;
     totalAdjustments: number;
     byMonth: { month: string; revenue: number; collections: number }[];
   }> {
+    let invoiceConditions = [
+      gte(invoices.issuedDate, startDate),
+      lte(invoices.issuedDate, endDate)
+    ];
+
+    let paymentConditions = [
+      gte(payments.paymentDate, startDate),
+      lte(payments.paymentDate, endDate),
+      eq(payments.isRefunded, false)
+    ];
+
+    let adjustmentConditions = [
+      gte(invoiceAdjustments.appliedDate, startDate),
+      lte(invoiceAdjustments.appliedDate, endDate)
+    ];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      invoiceConditions.push(eq(invoices.organizationId, scope.clinicId));
+      paymentConditions.push(eq(payments.organizationId, scope.clinicId));
+      adjustmentConditions.push(eq(invoiceAdjustments.organizationId, scope.clinicId));
+    }
+
     // Total revenue (sum of all invoice final amounts in date range)
     const revenueResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
     }).from(invoices)
-      .where(and(
-        gte(invoices.issuedDate, startDate),
-        lte(invoices.issuedDate, endDate)
-      ));
+      .where(and(...invoiceConditions));
 
     // Total collections (sum of payments in date range, excluding refunded)
     const collectionsResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(payments)
-      .where(and(
-        gte(payments.paymentDate, startDate),
-        lte(payments.paymentDate, endDate),
-        eq(payments.isRefunded, false)
-      ));
+      .where(and(...paymentConditions));
 
     // Total adjustments
     const adjustmentsResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(invoiceAdjustments)
-      .where(and(
-        gte(invoiceAdjustments.appliedDate, startDate),
-        lte(invoiceAdjustments.appliedDate, endDate)
-      ));
+      .where(and(...adjustmentConditions));
 
     // Monthly breakdown
     const monthlyRevenue = await db.select({
       month: sql<string>`TO_CHAR(issued_date, 'YYYY-MM')`,
       revenue: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
     }).from(invoices)
-      .where(and(
-        gte(invoices.issuedDate, startDate),
-        lte(invoices.issuedDate, endDate)
-      ))
+      .where(and(...invoiceConditions))
       .groupBy(sql`TO_CHAR(issued_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(issued_date, 'YYYY-MM')`);
 
@@ -1171,11 +1180,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
       collections: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(payments)
-      .where(and(
-        gte(payments.paymentDate, startDate),
-        lte(payments.paymentDate, endDate),
-        eq(payments.isRefunded, false)
-      ))
+      .where(and(...paymentConditions))
       .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
 
@@ -1203,7 +1208,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getARAgingReport(): Promise<{
+  async getARAgingReport(scope?: ClinicScopeOptions): Promise<{
     current: number;
     thirtyDays: number;
     sixtyDays: number;
@@ -1216,9 +1221,17 @@ export class DatabaseStorage implements IStorage {
     const sixtyDaysAgo = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
     const ninetyDaysAgo = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
 
+    let conditions = [
+      or(eq(invoices.status, 'sent'), eq(invoices.status, 'partial'), eq(invoices.status, 'overdue'))
+    ];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      conditions.push(eq(invoices.organizationId, scope.clinicId));
+    }
+
     // Get all unpaid/partial invoices
     const unpaidInvoices = await db.select().from(invoices)
-      .where(or(eq(invoices.status, 'sent'), eq(invoices.status, 'partial'), eq(invoices.status, 'overdue')));
+      .where(and(...conditions));
 
     let current = 0, thirtyDays = 0, sixtyDays = 0, ninetyDays = 0, overNinety = 0;
 
@@ -1252,7 +1265,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getProductionByDoctorReport(startDate: string, endDate: string): Promise<{
+  async getProductionByDoctorReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     doctorId: string;
     doctorName: string;
     totalProduction: number;
@@ -1261,12 +1274,28 @@ export class DatabaseStorage implements IStorage {
     avgProductionPerPatient: number;
     treatmentBreakdown: { treatmentName: string; count: number; revenue: number }[];
   }[]> {
+    let doctorConditions = [eq(users.role, 'doctor')];
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      doctorConditions.push(eq(users.organizationId, scope.clinicId));
+    }
+
     // Get all doctors (including those with zero production)
-    const allDoctors = await db.select().from(users).where(eq(users.role, 'doctor'));
+    const allDoctors = await db.select().from(users).where(and(...doctorConditions));
 
     const doctorProductions = [];
     
     for (const doctor of allDoctors) {
+      let productionConditions = [
+        eq(patientTreatments.doctorId, doctor.id),
+        eq(patientTreatments.status, 'completed'),
+        gte(patientTreatments.completionDate, startDate),
+        lte(patientTreatments.completionDate, endDate)
+      ];
+
+      if (scope?.clinicId && !scope?.isSuperAdmin) {
+        productionConditions.push(eq(patientTreatments.organizationId, scope.clinicId));
+      }
+
       // Get production stats for this doctor
       const productionResult = await db.select({
         totalProduction: sql<string>`COALESCE(SUM(CAST(patient_treatments.price AS DECIMAL)), 0)`,
@@ -1274,12 +1303,7 @@ export class DatabaseStorage implements IStorage {
         patientCount: sql<number>`COUNT(DISTINCT patient_treatments.patient_id)`
       })
         .from(patientTreatments)
-        .where(and(
-          eq(patientTreatments.doctorId, doctor.id),
-          eq(patientTreatments.status, 'completed'),
-          gte(patientTreatments.completionDate, startDate),
-          lte(patientTreatments.completionDate, endDate)
-        ));
+        .where(and(...productionConditions));
 
       const stats = productionResult[0] || { totalProduction: '0', treatmentCount: 0, patientCount: 0 };
       const totalProduction = Number(stats.totalProduction);
@@ -1293,12 +1317,7 @@ export class DatabaseStorage implements IStorage {
       })
         .from(patientTreatments)
         .leftJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
-        .where(and(
-          eq(patientTreatments.doctorId, doctor.id),
-          eq(patientTreatments.status, 'completed'),
-          gte(patientTreatments.completionDate, startDate),
-          lte(patientTreatments.completionDate, endDate)
-        ))
+        .where(and(...productionConditions))
         .groupBy(treatments.name);
 
       doctorProductions.push({
@@ -1472,38 +1491,44 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getExpenseReport(startDate: string, endDate: string): Promise<{
+  async getExpenseReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     total: number;
     byCategory: { category: string; amount: number }[];
     byMonth: { month: string; amount: number }[];
   }> {
+    let expenseConditions = [
+      gte(expenses.expenseDate, startDate),
+      lte(expenses.expenseDate, endDate)
+    ];
+
+    let doctorPaymentConditions = [
+      gte(doctorPayments.paymentDate, startDate),
+      lte(doctorPayments.paymentDate, endDate)
+    ];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      expenseConditions.push(eq(expenses.organizationId, scope.clinicId));
+      doctorPaymentConditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
+
     // Total regular expenses
     const totalResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
-      .where(and(
-        gte(expenses.expenseDate, startDate),
-        lte(expenses.expenseDate, endDate)
-      ));
+      .where(and(...expenseConditions));
 
     // Total doctor payments (salary, bonus, commission, reimbursement - but not deductions which reduce expenses)
     const doctorPaymentsResult = await db.select({
       total: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
     }).from(doctorPayments)
-      .where(and(
-        gte(doctorPayments.paymentDate, startDate),
-        lte(doctorPayments.paymentDate, endDate)
-      ));
+      .where(and(...doctorPaymentConditions));
 
     // By category (regular expenses)
     const byCategory = await db.select({
       category: expenses.category,
       amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
-      .where(and(
-        gte(expenses.expenseDate, startDate),
-        lte(expenses.expenseDate, endDate)
-      ))
+      .where(and(...expenseConditions))
       .groupBy(expenses.category)
       .orderBy(sql`SUM(CAST(amount AS DECIMAL)) DESC`);
 
@@ -1512,10 +1537,7 @@ export class DatabaseStorage implements IStorage {
       category: doctorPayments.paymentType,
       amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(doctorPayments)
-      .where(and(
-        gte(doctorPayments.paymentDate, startDate),
-        lte(doctorPayments.paymentDate, endDate)
-      ))
+      .where(and(...doctorPaymentConditions))
       .groupBy(doctorPayments.paymentType)
       .orderBy(sql`SUM(CAST(amount AS DECIMAL)) DESC`);
 
@@ -1524,10 +1546,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(expense_date, 'YYYY-MM')`,
       amount: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
-      .where(and(
-        gte(expenses.expenseDate, startDate),
-        lte(expenses.expenseDate, endDate)
-      ))
+      .where(and(...expenseConditions))
       .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
 
@@ -1536,10 +1555,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
       amount: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
     }).from(doctorPayments)
-      .where(and(
-        gte(doctorPayments.paymentDate, startDate),
-        lte(doctorPayments.paymentDate, endDate)
-      ))
+      .where(and(...doctorPaymentConditions))
       .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
 
@@ -1575,7 +1591,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getNetProfitReport(startDate: string, endDate: string): Promise<{
+  async getNetProfitReport(startDate: string, endDate: string, scope?: ClinicScopeOptions): Promise<{
     grossRevenue: number;
     totalCollections: number;
     serviceCosts: number;
@@ -1585,53 +1601,71 @@ export class DatabaseStorage implements IStorage {
     profitMargin: number;
     byMonth: { month: string; collections: number; costs: number; expenses: number; netProfit: number }[];
   }> {
+    let paymentConditions = [
+      gte(payments.paymentDate, startDate),
+      lte(payments.paymentDate, endDate),
+      eq(payments.isRefunded, false)
+    ];
+
+    let invoiceConditions = [
+      gte(invoices.issuedDate, startDate),
+      lte(invoices.issuedDate, endDate)
+    ];
+
+    let ptConditions = [
+      eq(patientTreatments.status, 'completed'),
+      gte(patientTreatments.completionDate, startDate),
+      lte(patientTreatments.completionDate, endDate)
+    ];
+
+    let expenseConditions = [
+      gte(expenses.expenseDate, startDate),
+      lte(expenses.expenseDate, endDate)
+    ];
+
+    let doctorPaymentConditions = [
+      gte(doctorPayments.paymentDate, startDate),
+      lte(doctorPayments.paymentDate, endDate)
+    ];
+
+    if (scope?.clinicId && !scope?.isSuperAdmin) {
+      paymentConditions.push(eq(payments.organizationId, scope.clinicId));
+      invoiceConditions.push(eq(invoices.organizationId, scope.clinicId));
+      ptConditions.push(eq(patientTreatments.organizationId, scope.clinicId));
+      expenseConditions.push(eq(expenses.organizationId, scope.clinicId));
+      doctorPaymentConditions.push(eq(doctorPayments.organizationId, scope.clinicId));
+    }
+
     // Total collections (payments received, excluding refunded) - this is cash-based income
     const collectionsResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(payments)
-      .where(and(
-        gte(payments.paymentDate, startDate),
-        lte(payments.paymentDate, endDate),
-        eq(payments.isRefunded, false)
-      ));
+      .where(and(...paymentConditions));
 
     // Gross revenue from invoices (accrual basis - for reference)
     const revenueResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(final_amount AS DECIMAL)), 0)`
     }).from(invoices)
-      .where(and(
-        gte(invoices.issuedDate, startDate),
-        lte(invoices.issuedDate, endDate)
-      ));
+      .where(and(...invoiceConditions));
 
     // Service costs (from completed patient treatments - using treatment cost field)
     const serviceCostsResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(${treatments.cost} AS DECIMAL)), 0)`
     }).from(patientTreatments)
       .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
-      .where(and(
-        eq(patientTreatments.status, 'completed'),
-        gte(patientTreatments.completionDate, startDate),
-        lte(patientTreatments.completionDate, endDate)
-      ));
+      .where(and(...ptConditions));
 
     // Operating expenses
     const expensesResult = await db.select({
       total: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
-      .where(and(
-        gte(expenses.expenseDate, startDate),
-        lte(expenses.expenseDate, endDate)
-      ));
+      .where(and(...expenseConditions));
 
     // Doctor payments (salary, bonus, commission, reimbursement - deductions reduce expenses)
     const doctorPaymentsExpenseResult = await db.select({
       total: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
     }).from(doctorPayments)
-      .where(and(
-        gte(doctorPayments.paymentDate, startDate),
-        lte(doctorPayments.paymentDate, endDate)
-      ));
+      .where(and(...doctorPaymentConditions));
 
     const grossRevenue = Number(revenueResult[0]?.total || 0);
     const totalCollections = Number(collectionsResult[0]?.total || 0);
@@ -1648,11 +1682,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
       collections: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(payments)
-      .where(and(
-        gte(payments.paymentDate, startDate),
-        lte(payments.paymentDate, endDate),
-        eq(payments.isRefunded, false)
-      ))
+      .where(and(...paymentConditions))
       .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
 
@@ -1661,11 +1691,7 @@ export class DatabaseStorage implements IStorage {
       costs: sql<string>`COALESCE(SUM(CAST(${treatments.cost} AS DECIMAL)), 0)`
     }).from(patientTreatments)
       .innerJoin(treatments, eq(patientTreatments.treatmentId, treatments.id))
-      .where(and(
-        eq(patientTreatments.status, 'completed'),
-        gte(patientTreatments.completionDate, startDate),
-        lte(patientTreatments.completionDate, endDate)
-      ))
+      .where(and(...ptConditions))
       .groupBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(completion_date, 'YYYY-MM')`);
 
@@ -1673,10 +1699,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(expense_date, 'YYYY-MM')`,
       expenses: sql<string>`COALESCE(SUM(CAST(amount AS DECIMAL)), 0)`
     }).from(expenses)
-      .where(and(
-        gte(expenses.expenseDate, startDate),
-        lte(expenses.expenseDate, endDate)
-      ))
+      .where(and(...expenseConditions))
       .groupBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(expense_date, 'YYYY-MM')`);
 
@@ -1685,10 +1708,7 @@ export class DatabaseStorage implements IStorage {
       month: sql<string>`TO_CHAR(payment_date, 'YYYY-MM')`,
       amount: sql<string>`COALESCE(SUM(CASE WHEN payment_type != 'deduction' THEN CAST(amount AS DECIMAL) ELSE -CAST(amount AS DECIMAL) END), 0)`
     }).from(doctorPayments)
-      .where(and(
-        gte(doctorPayments.paymentDate, startDate),
-        lte(doctorPayments.paymentDate, endDate)
-      ))
+      .where(and(...doctorPaymentConditions))
       .groupBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`)
       .orderBy(sql`TO_CHAR(payment_date, 'YYYY-MM')`);
 
