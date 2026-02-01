@@ -346,7 +346,7 @@ export async function registerRoutes(
       
       const previousRole = user.role;
       const updatedUser = await storage.updateUser(id, { role }, scope);
-      
+
       // Log the role change with full audit trail
       await storage.logActivity({
         userId: currentUserId,
@@ -362,6 +362,18 @@ export async function registerRoutes(
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to change user role" });
+    }
+  });
+
+  app.get("/api/users", requireClinicScope, async (req, res) => {
+    try {
+      const scope = getScope(req);
+      const usersList = await storage.getUsers({}, scope);
+      // Filter out pending users and current super admin from the list
+      const filteredUsers = usersList.filter(u => u.role !== "pending" && u.role !== "super_admin");
+      res.json(filteredUsers.map(u => ({ ...u, password: undefined })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 

@@ -44,6 +44,10 @@ export default function UserManagement() {
     queryKey: ["/api/users/pending"],
   });
 
+  const { data: activeUsers, isLoading: isLoadingActive } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
   const approveMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: UserRole }) => {
       const res = await apiRequest("POST", `/api/users/${userId}/approve`, { role });
@@ -182,7 +186,7 @@ export default function UserManagement() {
           </CardContent>
         </Card>
 
-        <Card className="opacity-50 grayscale pointer-events-none">
+        <Card className="hover-elevate transition-all">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
@@ -193,11 +197,49 @@ export default function UserManagement() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground">
-                Advanced user management coming soon in future updates.
-              </p>
-            </div>
+            {isLoadingActive ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : !activeUsers || activeUsers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">No active users found.</p>
+              </div>
+            ) : (
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {activeUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{user.firstName} {user.lastName}</span>
+                            <span className="text-xs text-muted-foreground">@{user.username}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {user.role.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">Manage</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
