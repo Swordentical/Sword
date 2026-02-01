@@ -802,6 +802,56 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/platform/organizations", requireClinicScope, requireRole("super_admin"), async (req, res) => {
+    try {
+      const { name, slug, adminUsername, adminPassword, adminFirstName, adminLastName } = req.body;
+      
+      // Check if organization slug exists
+      const existingOrg = await storage.getOrganizationBySlug(slug);
+      if (existingOrg) {
+        return res.status(409).json({ message: "Organization slug already exists" });
+      }
+
+      // Check if username exists
+      const existingUser = await storage.getUserByUsername(adminUsername);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      // Create Organization
+      const org = await storage.createOrganization({
+        name,
+        slug,
+        subscriptionStatus: "trial",
+        isActive: true
+      });
+
+      // Hash password
+      const bcrypt = await import("bcrypt");
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+      // Create Admin User for this organization
+      const user = await storage.createUser({
+        username: adminUsername,
+        password: hashedPassword,
+        firstName: adminFirstName,
+        lastName: adminLastName,
+        role: "clinic_admin",
+        organizationId: org.id,
+        isOrganizationOwner: true,
+        isActive: true
+      });
+
+      // Update organization ownerId
+      await storage.updateOrganization(org.id, { ownerId: user.id });
+
+      res.status(201).json({ organization: org, admin: { ...user, password: undefined } });
+    } catch (error) {
+      console.error("Organization creation error:", error);
+      res.status(500).json({ message: "Failed to create organization" });
+    }
+  });
+
   app.get("/api/platform/organizations/:id", requireClinicScope, requireRole("super_admin"), async (req, res) => {
     try {
       const org = await storage.getOrganization(req.params.id);
