@@ -822,7 +822,7 @@ export async function registerRoutes(
       const org = await storage.createOrganization({
         name,
         slug,
-        subscriptionStatus: "trial",
+        subscriptionStatus: "active", // Default to active for manually created orgs
         isActive: true
       });
 

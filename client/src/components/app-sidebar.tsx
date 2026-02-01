@@ -326,6 +326,9 @@ export function AppSidebar() {
     
     // If not in platform mode and user has an organization, check feature flags
     if (user?.organizationId) {
+      // If super_admin is in clinic mode, show all clinic features regardless of plan
+      if (userRole === "super_admin") return true;
+
       if (item.feature) {
         return hasFeature(item.feature);
       }
